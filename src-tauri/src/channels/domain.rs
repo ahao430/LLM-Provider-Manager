@@ -61,14 +61,59 @@ pub struct ExternalLink {
     pub kind: String,
 }
 
-/// 余额查询配置（不同服务商查询路径不同；JSON 路径定位余额字段）。
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+/// 余额查询配置（查询方式由渠道服务商派生，不在表单中选择）。
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct BalanceQuery {
-    /// 查询路径：相对路径（拼在 chat Base URL 后）或完整 URL
+    /// 查询方式：generic = 通用 HTTP（Bearer GET + JSON 路径）；
+    /// new_api = NewAPI 用户额度（/api/user/self + 用户ID + 系统访问令牌）；
+    /// aliyun_bss = 阿里云费用中心（RPC V1 签名，AccessKey 配置在凭证文件）
+    #[serde(default)]
+    pub provider: String,
+    /// 查询路径：相对路径（拼在 chat Base URL 后）或完整 URL（generic 用）
     pub path: String,
-    /// JSON 点路径，如 data.total_balance；数组用数字下标
+    /// JSON 点路径，如 data.total_balance；数组用数字下标（generic 用）
     pub json_path: String,
+    /// NewAPI 用户 ID（new_api 用；非敏感，直接存配置）
+    #[serde(default)]
+    pub user_id: String,
+    /// 余额币种（写快照用；旧配置缺省 CNY；new_api 固定 USD）
+    #[serde(default = "default_balance_currency")]
+    pub currency: String,
+}
+
+impl Default for BalanceQuery {
+    fn default() -> Self {
+        Self {
+            provider: String::new(),
+            path: String::new(),
+            json_path: String::new(),
+            user_id: String::new(),
+            currency: default_balance_currency(),
+        }
+    }
+}
+
+/// 按渠道服务商派生余额查询方式（单一事实来源：providers.code）。
+pub fn balance_mode_for_provider(provider_code: Option<&str>) -> &'static str {
+    match provider_code {
+        Some("newapi") => "new_api",
+        Some("bailian") => "aliyun_bss",
+        _ => "generic",
+    }
+}
+
+fn default_balance_currency() -> String {
+    "CNY".into()
+}
+
+/// 渠道模型接口类型默认规则：模型名含 claude → Anthropic Messages，否则 Chat Completions。
+pub fn default_protocol_for(model_id: &str) -> &'static str {
+    if model_id.to_lowercase().contains("claude") {
+        "anthropic_messages"
+    } else {
+        "openai_chat"
+    }
 }
 
 /// 渠道连接配置（存 channels.config_json；认证按协议自动派生，不存自定义 Header）。
@@ -101,6 +146,8 @@ pub struct ChannelRow {
     pub notes: Option<String>,
     pub created_at: String,
     pub updated_at: String,
+    /// 官网链接（config_json 中 kind=official 的外链；未配置为 None）
+    pub official_url: Option<String>,
     /// 主凭证是否存在（系统凭证库）
     pub has_primary_credential: bool,
     /// 主凭证掩码（如 sk-************）

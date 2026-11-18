@@ -60,6 +60,8 @@ pub struct ApiTestRequest {
 pub struct RequestTarget {
     pub url: String,
     pub headers: Vec<(String, String)>,
+    /// 渠道是否配置了主凭证（未配置时不注入认证 Header，本地免鉴权网关属正常场景）
+    pub auth_present: bool,
     pub timeout_secs: u64,
     pub tls_verify: bool,
 }
@@ -82,6 +84,7 @@ pub fn request_target(
     let config: crate::channels::domain::ChannelConfig =
         channel_repo::load_config(conn, channel_id)?;
     let token = channel_service::resolve_primary_credential(channel_id);
+    let auth_present = token.is_some();
 
     let base = row.base_url_for(protocol);
     if base.is_empty() {
@@ -123,6 +126,7 @@ pub fn request_target(
     Ok(RequestTarget {
         url,
         headers,
+        auth_present,
         timeout_secs: 120,
         tls_verify: config.tls_verify,
     })
@@ -148,6 +152,8 @@ pub struct BuiltRequest {
     pub body: Value,
     /// 序列化说明（写入 ProcessingEvent 描述）
     pub notes: Vec<String>,
+    /// 渠道是否配置了主凭证（false 时请求未带认证 Header）
+    pub auth_present: bool,
     /// 来自渠道配置
     pub timeout_secs: u64,
     pub tls_verify: bool,
@@ -199,6 +205,7 @@ pub fn build(conn: &Connection, req: &ApiTestRequest) -> AppResult<BuiltRequest>
         headers: target.headers,
         body,
         notes,
+        auth_present: target.auth_present,
         timeout_secs: target.timeout_secs,
         tls_verify: target.tls_verify,
     })

@@ -90,6 +90,18 @@ pub fn prepare(
         Some("已注入认证 Header（值不进入任何记录）"),
         None,
     )?;
+    if !built.auth_present {
+        records::log_event(
+            conn,
+            &trace_id,
+            "auth_header",
+            "inject",
+            "warning",
+            false,
+            Some("渠道未配置主凭证，请求未带认证 Header（本地免鉴权网关可忽略；公网渠道请先配置凭证）"),
+            None,
+        )?;
+    }
 
     // Raw 请求归档（Header 脱敏）
     let masked_headers: Vec<(String, String)> = built

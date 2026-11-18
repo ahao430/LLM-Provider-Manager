@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Plus, Trash2, Wallet } from "lucide-react";
+import { CloudDownload, Plus, Trash2, Wallet } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -41,11 +41,21 @@ import {
   deleteBill,
   deleteRecharge,
   getChannelFunds,
+  importBailianBills,
+  queryBailianTransactions,
+  type BailianTransaction,
   type RechargeRow,
 } from "@/lib/tauri";
 
 /** 渠道详情「资金」Tab：充值 / 账单 / 余额快照 / 估算余额。三类金额分开。 */
-export function FundsTab({ channelId }: { channelId: string }) {
+export function FundsTab({
+  channelId,
+  balanceProvider,
+}: {
+  channelId: string;
+  /** 余额查询方式（aliyun_bss 时可拉取百炼账单） */
+  balanceProvider?: string;
+}) {
   const queryClient = useQueryClient();
   const invalidate = () =>
     queryClient.invalidateQueries({ queryKey: ["channel-funds", channelId] });
@@ -69,6 +79,7 @@ export function FundsTab({ channelId }: { channelId: string }) {
 
   // 账单表单
   const [billOpen, setBillOpen] = useState(false);
+  const [bailianOpen, setBailianOpen] = useState(false);
   const [bill, setBill] = useState({
     billingPeriod: new Date().toISOString().slice(0, 7),
     amount: "",
@@ -321,9 +332,16 @@ export function FundsTab({ channelId }: { channelId: string }) {
               手工录入实际结算金额；同渠道同账期同来源唯一（CSV/Excel 导入在 Phase 8）。
             </CardDescription>
           </div>
-          <Button size="sm" variant="outline" onClick={() => setBillOpen(true)}>
-            <Plus className="size-4" />录入账单
-          </Button>
+          <div className="flex gap-2">
+            {balanceProvider === "aliyun_bss" ? (
+              <Button size="sm" variant="outline" onClick={() => setBailianOpen(true)}>
+                <CloudDownload className="size-4" />拉取百炼账单
+              </Button>
+            ) : null}
+            <Button size="sm" variant="outline" onClick={() => setBillOpen(true)}>
+              <Plus className="size-4" />录入账单
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {bills.length === 0 ? (
@@ -511,6 +529,15 @@ export function FundsTab({ channelId }: { channelId: string }) {
         </DialogContent>
       </Dialog>
 
+      {/* 百炼账单拉取对话框 */}
+      {bailianOpen ? (
+        <BailianBillsDialog
+          channelId={channelId}
+          onClose={() => setBailianOpen(false)}
+          onImported={invalidate}
+        />
+      ) : null}
+
       {/* 快照对话框 */}
       <Dialog open={snapshotOpen} onOpenChange={setSnapshotOpen}>
         <DialogContent className="sm:max-w-md">
@@ -548,5 +575,193 @@ export function FundsTab({ channelId }: { channelId: string }) {
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+// ------------------------------------------------------------------
+// 百炼（阿里云费用中心）账单拉取
+// ------------------------------------------------------------------
+
+function daysAgo(n: number): string {
+  const d = new Date(Date.now() - n * 86_400_000);
+  return d.toISOString().slice(0, 10);
+}
+
+function BailianBillsDialog({
+  channelId,
+  onClose,
+  onImported,
+}: {
+  channelId: string;
+  onClose: () => void;
+  onImported: () => void;
+}) {
+  const [start, setStart] = useState(daysAgo(30));
+  const [end, setEnd] = useState(daysAgo(0));
+  const [busy, setBusy] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [rows, setRows] = useState<BailianTransaction[]>([]);
+  const [nextToken, setNextToken] = useState("");
+  const [totalCount, setTotalCount] = useState(0);
+  const [accountName, setAccountName] = useState("");
+
+  // 按月汇总（预览导入结果；消费为负、充值为正，净额求和）
+  const monthly = useMemo(() => {
+    const map = new Map<string, { amount: number; count: number }>();
+    for (const r of rows) {
+      const period = r.transactionTime.slice(0, 7);
+      if (!/^\d{4}-\d{2}$/.test(period)) continue;
+      const amount = Number(r.amount.replace(/,/g, ""));
+      if (!Number.isFinite(amount)) continue;
+      const entry = map.get(period) ?? { amount: 0, count: 0 };
+      entry.amount += amount;
+      entry.count += 1;
+      map.set(period, entry);
+    }
+    return [...map.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([period, e]) => ({ period, ...e }));
+  }, [rows]);
+
+  async function fetchPage(token?: string) {
+    setBusy(true);
+    try {
+      const res = await queryBailianTransactions(channelId, start, end, token);
+      setRows((prev) => (token ? [...prev, ...res.transactions] : res.transactions));
+      setNextToken(res.nextToken);
+      setTotalCount(res.totalCount);
+      setAccountName(res.accountName);
+      if (!token && res.transactions.length === 0) toast.info("该时间范围内没有收支明细");
+    } catch (e) {
+      toast.error(`查询失败：${e}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function importBills() {
+    if (rows.length === 0) return;
+    setImporting(true);
+    try {
+      const imported = await importBailianBills(
+        channelId,
+        "CNY",
+        rows.map((r) => ({ transactionTime: r.transactionTime, amount: r.amount }))
+      );
+      toast.success(
+        imported.length > 0
+          ? `已导入 ${imported.length} 个月度账单：${imported
+              .map((m) => `${m.billingPeriod}（${m.amount.toFixed(2)}）`)
+              .join("、")}`
+          : "没有可导入的明细"
+      );
+      onImported();
+      onClose();
+    } catch (e) {
+      toast.error(`导入失败：${e}`);
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>拉取百炼账单（阿里云费用中心）</DialogTitle>
+          <DialogDescription>
+            QueryAccountTransactionDetails 收支明细{accountName ? ` · 账户 ${accountName}` : ""}；
+            导入按月汇总为净额账单（同渠道同账期覆盖替换，来源 aliyun_bss）。
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="space-y-1">
+            <Label className="text-xs">开始日期</Label>
+            <Input type="date" value={start} onChange={(e) => setStart(e.target.value)} className="h-8 w-40 text-xs" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">结束日期</Label>
+            <Input type="date" value={end} onChange={(e) => setEnd(e.target.value)} className="h-8 w-40 text-xs" />
+          </div>
+          <Button size="sm" className="h-8" onClick={() => void fetchPage()} disabled={busy}>
+            <CloudDownload className="size-4" />
+            {busy ? "查询中…" : "查询"}
+          </Button>
+          {nextToken ? (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8"
+              onClick={() => void fetchPage(nextToken)}
+              disabled={busy}
+            >
+              加载更多（已 {rows.length}/{totalCount}）
+            </Button>
+          ) : null}
+        </div>
+
+        {rows.length > 0 ? (
+          <>
+            <div className="max-h-64 overflow-y-auto rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">时间</TableHead>
+                    <TableHead className="text-xs">类型</TableHead>
+                    <TableHead className="text-right text-xs">金额（CNY）</TableHead>
+                    <TableHead className="text-xs">资金类型</TableHead>
+                    <TableHead className="text-xs">备注</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rows.map((r, i) => {
+                    const amount = Number(r.amount.replace(/,/g, ""));
+                    return (
+                      <TableRow key={`${r.transactionTime}-${i}`}>
+                        <TableCell className="text-xs whitespace-nowrap">{r.transactionTime}</TableCell>
+                        <TableCell className="text-xs">{r.transactionType || "—"}</TableCell>
+                        <TableCell
+                          className={`text-right text-xs tabular-nums ${amount < 0 ? "text-destructive" : ""}`}
+                        >
+                          {Number.isFinite(amount) ? amount.toFixed(2) : r.amount}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-xs">{r.fundType || "—"}</TableCell>
+                        <TableCell className="text-muted-foreground max-w-40 truncate text-xs" title={r.remarks}>
+                          {r.remarks || "—"}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+            {monthly.length > 0 ? (
+              <div className="text-xs">
+                <span className="text-muted-foreground">按月汇总（净额）：</span>
+                {monthly.map((m) => (
+                  <Badge key={m.period} variant="outline" className="mx-1 tabular-nums">
+                    {m.period} {m.amount.toFixed(2)}（{m.count} 笔）
+                  </Badge>
+                ))}
+              </div>
+            ) : null}
+          </>
+        ) : (
+          <p className="text-muted-foreground text-sm">
+            设置日期范围后点击「查询」；导入会按月求和写入供应商账单（净额 = 充值 − 消费）。
+          </p>
+        )}
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            关闭
+          </Button>
+          <Button onClick={importBills} disabled={importing || rows.length === 0}>
+            {importing ? "导入中…" : `导入到账单（${rows.length} 条 → ${monthly.length || 0} 个月度）`}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -6,4 +6,5 @@
 //! - 估算余额 = 累计充值 - 供应商账单，必须标注为估算值（不含赠送 / 退款 / 其他消费）。
 //! - 供应商账单 UNIQUE(channel_id, billing_period, source)，同周期同来源不重复录入。
 
+pub mod aliyun;
 pub mod repo;

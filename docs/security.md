@@ -6,7 +6,7 @@ LCM 是本地优先的管理工具，凭证管理是核心功能。本地数据�
 
 | 规则 | 说明 |
 |---|---|
-| 不明文入库 | 敏感凭证不存 SQLite，使用 OS 凭证库（macOS Keychain / Windows Credential Manager / Linux Secret Service） |
+| 不明文入库 | 敏感凭证不存 SQLite，存独立凭证文件 credentials.json（应用数据目录，0600 权限，原子写入） |
 | 引用分离 | SQLite 只保存 `credential_ref` |
 | 凭证类型 | API Key、Bearer Token、x-api-key、NewAPI 管理 Token、AccessKey ID/Secret、自定义敏感 Header、用户标记 Sensitive 的字段 |
 | 默认掩码 | 所有敏感字段默认 `sk-********************` 展示 |
@@ -28,7 +28,7 @@ Raw 请求可能包含认证 Header：界面展示与导出时执行脱敏策略
 ## 备份
 
 - 完整备份使用 `.lcmbackup` 格式，用户密码加密。
-- 可以由用户选择是否包含凭证；包含凭证时必须额外加密，不能把 OS Keychain 明文直接写入普通备份文件。
+- 可以由用户选择是否包含凭证；包含凭证时必须额外加密，不能把凭证文件明文直接写入普通备份文件。
 - 恢复前进行完整性检查，覆盖当前数据前需要用户确认。
 
 ## 网络安全
@@ -52,7 +52,7 @@ Raw 请求可能包含认证 Header：界面展示与导出时执行脱敏策略
 
 | 项 | 状态 | 计划 |
 |---|---|---|
-| 凭证库接入 | ✅ Phase 1（keyring，掩码 + 受控查看） | 持续保持 |
+| 凭证存储 | ✅ v0.12.0 起为独立凭证文件（0600 + 原子写入 + 掩码 + 受控查看；Keychain 一次性迁移） | 持续保持 |
 | CSP | ✅ Phase 7 已收紧（self + data/blob 资源 + ipc；`ws://localhost:5173` 仅为开发 HMR 例外） | 随功能演进复查 |
 | Tauri capabilities | ✅ 最小权限 `core:default` + `dialog:default` | 持续保持 |
 | 加密备份 | ✅ Phase 7（.lcmbackup：AES-256-GCM + PBKDF2 200k 轮；凭证独立加密段） | 持续保持 |

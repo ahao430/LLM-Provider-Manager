@@ -30,17 +30,16 @@ use rusqlite::Connection;
 use tauri::Manager;
 
 use crate::commands::agent::{
-    launch_agent, list_agent_compat, list_agent_launches, upsert_agent_compat,
+    launch_agent, list_agent_compat, list_agent_launches, run_agent_probe, upsert_agent_compat,
 };
 use crate::commands::app::{get_app_info, get_database_stats};
-use crate::commands::assistant::{
-    create_conversation, delete_conversation, list_agent_messages, list_conversations,
-    quick_test_channel, send_agent_message,
-};
 use crate::commands::backup::{
     check_archive_consistency, cleanup_old_data, create_backup, restore_backup,
 };
-use crate::commands::balance::{query_channel_balance, set_balance_query};
+use crate::commands::balance::{
+    import_bailian_bills, list_latest_balances, query_bailian_transactions, query_channel_balance,
+    refresh_channel_balance, set_balance_query,
+};
 use crate::commands::billing::{
     add_balance_snapshot, add_bill, add_recharge, delete_balance_snapshot, delete_bill,
     delete_recharge, get_channel_funds, list_balance_snapshots, list_bills, list_recharges,
@@ -67,10 +66,11 @@ use crate::commands::models::{
     list_all_channel_models, list_channel_models, list_global_models, list_model_prices,
     rename_global_model, upsert_channel_model,
 };
+use crate::commands::update::check_for_updates;
 use crate::commands::workbench::replay_test_request;
 use crate::commands::workbench::{
-    get_test_raw, get_test_record, list_test_records, reparse_test_response, send_test_request,
-    send_test_stream,
+    copy_test_curl, get_test_raw, get_test_record, list_latest_model_tests, list_test_records,
+    quick_test_channel, reparse_test_response, send_test_request, send_test_stream,
 };
 
 /// 全局应用状态（Tauri managed state）。
@@ -90,6 +90,8 @@ pub fn run() {
         .setup(|app| {
             let data_dir = storage::paths::resolve_data_dir(app.handle())?;
             let conn = storage::database::init(&data_dir)?;
+            // 凭证文件初始化 + 一次性 Keychain 迁移（消除 macOS 每次访问弹窗）
+            credentials::init(&data_dir, &conn)?;
             app.manage(AppState {
                 db: Mutex::new(conn),
                 data_dir,
@@ -115,6 +117,7 @@ pub fn run() {
             upsert_agent_compat,
             launch_agent,
             list_agent_launches,
+            run_agent_probe,
             list_global_models,
             create_global_model,
             rename_global_model,
@@ -156,18 +159,20 @@ pub fn run() {
             restore_backup,
             check_archive_consistency,
             cleanup_old_data,
-            list_conversations,
-            create_conversation,
-            delete_conversation,
-            list_agent_messages,
-            send_agent_message,
             quick_test_channel,
             edit_image,
             set_balance_query,
             query_channel_balance,
+            refresh_channel_balance,
+            query_bailian_transactions,
+            import_bailian_bills,
+            list_latest_balances,
+            list_latest_model_tests,
+            copy_test_curl,
             list_market_prices,
             fetch_market_prices,
             list_channel_price_annotations,
+            check_for_updates,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

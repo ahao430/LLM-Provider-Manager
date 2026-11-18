@@ -18,6 +18,7 @@ src-tauri/gen/schemas/
 # 会话工具目录（与本仓库无关）
 .v2c/
 .video_agent/
+.zcode/
 
 # 日志与临时文件
 *.log

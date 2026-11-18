@@ -5,7 +5,9 @@ import {
   Archive,
   CheckCircle2,
   Database,
+  RefreshCw,
   ShieldCheck,
+  Sparkles,
   Trash2,
   Undo2,
 } from "lucide-react";
@@ -16,83 +18,224 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { openExternal } from "@/lib/external";
 import { useAppInfo, useDatabaseStats } from "@/hooks/use-app-info";
+import { THEME_LABELS, useUiStore, type Theme } from "@/stores/ui";
 import {
   checkArchiveConsistency,
+  checkForUpdates,
   cleanupOldData,
   createBackup,
   restoreBackup,
   type ConsistencyReport,
+  type UpdateCheck,
 } from "@/lib/tauri";
 
-/** 设置：应用信息、数据库状态、备份与恢复、归档一致性、数据清理。 */
+/** 设置：常规（应用/主题/数据库）/ 数据（备份恢复·一致性·清理）/ 更新（检测新版本）。 */
 export function SettingsPage() {
   const { data: appInfo, isLoading: infoLoading, isError: infoError } = useAppInfo();
   const { data: stats, isLoading: statsLoading } = useDatabaseStats();
+  const theme = useUiStore((s) => s.theme);
+  const setTheme = useUiStore((s) => s.setTheme);
 
   return (
     <>
-      <PageHeader title="设置" description="应用信息、数据目录、备份与恢复、存储维护。" />
+      <PageHeader title="设置" description="应用信息、数据维护与更新检测。" />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>应用信息</CardTitle>
-          <CardDescription>来自 Rust 后端（Tauri command: get_app_info）。</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {infoLoading ? (
-            <div className="space-y-2">
-              <SkeletonLine className="w-64" />
-              <SkeletonLine className="w-96" />
-            </div>
-          ) : infoError || !appInfo ? (
-            <p className="text-destructive text-sm">无法读取应用信息（请确认以 Tauri 方式运行：pnpm tauri dev）。</p>
-          ) : (
-            <dl className="grid grid-cols-1 gap-x-8 gap-y-2 text-sm sm:grid-cols-[max-content_1fr]">
-              <InfoRow label="应用名称" value={appInfo.name} />
-              <InfoRow label="版本" value={`v${appInfo.version}`} />
-              <InfoRow label="数据目录" value={appInfo.dataDir} mono />
-            </dl>
-          )}
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="general">
+        <TabsList>
+          <TabsTrigger value="general">常规</TabsTrigger>
+          <TabsTrigger value="data">数据</TabsTrigger>
+          <TabsTrigger value="update">更新</TabsTrigger>
+        </TabsList>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>数据库状态</CardTitle>
-          <CardDescription>SQLite 各表行数（Tauri command: get_database_stats）。</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {statsLoading ? (
-            <SkeletonLine className="h-24 w-full" />
-          ) : stats && stats.length > 0 ? (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-muted-foreground border-b text-left text-xs">
-                  <th className="py-2 pr-4 font-medium">表名</th>
-                  <th className="py-2 font-medium">行数</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stats.map((row) => (
-                  <tr key={row.table} className="border-b last:border-0">
-                    <td className="py-2 pr-4 font-mono text-xs">{row.table}</td>
-                    <td className="py-2 tabular-nums">{row.rows}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <p className="text-muted-foreground text-sm">数据库已初始化，暂无业务表数据。</p>
-          )}
-        </CardContent>
-      </Card>
+        <TabsContent value="general" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>外观</CardTitle>
+              <CardDescription>主题即时生效并记住选择（侧边栏底部也可快捷循环切换）。</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-3">
+                <Label>主题</Label>
+                <Select value={theme} onValueChange={(v) => setTheme(v as Theme)}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="light">{THEME_LABELS.light}</SelectItem>
+                    <SelectItem value="dark">{THEME_LABELS.dark}</SelectItem>
+                    <SelectItem value="system">{THEME_LABELS.system}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
 
-      <BackupCard />
-      <ConsistencyCard />
-      <CleanupCard />
+          <Card>
+            <CardHeader>
+              <CardTitle>应用信息</CardTitle>
+              <CardDescription>来自 Rust 后端（Tauri command: get_app_info）。</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {infoLoading ? (
+                <div className="space-y-2">
+                  <SkeletonLine className="w-64" />
+                  <SkeletonLine className="w-96" />
+                </div>
+              ) : infoError || !appInfo ? (
+                <p className="text-destructive text-sm">无法读取应用信息（请确认以 Tauri 方式运行：pnpm tauri dev）。</p>
+              ) : (
+                <dl className="grid grid-cols-1 gap-x-8 gap-y-2 text-sm sm:grid-cols-[max-content_1fr]">
+                  <InfoRow label="应用名称" value={appInfo.name} />
+                  <InfoRow label="版本" value={`v${appInfo.version}`} />
+                  <InfoRow label="数据目录" value={appInfo.dataDir} mono />
+                </dl>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>数据库状态</CardTitle>
+              <CardDescription>SQLite 各表行数（Tauri command: get_database_stats）。</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {statsLoading ? (
+                <SkeletonLine className="h-24 w-full" />
+              ) : stats && stats.length > 0 ? (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-muted-foreground border-b text-left text-xs">
+                      <th className="py-2 pr-4 font-medium">表名</th>
+                      <th className="py-2 font-medium">行数</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stats.map((row) => (
+                      <tr key={row.table} className="border-b last:border-0">
+                        <td className="py-2 pr-4 font-mono text-xs">{row.table}</td>
+                        <td className="py-2 tabular-nums">{row.rows}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <p className="text-muted-foreground text-sm">数据库已初始化，暂无业务表数据。</p>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="data" className="space-y-6">
+          <BackupCard />
+          <ConsistencyCard />
+          <CleanupCard />
+        </TabsContent>
+
+        <TabsContent value="update">
+          <UpdateCard />
+        </TabsContent>
+      </Tabs>
     </>
+  );
+}
+
+// ------------------------------------------------------------------
+// 更新检测
+// ------------------------------------------------------------------
+
+function UpdateCard() {
+  const { data: appInfo } = useAppInfo();
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<UpdateCheck | null>(null);
+
+  async function check() {
+    setBusy(true);
+    try {
+      setResult(await checkForUpdates());
+    } catch (error) {
+      toast.error(`检测失败：${error}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-start justify-between space-y-0">
+        <div className="space-y-1.5">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Sparkles className="size-4" />
+            检测更新
+          </CardTitle>
+          <CardDescription>
+            查询 GitHub 最新已发布 Release（需联网）。只检查并跳转下载页，不自动更新。
+          </CardDescription>
+        </div>
+        <Button size="sm" variant="outline" onClick={check} disabled={busy}>
+          <RefreshCw className={`size-4 ${busy ? "animate-spin" : ""}`} />
+          {busy ? "检测中…" : "检测更新"}
+        </Button>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-sm">
+          当前版本：
+          <Badge variant="outline" className="ml-1">
+            v{appInfo?.version ?? "?"}
+          </Badge>
+        </p>
+
+        {result ? (
+          result.latestVersion === null ? (
+            <p className="text-muted-foreground text-sm">
+              尚无已发布版本（Release 构建并发布后可检测到）。
+            </p>
+          ) : result.hasUpdate ? (
+            <div className="space-y-2 rounded-lg border p-3">
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <Badge>发现新版本</Badge>
+                <span className="font-medium tabular-nums">
+                  v{result.latestVersion}
+                  {result.publishedAt ? (
+                    <span className="text-muted-foreground ml-2 text-xs">
+                      （{result.publishedAt.slice(0, 10)} 发布）
+                    </span>
+                  ) : null}
+                </span>
+              </div>
+              {result.notes ? (
+                <pre className="text-muted-foreground max-h-40 overflow-auto rounded-md border p-2 text-xs whitespace-pre-wrap">
+                  {result.notes.slice(0, 600)}
+                  {result.notes.length > 600 ? "\n…" : ""}
+                </pre>
+              ) : null}
+              {result.releaseUrl ? (
+                <Button size="sm" onClick={() => void openExternal(result.releaseUrl!)}>
+                  打开下载页
+                </Button>
+              ) : null}
+            </div>
+          ) : (
+            <p className="flex items-center gap-2 text-sm">
+              <CheckCircle2 className="size-4 text-green-600" />
+              已是最新版本（v{result.latestVersion}）
+            </p>
+          )
+        ) : (
+          <p className="text-muted-foreground text-sm">点击「检测更新」检查 GitHub 上的最新发布。</p>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

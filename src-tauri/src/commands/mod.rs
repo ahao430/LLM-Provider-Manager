@@ -2,7 +2,6 @@
 
 pub mod agent;
 pub mod app;
-pub mod assistant;
 pub mod backup;
 pub mod balance;
 pub mod billing;
@@ -12,4 +11,5 @@ pub mod dashboard;
 pub mod image;
 pub mod market;
 pub mod models;
+pub mod update;
 pub mod workbench;

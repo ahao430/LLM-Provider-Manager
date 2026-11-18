@@ -11,6 +11,7 @@ import {
   ChevronsRight,
 } from "lucide-react";
 import { navItems } from "@/lib/navigation";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { useUiStore } from "@/stores/ui";
 import { cn } from "@/lib/utils";
 
@@ -73,7 +74,8 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="border-t p-2">
+      <div className="space-y-1 border-t p-2">
+        <ThemeToggle collapsed={collapsed} />
         <button
           type="button"
           onClick={toggleSidebar}

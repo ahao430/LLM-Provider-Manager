@@ -1,11 +1,12 @@
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Rocket } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { quickTestChannel, type Protocol } from "@/lib/tauri";
 
-/** 渠道模型快速测试按钮：按模型自身协议发最小请求（写入测试记录）。 */
+/** 渠道模型快速测试按钮：按模型自身协议发最小请求（写入测试记录并刷新最近结果）。 */
 export function ModelTestButton({
   channelId,
   actualModelId,
@@ -19,6 +20,7 @@ export function ModelTestButton({
   label?: string;
 }) {
   const [busy, setBusy] = useState(false);
+  const queryClient = useQueryClient();
 
   async function run() {
     setBusy(true);
@@ -33,6 +35,8 @@ export function ModelTestButton({
       toast.error(`测试失败：${e}`);
     } finally {
       setBusy(false);
+      // 无论成败都已写入测试记录：刷新最近测试结果展示
+      void queryClient.invalidateQueries({ queryKey: ["latest-model-tests"] });
     }
   }
 

@@ -52,7 +52,8 @@ export function ApiTestingPage() {
 
   const [message, setMessage] = useState("");
   const [system, setSystem] = useState("");
-  const [stream, setStream] = useState(false);
+  // 默认勾选流式（用户要求）：流式才能测出真实首字时间
+  const [stream, setStream] = useState(true);
   const [showParams, setShowParams] = useState(false);
   const [temperature, setTemperature] = useState("");
   const [topP, setTopP] = useState("");
@@ -153,6 +154,9 @@ export function ApiTestingPage() {
                     {enabledChannels.map((c) => (
                       <SelectItem key={c.id} value={c.id}>
                         {c.name}
+                        {!c.hasPrimaryCredential ? (
+                          <span className="text-muted-foreground">（未配置凭证）</span>
+                        ) : null}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -335,6 +339,12 @@ function ResultPanel({
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <Badge variant={result.status === "success" ? "default" : "destructive"}>{result.status}</Badge>
           {result.httpStatus != null ? <Badge variant="outline">HTTP {result.httpStatus}</Badge> : null}
+          <Badge variant="outline" className="tabular-nums">
+            首字 {result.ttftMs != null ? `${result.ttftMs} ms` : "—"}
+          </Badge>
+          <Badge variant="outline" className="tabular-nums">
+            耗时 {result.durationMs != null ? `${result.durationMs} ms` : "—"}
+          </Badge>
           {preview.providerRequestId ? (
             <span className="text-muted-foreground font-mono">request_id: {preview.providerRequestId}</span>
           ) : null}

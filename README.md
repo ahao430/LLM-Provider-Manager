@@ -4,9 +4,9 @@
 
 [![CI](https://github.com/ahao430/LLM-Provider-Manager/actions/workflows/ci.yml/badge.svg)](https://github.com/ahao430/LLM-Provider-Manager/actions/workflows/ci.yml)
 [![Release](https://github.com/ahao430/LLM-Provider-Manager/actions/workflows/release.yml/badge.svg)](https://github.com/ahao430/LLM-Provider-Manager/actions/workflows/release.yml)
-![Version](https://img.shields.io/badge/version-0.0.1-blue)
+![Version](https://img.shields.io/badge/version-0.14.0-blue)
 
-LCM 用于统一管理不同 AI 服务商、API 渠道、模型、价格、充值记录和账单，并提供 API 测试、图片生成、测试记录、响应分析和错误诊断能力。
+LCM 用于统一管理不同 AI 服务商、API 渠道、模型、价格、充值记录和账单，并提供 API 测试、真实 Agent 调用（Claude Code / Codex CLI）、图片生成与理解、测试记录与响应分析能力。
 
 项目的核心原则是：
 
@@ -44,15 +44,16 @@ LCM 不是 AI Gateway、API Proxy、模型路由器或协议转换服务，而�
 
 | 模块 | 说明 | 阶段 |
 |---|---|---|
-| Dashboard | 渠道/模型/请求/资金整体情况，三类金额分开统计 | Phase 5 ✅ |
+| 仪表盘 | 渠道/模型/请求整体情况，充值与账单分开统计 | Phase 5 ✅ |
 | 渠道管理 | 服务商模板、多渠道实例、连接配置、凭证安全、Agent 兼容性、模型标注价 | Phase 1 ✅ |
 | 模型列表 | 全渠道模型按模型维度聚合：渠道合并、标注价范围、分渠道快速测试 | v0.10.5 ✅ |
 | 市场信息 | 各厂商模型价格快照：内置 + 一键抓取（models.dev），仅参考不算费用 | v0.10.0 ✅ |
-| 内嵌 Agent | 应用内多轮流式对话（双协议），对话持久化，每轮请求完整记录 | v0.8.0 ✅ |
+| Agent 测试 | 真实调用 Claude Code / Codex CLI（单次探针）：凭证注入环境、收集实际输出、启动快照 | v0.14.0 ✅ |
 | Agent 启动器 | 启动式渠道切换：Claude Code 环境变量注入 / Codex 独立 CODEX_HOME；不修改原配置、不代理请求、启动快照 | Phase 1 ✅ |
+| 资金与账单 | 充值 / 供应商账单 / 余额快照；余额查询方式按服务商自动派生（NewAPI 用户额度、阿里云百炼费用中心，支持账单按月净额导入） | Phase 6 ✅ |
 | 测试中心 | API 测试 / Agent 测试 / 画图（生成 + 编辑）/ 图像理解，一个菜单收敛 | v0.10.0 ✅ |
-| 测试记录 | Trace ID、Raw、Preview、TTFB/TTFT/TPS、Token、历史重新解析 | Phase 3 ✅ |
-| 设置 | 应用信息、数据目录、存储状态 | Phase 0（已上线） |
+| 测试记录 | Trace ID、Raw、Preview、TTFB/TTFT/TPS、Token、历史重新解析、重放、复制 curl | Phase 3 ✅ |
+| 设置 | 常规（应用 / 外观主题）/ 数据（加密备份·一致性·清理）/ 更新（GitHub Release 检测） | Phase 0（已上线） |
 
 ## 技术栈
 
@@ -73,7 +74,7 @@ LCM 不是 AI Gateway、API Proxy、模型路由器或协议转换服务，而�
 
 - Tauri 2 · React · TypeScript · Vite · React Router
 - Rust · rusqlite（SQLite）
-- OS 凭证库（macOS Keychain / Windows Credential Manager / Linux Secret Service）
+- 独立凭证文件（应用数据目录 credentials.json，0600 权限；开发期 Keychain 逐次弹窗已弃用，首次启动自动迁移）
 
 ## 快速开始
 
@@ -160,13 +161,7 @@ pnpm dev
 | Phase 5 | 请求记录和 Dashboard：Trace、Raw、指标、费用估算、重放 | ✅ 主体完成 |
 | Phase 6 | 资金与账单：充值、账单、余额快照、估算余额 | ✅ 主体完成 |
 | Phase 7 | 备份与跨平台完善：加密备份、恢复、一致性检查、CSP 收紧 | ✅ 主体完成 |
-| Phase 2 | 模型和价格：全局/渠道模型、导入、价格历史 | ⏳ |
-| Phase 3 | API 测试工作台：三种协议、流式、Raw + Preview | ⏳ |
-| Phase 4 | 画图工作台 | ⏳ |
-| Phase 5 | 请求记录和 Dashboard | ⏳ |
-| Phase 6 | 资金与账单 | ⏳ |
-| Phase 7 | 备份和跨平台完善 | ⏳ |
-| Phase 8 | 高级诊断与 MCP（P2） | ⏳ |
+| Phase 8 | 高级诊断与 MCP（错误知识库、AI 诊断、多层网关归因、账单文件导入） | ⏳ |
 
 ## 文档
 

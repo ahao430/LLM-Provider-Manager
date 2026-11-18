@@ -35,7 +35,7 @@ describe("主导航配置", () => {
   it("测试功能收敛为一个测试中心菜单", () => {
     const labels = navItems.map((item) => item.label);
     expect(labels).toEqual([
-      "Dashboard",
+      "仪表盘",
       "渠道管理",
       "模型列表",
       "市场信息",

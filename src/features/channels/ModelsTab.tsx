@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   Check,
@@ -11,6 +11,9 @@ import {
   Rocket,
   Trash2,
 } from "lucide-react";
+
+import { ModelTestButton } from "@/features/models/ModelTestButton";
+import { LatestTestResult, useLatestModelTestMap } from "@/features/models/LatestTestResult";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -34,6 +37,8 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import {
+  defaultModelTypeFor,
+  defaultProtocolFor,
   PROTOCOL_LABELS,
   quickTestChannel,
   type ChannelModelRow,
@@ -46,7 +51,6 @@ import {
   useChannelModels,
   useCreateGlobalModel,
   useDeleteChannelModel,
-  useDeleteGlobalModel,
   useFetchModelList,
   useGlobalModels,
   useImportModels,
@@ -76,7 +80,6 @@ export function ModelsTab({ channelId }: { channelId: string }) {
         </Button>
       </div>
       <ChannelModelsList channelId={channelId} />
-      <GlobalModelsCard />
 
       {manageOpen ? <ModelManageDialog channelId={channelId} onClose={() => setManageOpen(false)} /> : null}
       {addOpen ? <ModelAddDialog channelId={channelId} onClose={() => setAddOpen(false)} /> : null}
@@ -106,6 +109,8 @@ function ChannelModelsList({ channelId }: { channelId: string }) {
   const { data: models = [], isLoading } = useChannelModels(channelId);
   const upsert = useUpsertChannelModel(channelId);
   const deleteModel = useDeleteChannelModel(channelId);
+  // 最近一次测试结果：行内「测试」按钮完成后自动失效刷新
+  const latestMap = useLatestModelTestMap();
   const [expanded, setExpanded] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [priceEdit, setPriceEdit] = useState<ChannelModelRow | null>(null);
@@ -132,6 +137,29 @@ function ChannelModelsList({ channelId }: { channelId: string }) {
         priceCurrency: row.priceCurrency || null,
       });
       toast.success(`${row.actualModelId} 类型已标记为「${TYPE_LABEL[modelType]}」`);
+    } catch (error) {
+      toast.error(`更新失败：${error}`);
+    }
+  }
+
+  async function changeProtocol(row: ChannelModelRow, protocol: Protocol) {
+    try {
+      await upsert.mutateAsync({
+        id: row.id,
+        channelId,
+        modelId: row.modelId,
+        actualModelId: row.actualModelId,
+        protocol,
+        modelType: row.modelType,
+        notes: row.notes,
+        enabled: row.enabled,
+        priceInputPer1m: row.priceInputPer1m,
+        priceOutputPer1m: row.priceOutputPer1m,
+        priceCurrency: row.priceCurrency || null,
+      });
+      toast.success(
+        `${row.actualModelId} 接口类型已改为「${PROTOCOL_LABELS[protocol]}」，测试将按此调用`
+      );
     } catch (error) {
       toast.error(`更新失败：${error}`);
     }
@@ -178,7 +206,7 @@ function ChannelModelsList({ channelId }: { channelId: string }) {
     <div className="rounded-xl border p-4 space-y-1">
       <div className="text-sm font-medium">渠道模型（{models.length}）</div>
       <p className="text-muted-foreground text-xs">
-        类型为人工标记（多模态 / 图像 / 文本 / 决策），不做自动推断。
+        类型默认按模型名称推断（图像 / 多模态命名规则），可随时手动修改。
       </p>
       {sorted.length === 0 ? (
         <p className="text-muted-foreground py-4 text-center text-sm">
@@ -203,13 +231,18 @@ function ChannelModelsList({ channelId }: { channelId: string }) {
                   </Badge>
                   {!m.enabled ? <Badge variant="secondary">已禁用</Badge> : null}
                 </div>
-                <div className="text-muted-foreground truncate text-xs">
-                  {m.modelName ?? "未绑定全局模型"} · {PROTOCOL_LABELS[m.protocol] ?? m.protocol}
-                  {m.priceCurrency ? (
-                    <span className="text-foreground/80">
-                      {" "}· 标注 {m.priceCurrency} {fmtAnnotation(m.priceInputPer1m)} / {fmtAnnotation(m.priceOutputPer1m)} 每百万
-                    </span>
-                  ) : null}
+                <div className="text-muted-foreground flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs">
+                  <span className="truncate">
+                    {m.modelName ?? "未绑定全局模型"} · {PROTOCOL_LABELS[m.protocol] ?? m.protocol}
+                    {m.priceCurrency ? (
+                      <span className="text-foreground/80">
+                        {" "}· 标注 {m.priceCurrency} {fmtAnnotation(m.priceInputPer1m)} / {fmtAnnotation(m.priceOutputPer1m)} 每百万
+                      </span>
+                    ) : null}
+                  </span>
+                  <LatestTestResult
+                    latest={latestMap.get(`${channelId}|${m.actualModelId.trim().toLowerCase()}`)}
+                  />
                 </div>
               </div>
               <Button
@@ -221,6 +254,21 @@ function ChannelModelsList({ channelId }: { channelId: string }) {
               >
                 <CircleDollarSign className="size-4" />
               </Button>
+              <Select
+                value={m.protocol}
+                onValueChange={(v) => changeProtocol(m, v as Protocol)}
+              >
+                <SelectTrigger className="h-7 w-28 text-xs" title="接口类型（测试按此调用）">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(PROTOCOL_LABELS) as Protocol[]).map((p) => (
+                    <SelectItem key={p} value={p} className="text-xs">
+                      {PROTOCOL_LABELS[p]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Select value={m.modelType} onValueChange={(v) => changeType(m, v as ModelType)}>
                 <SelectTrigger className="h-7 w-24 text-xs">
                   <SelectValue />
@@ -234,6 +282,11 @@ function ChannelModelsList({ channelId }: { channelId: string }) {
                 </SelectContent>
               </Select>
               <Switch checked={m.enabled} onCheckedChange={(v) => toggleEnabled(m, v)} />
+              <ModelTestButton
+                channelId={channelId}
+                actualModelId={m.actualModelId}
+                protocol={m.protocol}
+              />
               <Button variant="ghost" size="icon" title="删除" onClick={() => handleDelete(m.id)}>
                 <Trash2 className="size-4" />
               </Button>
@@ -414,8 +467,8 @@ function ModelManageDialog({ channelId, onClose }: { channelId: string; onClose:
   async function importSelected() {
     if (selected.size === 0) return;
     try {
+      // 接口类型由后端按名称默认（claude → anthropic_messages）
       const outcome = await importMutation.mutateAsync({
-        protocol: "openai_chat",
         items: [...selected].map((actualModelId) => ({ actualModelId })),
       });
       const skipInfo =
@@ -518,7 +571,19 @@ function ModelAddDialog({ channelId, onClose }: { channelId: string; onClose: ()
   const [actualModelId, setActualModelId] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [modelType, setModelType] = useState<ModelType>("text");
+  const [typeTouched, setTypeTouched] = useState(false);
+  const [protocol, setProtocol] = useState<Protocol>("openai_chat");
+  const [protocolTouched, setProtocolTouched] = useState(false);
   const [busy, setBusy] = useState(false);
+
+  // 类型与接口类型都按名称自动默认（gpt-image → 图像、deepseek-v4.1-flash / glm-5.3-flash → 多模态等），
+  // 用户手动选过后不再覆盖
+  useEffect(() => {
+    if (!typeTouched) setModelType(defaultModelTypeFor(actualModelId));
+  }, [actualModelId, typeTouched]);
+  useEffect(() => {
+    if (!protocolTouched) setProtocol(defaultProtocolFor(actualModelId));
+  }, [actualModelId, protocolTouched]);
 
   async function save() {
     if (!actualModelId.trim()) {
@@ -539,7 +604,7 @@ function ModelAddDialog({ channelId, onClose }: { channelId: string; onClose: ()
         channelId,
         modelId,
         actualModelId: actualModelId.trim(),
-        protocol: "openai_chat",
+        protocol,
         modelType,
         notes: null,
         enabled: true,
@@ -576,7 +641,13 @@ function ModelAddDialog({ channelId, onClose }: { channelId: string; onClose: ()
           </div>
           <div className="space-y-1.5">
             <Label>类型</Label>
-            <Select value={modelType} onValueChange={(v) => setModelType(v as ModelType)}>
+            <Select
+              value={modelType}
+              onValueChange={(v) => {
+                setModelType(v as ModelType);
+                setTypeTouched(true);
+              }}
+            >
               <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
@@ -588,6 +659,32 @@ function ModelAddDialog({ channelId, onClose }: { channelId: string; onClose: ()
                 ))}
               </SelectContent>
             </Select>
+            <p className="text-muted-foreground text-xs">
+              默认按名称推断：claude / gemini / gpt-4o·4.1·5 / o 系等 → 多模态，gpt-image 等图像命名 →
+              图像，deepseek-v4.1-flash、glm-5.3-flash → 多模态；其余文本。可随时手动改。
+            </p>
+          </div>
+          <div className="space-y-1.5">
+            <Label>接口类型（测试按此调用）</Label>
+            <Select
+              value={protocol}
+              onValueChange={(v) => {
+                setProtocol(v as Protocol);
+                setProtocolTouched(true);
+              }}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(Object.keys(PROTOCOL_LABELS) as Protocol[]).map((p) => (
+                  <SelectItem key={p} value={p}>
+                    {PROTOCOL_LABELS[p]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-muted-foreground text-xs">默认按名称推断：含 claude → Anthropic Messages，否则 Chat Completions。</p>
           </div>
         </div>
         <DialogFooter>
@@ -675,83 +772,5 @@ function QuickTestDialog({ channelId, onClose }: { channelId: string; onClose: (
         </div>
       </DialogContent>
     </Dialog>
-  );
-}
-
-// ------------------------------------------------------------------
-// 全局模型（保留）
-// ------------------------------------------------------------------
-
-function GlobalModelsCard() {
-  const { data: globals = [] } = useGlobalModels();
-  const createGlobal = useCreateGlobalModel();
-  const deleteGlobal = useDeleteGlobalModel();
-  const [name, setName] = useState("");
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
-
-  async function create() {
-    const trimmed = name.trim();
-    if (!trimmed) return;
-    try {
-      await createGlobal.mutateAsync({ name: trimmed, family: null });
-      setName("");
-      toast.success(`全局模型「${trimmed}」已创建`);
-    } catch (error) {
-      toast.error(`创建失败：${error}`);
-    }
-  }
-
-  async function remove(id: string) {
-    if (confirmDelete !== id) {
-      setConfirmDelete(id);
-      window.setTimeout(() => setConfirmDelete(null), 4000);
-      return;
-    }
-    try {
-      await deleteGlobal.mutateAsync(id);
-      setConfirmDelete(null);
-    } catch (error) {
-      toast.error(`删除失败：${error}`);
-    }
-  }
-
-  return (
-    <div className="rounded-xl border p-4 space-y-3">
-      <div>
-        <div className="text-sm font-medium">全局模型（{globals.length}）</div>
-        <p className="text-muted-foreground mt-1 text-xs">
-          统一模型身份；被渠道模型引用时不可删除。
-        </p>
-      </div>
-      <div className="flex items-center gap-2">
-        <Input
-          placeholder="新全局模型名称"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && create()}
-          className="max-w-xs"
-        />
-        <Button size="sm" variant="outline" onClick={create} disabled={!name.trim()}>
-          <Plus className="size-4" />添加
-        </Button>
-      </div>
-      {globals.length > 0 ? (
-        <ul className="divide-y text-sm">
-          {globals.map((g) => (
-            <li key={g.id} className="flex items-center justify-between gap-2 py-1.5">
-              <span>
-                {g.name}
-                <span className="text-muted-foreground ml-2 text-xs">
-                  {g.channelModelCount > 0 ? `${g.channelModelCount} 个渠道模型` : "未关联渠道"}
-                </span>
-              </span>
-              <Button variant="ghost" size="icon" onClick={() => remove(g.id)}>
-                <Trash2 className="size-4" />
-              </Button>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-    </div>
   );
 }

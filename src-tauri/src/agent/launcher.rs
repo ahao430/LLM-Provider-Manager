@@ -25,7 +25,7 @@ pub const AGENT_CLAUDE_CODE_CLI: &str = "claude_code_cli";
 pub const AGENT_CODEX_CLI: &str = "codex_cli";
 
 /// 启动计划：(二进制, 启动方式, 注入的环境变量, 附属文件)。
-type LaunchPlan = (
+pub(crate) type LaunchPlan = (
     &'static str,
     &'static str,
     Vec<(String, String)>,
@@ -218,7 +218,7 @@ pub fn list_launches(conn: &Connection, limit: u32) -> AppResult<Vec<AgentLaunch
 // Claude Code CLI：环境变量注入
 // ------------------------------------------------------------------
 
-fn build_claude_launch(
+pub(crate) fn build_claude_launch(
     channel_id: &str,
     row: &crate::channels::domain::ChannelRow,
     model: &Option<String>,
@@ -258,7 +258,7 @@ fn build_claude_launch(
 // Codex CLI：独立 CODEX_HOME
 // ------------------------------------------------------------------
 
-fn build_codex_launch(
+pub(crate) fn build_codex_launch(
     data_dir: &Path,
     channel_id: &str,
     row: &crate::channels::domain::ChannelRow,

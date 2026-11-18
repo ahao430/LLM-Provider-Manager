@@ -35,6 +35,53 @@ pub struct RequestRecordRow {
     pub completed_at: Option<String>,
 }
 
+/// 模型列表页：每个 (渠道, 模型) 最近一次测试。
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LatestModelTestRow {
+    pub channel_id: String,
+    pub model: String,
+    pub trace_id: String,
+    pub status: String,
+    pub created_at: String,
+    /// 首字时间（未产生首 Token 时为 NULL）
+    pub ttft_ms: Option<i64>,
+    /// 总耗时（请求未走完时为 NULL）
+    pub duration_ms: Option<i64>,
+    /// 失败原因摘要（仅流中断等少数场景非空，详情以测试记录为准）
+    pub error_message: Option<String>,
+}
+
+pub fn latest_per_channel_model(conn: &Connection) -> AppResult<Vec<LatestModelTestRow>> {
+    let mut stmt = conn.prepare(
+        "SELECT channel_id, model, trace_id, status, created_at, ttft_ms, duration_ms, error_message \
+         FROM ( \
+           SELECT channel_id, model, trace_id, status, created_at, ttft_ms, duration_ms, error_message, \
+                  ROW_NUMBER() OVER ( \
+                    PARTITION BY channel_id, model ORDER BY created_at DESC, trace_id DESC \
+                  ) AS rn \
+           FROM request_records \
+           WHERE channel_id IS NOT NULL AND model IS NOT NULL AND model != '' \
+         ) WHERE rn = 1",
+    )?;
+    let rows = stmt
+        .query_map([], |row| {
+            Ok(LatestModelTestRow {
+                channel_id: row.get(0)?,
+                model: row.get(1)?,
+                trace_id: row.get(2)?,
+                status: row.get(3)?,
+                created_at: row.get(4)?,
+                ttft_ms: row.get(5)?,
+                duration_ms: row.get(6)?,
+                error_message: row.get(7)?,
+            })
+        })?
+        .filter_map(|r| r.ok())
+        .collect();
+    Ok(rows)
+}
+
 pub fn insert_pending(
     conn: &Connection,
     trace_id: &str,

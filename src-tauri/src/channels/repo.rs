@@ -35,7 +35,7 @@ pub fn list_providers(conn: &Connection) -> AppResult<Vec<ProviderRow>> {
 
 const ROW_COLUMNS: &str = "c.id, c.name, c.provider_id, p.name, c.channel_type, c.base_url, \
      c.chat_base_url, c.anthropic_base_url, c.responses_base_url, \
-     c.enabled, c.notes, c.created_at, c.updated_at";
+     c.enabled, c.notes, c.created_at, c.updated_at, c.config_json";
 
 fn row_from(row: &rusqlite::Row) -> rusqlite::Result<ChannelRow> {
     let chat: String = row.get(6)?;
@@ -76,6 +76,18 @@ fn row_from(row: &rusqlite::Row) -> rusqlite::Result<ChannelRow> {
         notes: row.get(10)?,
         created_at: row.get(11)?,
         updated_at: row.get(12)?,
+        // 官网链接从 config_json 提取（kind=official 的外链）
+        official_url: row
+            .get::<_, Option<String>>(13)?
+            .as_deref()
+            .and_then(|text| serde_json::from_str::<ChannelConfig>(text).ok())
+            .and_then(|config| {
+                config
+                    .external_links
+                    .iter()
+                    .find(|link| link.kind == "official")
+                    .map(|link| link.url.clone())
+            }),
         // 凭证状态由 service 层填充
         has_primary_credential: false,
         primary_credential_masked: None,

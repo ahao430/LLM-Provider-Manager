@@ -5,5 +5,6 @@
 //! 全部映射规则通过 ProcessingEvent 透明记录（见 builder.rs）。
 
 pub mod builder;
+pub mod curl;
 pub mod engine;
 pub mod parser;

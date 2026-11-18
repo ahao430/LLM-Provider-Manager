@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { ImagePlus, Send, Trash2, Upload, Wand2 } from "lucide-react";
@@ -21,9 +21,11 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   editImage,
   generateImage,
+  MODEL_TYPE_LABELS,
   sendVisionRequest,
   type ArchivedImage,
   type ImageGenResult,
+  type ModelType,
   type VisionImagePayload,
 } from "@/lib/tauri";
 import { useChannelsForTest, useModelsForTest } from "@/features/api-testing/api";
@@ -128,19 +130,26 @@ function ModelPicker({
   value,
   onChange,
   disabled,
+  onlyType,
 }: {
-  models: { id: string; actualModelId: string }[];
+  models: { id: string; actualModelId: string; modelType: ModelType; enabled: boolean }[];
   value: string;
   onChange: (v: string) => void;
   disabled?: boolean;
+  /** 仅显示该类型且已启用的模型（画图 / 图片编辑只提供图像模型） */
+  onlyType?: ModelType;
 }) {
+  const candidates = useMemo(
+    () => models.filter((m) => (!onlyType || m.modelType === onlyType) && m.enabled),
+    [models, onlyType]
+  );
   return (
     <div className="space-y-1.5">
       <Label>模型 *</Label>
       <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder="渠道实际模型 ID" disabled={disabled} />
-      {models.length > 0 ? (
+      {candidates.length > 0 ? (
         <div className="flex flex-wrap gap-1 pt-1">
-          {models
+          {candidates
             .filter((m) => m.actualModelId !== value)
             .map((m) => (
               <button
@@ -153,6 +162,10 @@ function ModelPicker({
               </button>
             ))}
         </div>
+      ) : onlyType && !disabled ? (
+        <p className="text-muted-foreground text-xs">
+          该渠道暂无已启用的「{MODEL_TYPE_LABELS[onlyType]}」类型模型（可在渠道详情「模型」页签标记）。
+        </p>
       ) : null}
     </div>
   );
@@ -171,7 +184,7 @@ function ImageGenPanel({
   channelId: string;
   onChannelChange: (id: string) => void;
   channels: { id: string; name: string }[];
-  channelModels: { id: string; actualModelId: string }[];
+  channelModels: { id: string; actualModelId: string; modelType: ModelType; enabled: boolean }[];
 }) {
   const navigate = useNavigate();
   const [model, setModel] = useState("");
@@ -181,6 +194,13 @@ function ImageGenPanel({
   const [responseFormat, setResponseFormat] = useState("b64_json");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<ImageGenResult | null>(null);
+
+  // 模型为空时默认选中第一个已启用的图像模型（可手动改）
+  useEffect(() => {
+    if (model) return;
+    const first = channelModels.find((m) => m.modelType === "image" && m.enabled);
+    if (first) setModel(first.actualModelId);
+  }, [channelModels, model]);
 
   async function handleGenerate() {
     if (!channelId || !model.trim() || !prompt.trim()) {
@@ -221,7 +241,7 @@ function ImageGenPanel({
         </CardHeader>
         <CardContent className="space-y-4">
           <ChannelPicker channelId={channelId} onChannelChange={onChannelChange} channels={channels} />
-          <ModelPicker models={channelModels} value={model} onChange={setModel} disabled={!channelId} />
+          <ModelPicker models={channelModels} value={model} onChange={setModel} disabled={!channelId} onlyType="image" />
           <div className="space-y-1.5">
             <Label>Prompt *</Label>
             <Textarea rows={4} value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="描述要生成的图片…" />
@@ -273,11 +293,17 @@ function ImageEditPanel({
   channelId: string;
   onChannelChange: (id: string) => void;
   channels: { id: string; name: string }[];
-  channelModels: { id: string; actualModelId: string }[];
+  channelModels: { id: string; actualModelId: string; modelType: ModelType; enabled: boolean }[];
 }) {
   const navigate = useNavigate();
   const [model, setModel] = useState("");
   const [prompt, setPrompt] = useState("");
+  // 模型为空时默认选中第一个已启用的图像模型（可手动改）
+  useEffect(() => {
+    if (model) return;
+    const first = channelModels.find((m) => m.modelType === "image" && m.enabled);
+    if (first) setModel(first.actualModelId);
+  }, [channelModels, model]);
   const [size, setSize] = useState("");
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const imageBase64Ref = useRef<{ base64: string; mime: string } | null>(null);
@@ -352,7 +378,7 @@ function ImageEditPanel({
         </CardHeader>
         <CardContent className="space-y-4">
           <ChannelPicker channelId={channelId} onChannelChange={onChannelChange} channels={channels} />
-          <ModelPicker models={channelModels} value={model} onChange={setModel} disabled={!channelId} />
+          <ModelPicker models={channelModels} value={model} onChange={setModel} disabled={!channelId} onlyType="image" />
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
@@ -560,7 +586,7 @@ function VisionPanel({
   channelId: string;
   onChannelChange: (id: string) => void;
   channels: { id: string; name: string }[];
-  channelModels: { id: string; actualModelId: string }[];
+  channelModels: { id: string; actualModelId: string; modelType: ModelType; enabled: boolean }[];
 }) {
   const [model, setModel] = useState("");
   const [system, setSystem] = useState("");

@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDashboardStats } from "@/features/api-testing/api";
 
-/** Dashboard：渠道/模型/请求整体情况。充值与供应商账单分开统计。 */
+/** 仪表盘：渠道/模型/请求整体情况。充值与供应商账单分开统计。 */
 export function DashboardPage() {
   const navigate = useNavigate();
   const { data: stats, isLoading, isError, error } = useDashboardStats();

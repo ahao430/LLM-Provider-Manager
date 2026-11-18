@@ -2,7 +2,9 @@
 
 use rusqlite::Connection;
 
-use crate::channels::domain::{ChannelModelInput, ChannelModelRow};
+use crate::channels::domain::{
+    default_protocol_for, ChannelModelInput, ChannelModelRow, ModelType,
+};
 use crate::error::{AppError, AppResult};
 
 use super::domain::{AddPriceInput, EffectivePrice, ImportOutcome, ModelPriceRow, SkippedImport};
@@ -29,17 +31,65 @@ pub struct ImportItem {
     pub actual_model_id: String,
 }
 
+/// 按模型名称推断默认类型（仅默认值，用户可随时手动修改）。
+/// - 图像：image / dall-e / seedream / cogview / wanx / flux / stable-diffusion 等图像生成命名。
+/// - 多模态：视觉系命名（omni / vision / -vl / vl- / qvq / 4o），天生多模态的家族
+///   （Claude 3+ 全系、Gemini 全系、GPT-4o / 4.1 / 4-turbo / 5 系、OpenAI o 系），
+///   及已知多模态型号（deepseek-v4.1-flash、glm-5.3-flash）。
+/// - 其余默认文本；决策不做自动推断。
+pub fn default_model_type_for(model_id: &str) -> ModelType {
+    const IMAGE_MARKERS: &[&str] = &[
+        "image",
+        "dall-e",
+        "seedream",
+        "seededit",
+        "cogview",
+        "wanx",
+        "flux",
+        "stable-diffusion",
+    ];
+    // 多模态家族与视觉系命名
+    const VISION_MARKERS: &[&str] = &[
+        "omni",
+        "vision",
+        "-vl",
+        "vl-",
+        "qvq",
+        "4o",
+        "claude",
+        "gemini",
+        "gpt-4.1",
+        "gpt-4-turbo",
+        "gpt-5",
+    ];
+    /// 已知多模态型号（按名称精确匹配，小写比较）。
+    const KNOWN_MULTIMODAL: &[&str] = &["deepseek-v4.1-flash", "glm-5.3-flash"];
+
+    let name = model_id.trim().to_lowercase();
+    if IMAGE_MARKERS.iter().any(|m| name.contains(m)) {
+        return ModelType::Image;
+    }
+    if VISION_MARKERS.iter().any(|m| name.contains(m))
+        || KNOWN_MULTIMODAL.contains(&name.as_str())
+        || name.starts_with("o1")
+        || name.starts_with("o3")
+        || name.starts_with("o4")
+    {
+        return ModelType::Multimodal;
+    }
+    ModelType::Text
+}
+
 /// 导入渠道模型：
-/// - 已存在 (channel_id, actual_model_id) → 跳过，保留人工配置（不覆盖备注/价格/能力）。
+/// - 已存在 (channel_id, actual_model_id) → 跳过，保留人工配置（不覆盖备注/价格/能力/接口类型）。
 /// - 未绑定全局模型 → 按名称复用或新建全局模型。
-/// - 新渠道模型能力全部 unknown，等待人工标记。
+/// - 接口类型按名称默认：含 claude → anthropic_messages，否则 openai_chat。
+/// - 类型按名称默认：图像 / 多模态命名 → image / multimodal，否则 text（可手动改）。
 pub fn import_channel_models(
     conn: &Connection,
     channel_id: &str,
-    protocol: &str,
     items: &[ImportItem],
 ) -> AppResult<ImportOutcome> {
-    validate_protocol(protocol)?;
     let mut created = Vec::new();
     let mut skipped = Vec::new();
 
@@ -66,8 +116,8 @@ pub fn import_channel_models(
             channel_id: channel_id.to_string(),
             model_id,
             actual_model_id: actual.to_string(),
-            protocol: protocol.to_string(),
-            model_type: None,
+            protocol: default_protocol_for(actual).to_string(),
+            model_type: Some(default_model_type_for(actual)),
             notes: None,
             enabled: Some(true),
             price_input_per_1m: None,
@@ -223,9 +273,46 @@ pub fn delete_price(conn: &Connection, price_id: &str, today: &str) -> AppResult
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::channels::domain::ChannelInput;
+    use crate::channels::domain::{ChannelInput, ModelType};
     use crate::channels::repo as channel_repo;
     use crate::storage::migrations;
+
+    #[test]
+    fn default_model_type_matches_named_families() {
+        // 图像命名 → image
+        assert_eq!(default_model_type_for("gpt-image-1"), ModelType::Image);
+        assert_eq!(default_model_type_for("Qwen-Image-Edit"), ModelType::Image);
+        assert_eq!(
+            default_model_type_for("doubao-seedream-4.0"),
+            ModelType::Image
+        );
+        // 用户指定的多模态型号 → multimodal
+        assert_eq!(
+            default_model_type_for("deepseek-v4.1-flash"),
+            ModelType::Multimodal
+        );
+        assert_eq!(
+            default_model_type_for("GLM-5.3-Flash"),
+            ModelType::Multimodal
+        );
+        // 视觉命名与天生多模态家族 → multimodal
+        assert_eq!(default_model_type_for("GPT-4o"), ModelType::Multimodal);
+        assert_eq!(default_model_type_for("qwen-vl-max"), ModelType::Multimodal);
+        assert_eq!(
+            default_model_type_for("claude-sonnet-4-5"),
+            ModelType::Multimodal
+        );
+        assert_eq!(
+            default_model_type_for("gemini-2.5-pro"),
+            ModelType::Multimodal
+        );
+        assert_eq!(default_model_type_for("gpt-5.1"), ModelType::Multimodal);
+        assert_eq!(default_model_type_for("o4-mini"), ModelType::Multimodal);
+        // 其余默认文本
+        assert_eq!(default_model_type_for("gpt-3.5-turbo"), ModelType::Text);
+        assert_eq!(default_model_type_for("glm-5.3"), ModelType::Text);
+        assert_eq!(default_model_type_for("deepseek-v3.2"), ModelType::Text);
+    }
 
     fn setup() -> Connection {
         let conn = Connection::open_in_memory().unwrap();
@@ -259,10 +346,23 @@ mod tests {
             ImportItem {
                 actual_model_id: "deepseek-v4".into(),
             },
+            ImportItem {
+                actual_model_id: "claude-sonnet-4-5".into(),
+            },
         ];
-        let out = import_channel_models(&conn, "ch-1", "openai_chat", &items).unwrap();
-        assert_eq!(out.created.len(), 2);
+        let out = import_channel_models(&conn, "ch-1", &items).unwrap();
+        assert_eq!(out.created.len(), 3);
         assert!(out.skipped.is_empty());
+
+        // 接口类型按名称默认：claude → anthropic_messages，其余 openai_chat
+        let claude = repo::find_channel_model_by_actual(&conn, "ch-1", "claude-sonnet-4-5")
+            .unwrap()
+            .unwrap();
+        assert_eq!(claude.protocol, "anthropic_messages");
+        let glm = repo::find_channel_model_by_actual(&conn, "ch-1", "glm-5.2")
+            .unwrap()
+            .unwrap();
+        assert_eq!(glm.protocol, "openai_chat");
 
         // 人工编辑备注
         let row = repo::find_channel_model_by_actual(&conn, "ch-1", "glm-5.2")
@@ -284,9 +384,9 @@ mod tests {
         upsert_channel_model(&conn, &edit).unwrap();
 
         // 重复导入 → 跳过，且人工备注保留
-        let out2 = import_channel_models(&conn, "ch-1", "openai_chat", &items).unwrap();
+        let out2 = import_channel_models(&conn, "ch-1", &items).unwrap();
         assert!(out2.created.is_empty());
-        assert_eq!(out2.skipped.len(), 2);
+        assert_eq!(out2.skipped.len(), 3);
         let row2 = repo::find_channel_model_by_actual(&conn, "ch-1", "glm-5.2")
             .unwrap()
             .unwrap();
@@ -299,7 +399,7 @@ mod tests {
         let items = vec![ImportItem {
             actual_model_id: "m1".into(),
         }];
-        import_channel_models(&conn, "ch-1", "openai_chat", &items).unwrap();
+        import_channel_models(&conn, "ch-1", &items).unwrap();
         let cm = repo::find_channel_model_by_actual(&conn, "ch-1", "m1")
             .unwrap()
             .unwrap();

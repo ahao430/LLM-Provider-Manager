@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageHeader } from "@/components/PageHeader";
+import { Pagination } from "@/components/Pagination";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -23,10 +25,16 @@ const STATUS_VARIANT: Record<string, "default" | "destructive" | "secondary" | "
   failed: "destructive",
 };
 
-/** 测试记录列表：工作台 API 请求历史。 */
+/** 测试记录列表：工作台 API 请求历史（本地分页，加载最近 1000 条）。 */
 export function RequestsPage() {
   const navigate = useNavigate();
-  const { data: records = [], isLoading, isError, error } = useTestRecords(100);
+  // 后端单次上限 1000：本地分页足够（更早记录可清理或备份）
+  const { data: records = [], isLoading, isError, error } = useTestRecords(1000);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const pageCount = Math.max(Math.ceil(records.length / pageSize), 1);
+  const safePage = Math.min(page, pageCount);
+  const pageRecords = records.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   return (
     <>
@@ -44,57 +52,78 @@ export function RequestsPage() {
         <p className="text-destructive text-sm">加载失败：{String(error)}</p>
       ) : records.length === 0 ? (
         <div className="text-muted-foreground rounded-xl border border-dashed p-10 text-center text-sm">
-          暂无测试记录。到 API 测试工作台发送第一条请求。
+          暂无测试记录。到测试中心发送第一条请求。
         </div>
       ) : (
-        <div className="rounded-xl border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>时间</TableHead>
-                <TableHead>渠道</TableHead>
-                <TableHead>模型</TableHead>
-                <TableHead>协议</TableHead>
-                <TableHead>状态</TableHead>
-                <TableHead>耗时</TableHead>
-                <TableHead>Tokens</TableHead>
-                <TableHead>TPS</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {records.map((r: RequestRecordRow) => (
-                <TableRow
-                  key={r.traceId}
-                  className="cursor-pointer"
-                  onClick={() => navigate(`/requests/${r.traceId}`)}
-                >
-                  <TableCell className="text-xs whitespace-nowrap">{r.createdAt.slice(0, 19).replace("T", " ")}</TableCell>
-                  <TableCell className="text-sm">{r.channelName ?? "—"}</TableCell>
-                  <TableCell>
-                    <code className="text-xs">{r.model ?? "—"}</code>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline">
-                      {r.protocol ? (PROTOCOL_LABELS[r.protocol as Protocol] ?? r.protocol) : "—"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={STATUS_VARIANT[r.status] ?? "outline"}>{r.status}</Badge>
-                  </TableCell>
-                  <TableCell className="tabular-nums text-xs">
-                    {r.durationMs != null ? `${r.durationMs} ms` : "—"}
-                  </TableCell>
-                  <TableCell className="tabular-nums text-xs">
-                    {r.inputTokens ?? "—"}/{r.outputTokens ?? "—"}
-                  </TableCell>
-                  <TableCell className="tabular-nums text-xs">
-                    {r.tokensPerSecond != null ? r.tokensPerSecond.toFixed(1) : "—"}
-                  </TableCell>
+        <>
+          <div className="rounded-xl border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>时间</TableHead>
+                  <TableHead>渠道</TableHead>
+                  <TableHead>模型</TableHead>
+                  <TableHead>协议</TableHead>
+                  <TableHead>状态</TableHead>
+                  <TableHead>耗时</TableHead>
+                  <TableHead>Tokens</TableHead>
+                  <TableHead>TPS</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {pageRecords.map((r: RequestRecordRow) => (
+                  <TableRow
+                    key={r.traceId}
+                    className="cursor-pointer"
+                    onClick={() => navigate(`/requests/${r.traceId}`)}
+                  >
+                    <TableCell className="text-xs whitespace-nowrap">{r.createdAt.slice(0, 19).replace("T", " ")}</TableCell>
+                    <TableCell className="text-sm">{r.channelName ?? "—"}</TableCell>
+                    <TableCell>
+                      <code className="text-xs">{r.model ?? "—"}</code>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">
+                        {r.protocol ? (PROTOCOL_LABELS[r.protocol as Protocol] ?? r.protocol) : "—"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={STATUS_VARIANT[r.status] ?? "outline"}>{r.status}</Badge>
+                    </TableCell>
+                    <TableCell className="tabular-nums text-xs">
+                      {r.durationMs != null ? `${r.durationMs} ms` : "—"}
+                    </TableCell>
+                    <TableCell className="tabular-nums text-xs">
+                      {r.inputTokens ?? "—"}/{r.outputTokens ?? "—"}
+                    </TableCell>
+                    <TableCell className="tabular-nums text-xs">
+                      {r.tokensPerSecond != null ? r.tokensPerSecond.toFixed(1) : "—"}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            <div className="border-t px-3 pb-2">
+              <Pagination
+                page={safePage}
+                pageCount={pageCount}
+                pageSize={pageSize}
+                total={records.length}
+                onPageChange={setPage}
+                onPageSizeChange={(size) => {
+                  setPageSize(size);
+                  setPage(1);
+                }}
+                unit="条"
+              />
+            </div>
+          </div>
+          {records.length >= 1000 ? (
+            <p className="text-muted-foreground text-xs">
+              仅加载最近 1000 条；更早的记录请在「设置 → 数据」备份或清理。
+            </p>
+          ) : null}
+        </>
       )}
     </>
   );

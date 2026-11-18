@@ -2,7 +2,7 @@
  * 主导航配置。
  *
  * 导航顺序与 PLAN.md「功能概览」保持一致：
- * Dashboard / 渠道管理 / 模型列表 / 市场信息 / 测试中心 / 测试记录 / 设置
+ * 仪表盘 / 渠道管理 / 模型列表 / 市场信息 / 测试中心 / 测试记录 / 设置
  * （测试功能收敛到「测试中心」一个菜单：API 测试 / Agent 测试 / 画图 / 图像理解）
  */
 export interface NavItem {
@@ -15,7 +15,7 @@ export interface NavItem {
 }
 
 export const navItems: NavItem[] = [
-  { path: "/dashboard", key: "dashboard", label: "Dashboard" },
+  { path: "/dashboard", key: "dashboard", label: "仪表盘" },
   { path: "/channels", key: "channels", label: "渠道管理" },
   { path: "/models", key: "models", label: "模型列表" },
   { path: "/market", key: "market", label: "市场信息" },

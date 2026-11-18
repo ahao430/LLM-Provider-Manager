@@ -260,6 +260,31 @@ pub fn delete_bill(conn: &Connection, id: &str) -> AppResult<()> {
     Ok(())
 }
 
+/// 同渠道同账期同来源覆盖替换（导入路径：重复拉取不产生重复账单；人工来源不受影响）。
+pub fn replace_bill(
+    conn: &Connection,
+    channel_id: &str,
+    billing_period: &str,
+    amount: f64,
+    currency: &str,
+    source: &str,
+    notes: Option<&str>,
+) -> AppResult<String> {
+    conn.execute(
+        "DELETE FROM channel_bills WHERE channel_id = ?1 AND billing_period = ?2 AND source = ?3",
+        params![channel_id, billing_period.trim(), source.trim()],
+    )?;
+    insert_bill(
+        conn,
+        channel_id,
+        billing_period,
+        amount,
+        currency,
+        source,
+        notes,
+    )
+}
+
 // ------------------------------------------------------------------
 // 余额快照
 // ------------------------------------------------------------------

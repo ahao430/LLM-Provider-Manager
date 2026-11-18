@@ -1,8 +1,9 @@
-import { StrictMode } from "react";
+import { StrictMode, useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
 import { AppLayout } from "@/app/layout/AppLayout";
+import { useUiStore } from "@/stores/ui";
 import { DashboardPage } from "@/features/dashboard/DashboardPage";
 import { ChannelsPage } from "@/features/channels/ChannelsPage";
 import { ChannelDetailPage } from "@/features/channels/ChannelDetailPage";
@@ -22,7 +23,24 @@ const queryClient = new QueryClient({
   },
 });
 
+/** 把主题状态落到 <html class="dark">；「跟随系统」时监听系统切换实时生效。 */
+function useApplyTheme() {
+  const theme = useUiStore((s) => s.theme);
+  useEffect(() => {
+    const root = document.documentElement;
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => {
+      root.classList.toggle("dark", theme === "dark" || (theme === "system" && mq.matches));
+    };
+    apply();
+    if (theme !== "system") return;
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, [theme]);
+}
+
 export function App() {
+  useApplyTheme();
   return (
     <StrictMode>
       <QueryClientProvider client={queryClient}>

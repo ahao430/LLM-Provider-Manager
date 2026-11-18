@@ -86,13 +86,21 @@ export interface ChannelRow {
   notes: string | null;
   createdAt: string;
   updatedAt: string;
+  /** 官网链接（未配置为 null） */
+  officialUrl: string | null;
   hasPrimaryCredential: boolean;
   primaryCredentialMasked: string | null;
 }
 
 export interface BalanceQuery {
+  /** generic / new_api / aliyun_bss（由渠道服务商派生） */
+  provider: string;
   path: string;
   jsonPath: string;
+  /** NewAPI 用户 ID */
+  userId: string;
+  /** 余额币种（写快照用；旧配置缺省 CNY；new_api 固定 USD） */
+  currency: string;
 }
 
 export interface ChannelDetail extends ChannelRow {
@@ -231,6 +239,47 @@ export function launchAgent(req: LaunchRequest): Promise<LaunchOutcome> {
 
 export function listAgentLaunches(limit?: number): Promise<AgentLaunchRow[]> {
   return invoke<AgentLaunchRow[]>("list_agent_launches", { limit: limit ?? 50 });
+}
+
+// ------------------------------------------------------------------
+// 真实 Agent 探针（单次调用 claude / codex CLI）
+// ------------------------------------------------------------------
+
+export interface AgentProbeRequest {
+  agentType: AgentType;
+  channelId: string;
+  model: string | null;
+  workingDirectory: string;
+  prompt: string;
+  /** CLI 可执行文件路径覆盖（默认 PATH 查找；GUI 环境 PATH 可能不同） */
+  binaryPath: string | null;
+}
+
+export interface AgentProbeOutcome {
+  launchId: string;
+  agentType: AgentType;
+  launchMethod: string;
+  /** success / exit_error / timeout / spawn_error */
+  status: string;
+  exitCode: number | null;
+  /** Agent 回复正文（claude 取 JSON result 字段；codex 取 stdout 原文） */
+  result: string;
+  stdout: string;
+  stderr: string;
+  durationMs: number;
+  warnings: string[];
+  logFile: string;
+  /** claude --output-format json 补充信息 */
+  sessionId: string | null;
+  agentDurationMs: number | null;
+  costUsd: number | null;
+  inputTokens: number | null;
+  outputTokens: number | null;
+}
+
+/** 真实 Agent 单次调用：spawn 真实 CLI 进程收集输出（最长 10 分钟）。 */
+export function runAgentProbe(req: AgentProbeRequest): Promise<AgentProbeOutcome> {
+  return invoke<AgentProbeOutcome>("run_agent_probe", { req });
 }
 
 // ------------------------------------------------------------------
@@ -413,10 +462,56 @@ export function fetchChannelModelList(channelId: string): Promise<RemoteModelLis
 
 export function importChannelModels(
   channelId: string,
-  protocol: Protocol,
   items: ImportItem[]
 ): Promise<ImportOutcome> {
-  return invoke<ImportOutcome>("import_channel_models", { channelId, protocol, items });
+  return invoke<ImportOutcome>("import_channel_models", { channelId, items });
+}
+
+/** 接口类型默认规则（与后端 default_protocol_for 一致）：claude → Anthropic，否则 Chat Completions。 */
+export function defaultProtocolFor(modelId: string): Protocol {
+  return modelId.toLowerCase().includes("claude") ? "anthropic_messages" : "openai_chat";
+}
+
+/** 类型默认规则（与后端 default_model_type_for 一致）：图像 / 多模态命名推断，其余默认文本。 */
+export function defaultModelTypeFor(modelId: string): ModelType {
+  const name = modelId.trim().toLowerCase();
+  const IMAGE_MARKERS = [
+    "image",
+    "dall-e",
+    "seedream",
+    "seededit",
+    "cogview",
+    "wanx",
+    "flux",
+    "stable-diffusion",
+  ];
+  // 多模态家族与视觉系命名（Claude 3+ 全系、Gemini 全系、GPT-4o/4.1/4-turbo/5 系、OpenAI o 系）
+  const VISION_MARKERS = [
+    "omni",
+    "vision",
+    "-vl",
+    "vl-",
+    "qvq",
+    "4o",
+    "claude",
+    "gemini",
+    "gpt-4.1",
+    "gpt-4-turbo",
+    "gpt-5",
+  ];
+  // 用户指定的已知多模态型号（精确匹配）
+  const KNOWN_MULTIMODAL = ["deepseek-v4.1-flash", "glm-5.3-flash"];
+  if (IMAGE_MARKERS.some((m) => name.includes(m))) return "image";
+  if (
+    VISION_MARKERS.some((m) => name.includes(m)) ||
+    KNOWN_MULTIMODAL.includes(name) ||
+    name.startsWith("o1") ||
+    name.startsWith("o3") ||
+    name.startsWith("o4")
+  ) {
+    return "multimodal";
+  }
+  return "text";
 }
 
 export function listModelPrices(channelModelId: string): Promise<ModelPriceRow[]> {
@@ -575,6 +670,11 @@ export function getTestRecord(traceId: string): Promise<TestRecordDetail> {
 
 export function getTestRaw(traceId: string, kind: "request" | "response"): Promise<string> {
   return invoke<string>("get_test_raw", { traceId, kind });
+}
+
+/** 以 curl 命令复制测试请求（含真实凭证，仅进剪贴板；仅 API 测试记录支持）。 */
+export function copyTestCurl(traceId: string): Promise<string> {
+  return invoke<string>("copy_test_curl", { traceId });
 }
 
 export function reparseTestResponse(traceId: string): Promise<ResponsePreview> {
@@ -868,82 +968,6 @@ export function cleanupOldData(before: string): Promise<CleanupSummary> {
   return invoke<CleanupSummary>("cleanup_old_data", { before });
 }
 
-// ------------------------------------------------------------------
-// 内嵌 Agent（Phase 8 前置）
-// ------------------------------------------------------------------
-
-export type AgentMode = "claude_code" | "codex";
-
-export const AGENT_MODE_LABELS: Record<AgentMode, string> = {
-  claude_code: "Claude Code",
-  codex: "Codex",
-};
-
-export interface ConversationRow {
-  id: string;
-  title: string;
-  mode: AgentMode;
-  channelId: string;
-  channelModelId: string | null;
-  model: string;
-  protocol: "openai_chat" | "anthropic_messages";
-  system: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface ConversationInput {
-  channelId: string;
-  channelModelId: string | null;
-  model: string;
-  mode: AgentMode;
-  system: string | null;
-}
-
-export interface AgentMessageRow {
-  id: string;
-  conversationId: string;
-  role: "user" | "assistant";
-  content: string;
-  traceId: string | null;
-  createdAt: string;
-}
-
-export interface AgentReply {
-  traceId: string;
-  conversationId: string;
-  userMessageId: string;
-  assistantMessageId: string;
-  text: string;
-  status: string;
-  httpStatus: number | null;
-  usage: UsagePreview | null;
-}
-
-export function listConversations(): Promise<ConversationRow[]> {
-  return invoke<ConversationRow[]>("list_conversations");
-}
-
-export function createConversation(input: ConversationInput): Promise<ConversationRow> {
-  return invoke<ConversationRow>("create_conversation", { input });
-}
-
-export function deleteConversation(id: string): Promise<void> {
-  return invoke<void>("delete_conversation", { id });
-}
-
-export function listAgentMessages(conversationId: string): Promise<AgentMessageRow[]> {
-  return invoke<AgentMessageRow[]>("list_agent_messages", { conversationId });
-}
-
-export function sendAgentMessage(
-  req: { conversationId: string; content: string },
-  onEvent?: (event: ApiTestStreamEvent) => void
-): Promise<AgentReply> {
-  const onEventChannel = onEvent ? tauriChannel(onEvent) : undefined;
-  return invoke<AgentReply>("send_agent_message", { input: req, onEvent: onEventChannel });
-}
-
 type TestRunResultShape = {
   traceId: string;
   status: string;
@@ -995,8 +1019,24 @@ export function editImage(req: ImageEditRequestPayload): Promise<ImageGenResult>
   return invoke<ImageGenResult>("edit_image", { req });
 }
 
-export function setBalanceQuery(channelId: string, path: string, jsonPath: string): Promise<void> {
-  return invoke<void>("set_balance_query", { channelId, path, jsonPath });
+/** 余额查询配置输入。查询方式不在此选择，由渠道服务商派生；凭证 Some("")=清除 / null=不变。 */
+export interface SetBalanceQueryInput {
+  path: string;
+  jsonPath: string;
+  currency?: string;
+  /** NewAPI 用户 ID */
+  userId?: string | null;
+  billingAccessKeyId?: string | null;
+  billingAccessKeySecret?: string | null;
+  /** NewAPI 系统访问令牌 */
+  billingSystemToken?: string | null;
+}
+
+export function setBalanceQuery(
+  channelId: string,
+  input: SetBalanceQueryInput
+): Promise<void> {
+  return invoke<void>("set_balance_query", { channelId, input });
 }
 
 export interface BalanceResult {
@@ -1005,10 +1045,123 @@ export interface BalanceResult {
   jsonPath: string;
   value: unknown;
   rawSnippet: string | null;
+  /** 本次查询是否已写入余额快照（refresh 时为 true） */
+  savedSnapshot: boolean;
+  /** 写入快照的币种 */
+  currency: string | null;
+}
+
+/** 查询并保存余额（渠道列表「查询」按钮）：数值可解析时写入余额快照。 */
+export function refreshChannelBalance(channelId: string): Promise<BalanceResult> {
+  return invoke<BalanceResult>("refresh_channel_balance", { channelId });
+}
+
+/** 各渠道最近一次余额快照。 */
+export interface LatestBalanceRow {
+  channelId: string;
+  balance: number;
+  currency: string;
+  capturedAt: string;
+}
+
+export function listLatestBalances(): Promise<LatestBalanceRow[]> {
+  return invoke<LatestBalanceRow[]>("list_latest_balances");
+}
+
+// ------------------------------------------------------------------
+// 百炼（阿里云费用中心）余额与账单
+// ------------------------------------------------------------------
+
+export interface BailianTransaction {
+  transactionTime: string;
+  transactionType: string;
+  /** 原始金额字符串（消费为负、充值为正） */
+  amount: string;
+  fundType: string;
+  remarks: string;
+}
+
+export interface BailianTransactions {
+  accountName: string;
+  transactions: BailianTransaction[];
+  nextToken: string;
+  totalCount: number;
+}
+
+export interface MonthlyBill {
+  billingPeriod: string;
+  amount: number;
+  count: number;
+}
+
+/** 查询百炼收支明细（start/end 为 YYYY-MM-DD；nextToken 翻页）。 */
+export function queryBailianTransactions(
+  channelId: string,
+  start: string,
+  end: string,
+  nextToken?: string
+): Promise<BailianTransactions> {
+  return invoke<BailianTransactions>("query_bailian_transactions", {
+    channelId,
+    start,
+    end,
+    nextToken: nextToken ?? null,
+  });
+}
+
+/** 把收支明细按月汇总导入账单（source=aliyun_bss，同渠道同账期覆盖替换）。 */
+export function importBailianBills(
+  channelId: string,
+  currency: string,
+  transactions: { transactionTime: string; amount: string }[]
+): Promise<MonthlyBill[]> {
+  return invoke<MonthlyBill[]>("import_bailian_bills", {
+    channelId,
+    currency,
+    transactions,
+  });
+}
+
+/** 每个 (渠道, 模型) 最近一次测试（模型列表 / 渠道管理展示）。 */
+export interface LatestModelTestRow {
+  channelId: string;
+  model: string;
+  traceId: string;
+  status: string;
+  createdAt: string;
+  /** 首字时间；未产生首 Token 时为 null */
+  ttftMs: number | null;
+  /** 总耗时；请求未走完时为 null */
+  durationMs: number | null;
+  /** 失败原因摘要；仅少数场景非空，详情以测试记录为准 */
+  errorMessage: string | null;
+}
+
+export function listLatestModelTests(): Promise<LatestModelTestRow[]> {
+  return invoke<LatestModelTestRow[]>("list_latest_model_tests");
 }
 
 export function queryChannelBalance(channelId: string): Promise<BalanceResult> {
   return invoke<BalanceResult>("query_channel_balance", { channelId });
+}
+
+// ------------------------------------------------------------------
+// 更新检查（GitHub Releases，只检查 + 跳转下载页）
+// ------------------------------------------------------------------
+
+export interface UpdateCheck {
+  current: string;
+  /** null = 尚无已发布 Release */
+  latestVersion: string | null;
+  latestTag: string | null;
+  releaseUrl: string | null;
+  publishedAt: string | null;
+  notes: string | null;
+  hasUpdate: boolean;
+}
+
+export function checkForUpdates(): Promise<UpdateCheck> {
+  return invoke<UpdateCheck>("check_for_updates");
 }
 
 // ------------------------------------------------------------------

@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { CloudDownload, ExternalLink, Search, Store } from "lucide-react";
 
 import { PageHeader } from "@/components/PageHeader";
+import { Pagination } from "@/components/Pagination";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,6 +54,9 @@ export function MarketPage() {
 
   const [providerId, setProviderId] = useState("all");
   const [search, setSearch] = useState("");
+  // 分页（按模型行）：筛选变化回第一页；总数 ≤ 10 时 Pagination 自身不渲染
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
 
   // 「抓取数据」：实时拉取 models.dev → 写入缓存 → 刷新展示
   const fetchMutation = useMutation({
@@ -78,6 +82,18 @@ export function MarketPage() {
       }))
       .filter((entry) => entry.models.length > 0);
   }, [providers, providerId, search]);
+
+  // 摊平成模型行（分页按模型计数，不按厂商）
+  const flatRows = useMemo(() => {
+    const rows: { provider: MarketProvider; model: MarketModel }[] = [];
+    for (const { provider, models } of filtered) {
+      for (const model of models) rows.push({ provider, model });
+    }
+    return rows;
+  }, [filtered]);
+  const pageCount = Math.max(Math.ceil(flatRows.length / pageSize), 1);
+  const safePage = Math.min(page, pageCount);
+  const pageRows = flatRows.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   const modelCount = filtered.reduce((n, e) => n + e.models.length, 0);
 
@@ -105,7 +121,13 @@ export function MarketPage() {
       />
 
       <div className="flex flex-wrap items-center gap-2">
-        <Select value={providerId} onValueChange={setProviderId}>
+        <Select
+          value={providerId}
+          onValueChange={(v) => {
+            setProviderId(v);
+            setPage(1);
+          }}
+        >
           <SelectTrigger className="h-8 w-52 text-sm">
             <SelectValue />
           </SelectTrigger>
@@ -122,7 +144,10 @@ export function MarketPage() {
           <Search className="text-muted-foreground absolute top-2.5 left-2 size-4" />
           <Input
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
             placeholder="搜索模型 / 厂商"
             className="h-8 w-56 pl-8 text-sm"
           />
@@ -139,35 +164,46 @@ export function MarketPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-36">厂商</TableHead>
                 <TableHead>模型</TableHead>
+                <TableHead className="w-36">厂商</TableHead>
                 <TableHead className="w-20">类型</TableHead>
                 <TableHead className="text-right">输入 / 百万</TableHead>
                 <TableHead className="text-right">缓存 / 百万</TableHead>
                 <TableHead className="text-right">输出 / 百万</TableHead>
-                <TableHead className="w-52">备注</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.length === 0 ? (
+              {flatRows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-muted-foreground py-8 text-center text-sm">
+                  <TableCell colSpan={6} className="text-muted-foreground py-8 text-center text-sm">
                     没有匹配的模型
                   </TableCell>
                 </TableRow>
               ) : (
-                filtered.map(({ provider, models }) =>
-                  models.map((m, i) => (
-                    <MarketModelRow
-                      key={`${provider.id}:${m.model}`}
-                      provider={i === 0 ? provider : null}
-                      model={m}
-                    />
-                  ))
-                )
+                pageRows.map(({ provider, model }) => (
+                  <MarketModelRow
+                    key={`${provider.id}:${model.model}`}
+                    provider={provider}
+                    model={model}
+                  />
+                ))
               )}
             </TableBody>
           </Table>
+          <div className="border-t px-3 pb-2">
+            <Pagination
+              page={safePage}
+              pageCount={pageCount}
+              pageSize={pageSize}
+              total={flatRows.length}
+              onPageChange={setPage}
+              onPageSizeChange={(size) => {
+                setPageSize(size);
+                setPage(1);
+              }}
+              unit="个"
+            />
+          </div>
         </div>
       )}
 
@@ -187,30 +223,25 @@ function MarketModelRow({
   provider,
   model,
 }: {
-  /** 每组厂商只在第一行渲染（纵向合并效果） */
-  provider: MarketProvider | null;
+  provider: MarketProvider;
   model: MarketModel;
 }) {
   return (
     <TableRow>
-      {provider ? (
-        <TableCell className="align-top">
-          <button
-            type="button"
-            className="text-primary hover:underline inline-flex items-center gap-1 text-sm"
-            title="打开官方价格页"
-            onClick={() => void openExternal(provider.pricingUrl)}
-          >
-            <Store className="size-3.5" />
-            {provider.name}
-            <ExternalLink className="size-3" />
-          </button>
-        </TableCell>
-      ) : (
-        <TableCell className="text-muted-foreground align-top text-xs">{null}</TableCell>
-      )}
       <TableCell className="align-top">
         <code className="text-xs font-medium">{model.model}</code>
+      </TableCell>
+      <TableCell className="align-top">
+        <button
+          type="button"
+          className="text-primary hover:underline inline-flex items-center gap-1 text-sm"
+          title="打开官方价格页"
+          onClick={() => void openExternal(provider.pricingUrl)}
+        >
+          <Store className="size-3.5" />
+          {provider.name}
+          <ExternalLink className="size-3" />
+        </button>
       </TableCell>
       <TableCell className="align-top">
         <Badge variant={TYPE_VARIANT[model.modelType]} className="text-[10px]">
@@ -226,7 +257,6 @@ function MarketModelRow({
       <TableCell className="text-right align-top tabular-nums">
         {fmtPrice(model.outputPer1m, model.currency)}
       </TableCell>
-      <TableCell className="text-muted-foreground align-top text-xs">{model.note ?? ""}</TableCell>
     </TableRow>
   );
 }

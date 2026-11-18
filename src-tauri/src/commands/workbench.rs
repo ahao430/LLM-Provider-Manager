@@ -85,6 +85,15 @@ pub fn list_test_records(
     records::list(&conn, limit.unwrap_or(100).min(1000))
 }
 
+/// 每个 (渠道, 模型) 最近一次测试（模型列表页展示）。
+#[tauri::command]
+pub fn list_latest_model_tests(
+    state: State<'_, AppState>,
+) -> AppResult<Vec<records::LatestModelTestRow>> {
+    let conn = db(&state)?;
+    records::latest_per_channel_model(&conn)
+}
+
 #[tauri::command]
 pub fn get_test_record(state: State<'_, AppState>, trace_id: String) -> AppResult<RecordDetail> {
     let conn = db(&state)?;
@@ -233,4 +242,167 @@ pub async fn replay_test_request(
             duration_ms,
         )
     }
+}
+
+/// 以 curl 命令复制测试请求：URL / Header 由 `builder::build` 按当前渠道配置重建（含真实凭证），
+/// 凭证只进剪贴板（用户主动操作，与「复制凭证」同一安全级别），不落库、不进日志、不产生新记录。
+/// 仅支持 API 测试工作台的记录——画图 / 图像理解归档的 body 是摘要或 multipart，重建会失真。
+#[tauri::command]
+pub fn copy_test_curl(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    trace_id: String,
+) -> AppResult<String> {
+    use serde_json::Value;
+    use tauri_plugin_clipboard_manager::ClipboardExt;
+
+    let curl = {
+        let conn = db(&state)?;
+        let original = records::get(&conn, &trace_id)?;
+        if original.request_type.as_deref() != Some("api_test") {
+            return Err(crate::error::AppError::Invalid(
+                "仅支持 API 测试工作台的记录复制 curl（画图 / 图像理解的归档 body 为摘要或 multipart，重建会失真）"
+                    .into(),
+            ));
+        }
+        let rel = original.request_ref.ok_or_else(|| {
+            crate::error::AppError::Invalid("该记录没有 Raw 请求文件，无法复制 curl".into())
+        })?;
+        let raw: Value = serde_json::from_str(&engine::read_raw(&state.data_dir, &rel)?)
+            .map_err(|e| crate::error::AppError::Invalid(format!("Raw 请求解析失败: {e}")))?;
+        let request_body = raw
+            .get("body")
+            .cloned()
+            .ok_or_else(|| crate::error::AppError::Invalid("Raw 请求缺少 body 字段".into()))?;
+        let stream = request_body
+            .get("stream")
+            .and_then(Value::as_bool)
+            .unwrap_or(false);
+        let req = ApiTestRequest {
+            channel_id: original.channel_id.clone().ok_or_else(|| {
+                crate::error::AppError::Invalid("原记录缺少渠道信息（渠道可能已删除）".into())
+            })?,
+            channel_model_id: original.channel_model_id.clone(),
+            model: original.model.clone().unwrap_or_default(),
+            protocol: original
+                .protocol
+                .clone()
+                .unwrap_or_else(|| "openai_chat".into()),
+            stream,
+            system: None,
+            messages: Vec::new(),
+            params: Default::default(),
+            extra_body: None,
+            custom_headers: Vec::new(),
+            custom_query: Vec::new(),
+            raw_json: Some(request_body),
+            parent_trace_id: None,
+        };
+        // 只重建请求，不调用 prepare（避免写入 pending 记录 / 归档 / 事件）
+        let built = crate::workbenches::api_testing::builder::build(&conn, &req)?;
+        crate::workbenches::api_testing::curl::build_command(
+            &built.url,
+            &built.headers,
+            &built.body.to_string(),
+        )
+    }; // 锁释放后再写剪贴板
+
+    app.clipboard()
+        .write_text(&curl)
+        .map_err(|e| crate::error::AppError::Invalid(format!("写入剪贴板失败: {e}")))?;
+    Ok(curl)
+}
+
+/// 快速测试结果（模型列表 / 渠道详情的逐模型连通性测试）。
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct QuickTestReply {
+    pub trace_id: String,
+    pub text: String,
+    pub status: String,
+    pub http_status: Option<u16>,
+    pub usage: Option<crate::workbenches::api_testing::parser::UsagePreview>,
+}
+
+/// 快速测试：以指定协议向渠道发送最小请求（写入测试记录）。
+/// `model` 指定测试模型；缺省取该渠道第一个启用的渠道模型，都没有则用 "test"。
+#[tauri::command]
+pub async fn quick_test_channel(
+    state: State<'_, AppState>,
+    channel_id: String,
+    protocol: String,
+    model: Option<String>,
+) -> AppResult<QuickTestReply> {
+    let model = {
+        let conn = db(&state)?;
+        crate::channels::repo::find_row(&conn, &channel_id)?
+            .ok_or_else(|| crate::error::AppError::Invalid("渠道不存在".into()))?;
+        let picked = crate::models::repo::list_channel_models(&conn, &channel_id)?
+            .into_iter()
+            .find(|m| m.enabled)
+            .map(|m| m.actual_model_id);
+        model
+            .map(|m| m.trim().to_string())
+            .filter(|m| !m.is_empty())
+            .or(picked)
+            .unwrap_or_else(|| "test".into())
+    }; // 锁释放
+
+    // 最小请求体（按协议）
+    let raw_json = match protocol.as_str() {
+        "anthropic_messages" => serde_json::json!({
+            "model": model, "max_tokens": 16,
+            "messages": [{"role": "user", "content": "ping"}]
+        }),
+        _ => serde_json::json!({
+            "model": model,
+            "messages": [{"role": "user", "content": "ping"}]
+        }),
+    };
+
+    // 直接走 api_testing 引擎（不依赖会话）
+    let req = crate::workbenches::api_testing::builder::ApiTestRequest {
+        channel_id,
+        channel_model_id: None,
+        model,
+        protocol,
+        stream: false,
+        system: None,
+        messages: Vec::new(),
+        params: Default::default(),
+        extra_body: None,
+        custom_headers: Vec::new(),
+        custom_query: Vec::new(),
+        raw_json: Some(raw_json),
+        parent_trace_id: None,
+    };
+
+    let run = {
+        let conn = db(&state)?;
+        crate::workbenches::api_testing::engine::prepare(&conn, &state.data_dir, &req)?
+    };
+    let started = std::time::Instant::now();
+    let (http_status, headers, body, ttfb_ms) =
+        crate::workbenches::api_testing::engine::send_non_stream(&run.built).await?;
+    let duration_ms = started.elapsed().as_millis() as i64;
+    let conn = db(&state)?;
+    let result = crate::workbenches::api_testing::engine::finalize_non_stream(
+        &conn,
+        &state.data_dir,
+        &req,
+        &run,
+        http_status,
+        headers,
+        &body,
+        ttfb_ms,
+        duration_ms,
+    )?;
+
+    Ok(QuickTestReply {
+        trace_id: result.trace_id,
+        text: result.preview.text,
+        status: result.status,
+        http_status: result.http_status,
+        usage: result.preview.usage,
+    })
 }

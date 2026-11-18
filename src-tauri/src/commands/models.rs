@@ -145,11 +145,10 @@ pub async fn fetch_channel_model_list(
 pub fn import_channel_models(
     state: State<'_, AppState>,
     channel_id: String,
-    protocol: String,
     items: Vec<ImportItem>,
 ) -> AppResult<ImportOutcome> {
     let conn = db(&state)?;
-    service::import_channel_models(&conn, &channel_id, &protocol, &items)
+    service::import_channel_models(&conn, &channel_id, &items)
 }
 
 // ------------------------------------------------------------------

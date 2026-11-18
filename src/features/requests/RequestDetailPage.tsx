@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
-import { ArrowLeft, RefreshCw } from "lucide-react";
+import { ArrowLeft, RefreshCw, Terminal } from "lucide-react";
 
 import { PageHeader } from "@/components/PageHeader";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { copyTestCurl } from "@/lib/tauri";
 import { useReparse, useTestRaw, useTestRecord, useReplayRequest } from "@/features/api-testing/api";
 
 /** 测试详情：Overview / Request Raw / Response Raw / Timeline / Processing。 */
@@ -48,6 +49,21 @@ export function RequestDetailPage() {
         description={`${detail.channelName ?? "未知渠道"} · ${detail.model ?? "—"} · ${detail.protocol ?? "—"}`}
         actions={
           <>
+            <Button
+              variant="outline"
+              onClick={async () => {
+                try {
+                  await copyTestCurl(traceId);
+                  toast.success("curl 命令已复制（含真实凭证，仅进剪贴板）");
+                } catch (err) {
+                  toast.error(`复制 curl 失败：${err}`);
+                }
+              }}
+              title="以 curl 格式复制请求（Header 按当前渠道凭证重建）"
+            >
+              <Terminal className="size-4" />
+              复制 curl
+            </Button>
             <Button
               variant="outline"
               onClick={async () => {

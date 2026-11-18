@@ -1,6 +1,6 @@
 [package]
 name = "lcm"
-version = "0.10.5"
+version = "0.14.0"
 description = "LCM — Local Channel Manager，本地优先的大模型渠道管理与 API 测试工具"
 authors = ["王昊"]
 edition = "2021"
@@ -32,6 +32,9 @@ aes-gcm = "0.10"
 rand = "0.9"
 pbkdf2 = "0.12"
 sha2 = "0.10"
+hmac = "0.12"
+sha1 = "0.10"
+base64 = "0.22"
 
 [profile.release]
 codegen-units = 1

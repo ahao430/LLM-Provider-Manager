@@ -39,6 +39,14 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "0008_market_cache",
         include_str!("../../migrations/0008_market_cache.sql"),
     ),
+    (
+        "0009_model_protocol_default",
+        include_str!("../../migrations/0009_model_protocol_default.sql"),
+    ),
+    (
+        "0010_model_type_multimodal_families",
+        include_str!("../../migrations/0010_model_type_multimodal_families.sql"),
+    ),
 ];
 
 pub fn run(conn: &Connection) -> AppResult<()> {

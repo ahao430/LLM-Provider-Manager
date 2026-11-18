@@ -29,7 +29,6 @@ import {
   type ChannelInput,
   type ChannelModelInput,
   type ImportItem,
-  type Protocol,
 } from "@/lib/tauri";
 
 export const channelKeys = {
@@ -211,8 +210,7 @@ export function useFetchModelList(channelId: string) {
 export function useImportModels(channelId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ protocol, items }: { protocol: Protocol; items: ImportItem[] }) =>
-      importChannelModels(channelId, protocol, items),
+    mutationFn: ({ items }: { items: ImportItem[] }) => importChannelModels(channelId, items),
     onSuccess: () => invalidateModels(queryClient, channelId),
   });
 }

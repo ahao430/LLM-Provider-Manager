@@ -1,6 +1,6 @@
 import { Fragment, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   createColumnHelper,
@@ -10,9 +10,11 @@ import {
   useReactTable,
   type SortingState,
 } from "@tanstack/react-table";
-import { ChevronDown, ChevronRight, Copy, Pencil, Plus } from "lucide-react";
+import { ChevronDown, ChevronRight, Copy, ExternalLink, Pencil, Plus, RefreshCw } from "lucide-react";
 
 import { PageHeader } from "@/components/PageHeader";
+import { Pagination } from "@/components/Pagination";
+import { openExternal } from "@/lib/external";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -27,16 +29,17 @@ import {
 } from "@/components/ui/table";
 import {
   copyChannelCredential,
-  getChannel,
   listChannelModels,
+  listLatestBalances,
+  refreshChannelBalance,
   MODEL_TYPE_LABELS,
   PROTOCOL_LABELS,
-  type ChannelDetail,
   type ChannelRow,
   type ModelType,
 } from "@/lib/tauri";
 import { ChannelFormDialog } from "@/features/channels/ChannelFormDialog";
 import { ModelTestButton } from "@/features/models/ModelTestButton";
+import { LatestTestResult, useLatestModelTestMap } from "@/features/models/LatestTestResult";
 import { useChannels, useSetChannelEnabled } from "@/features/channels/api";
 
 const columnHelper = createColumnHelper<ChannelRow>();
@@ -48,21 +51,49 @@ const TYPE_VARIANT: Record<ModelType, "default" | "secondary" | "outline" | "des
   decision: "destructive",
 };
 
-/** 渠道列表：凭证复制 / 行内编辑 / 展开查看模型并逐模型快速测试。 */
+/** 渠道列表：凭证复制 / 余额展示与查询 / 展开模型逐个测试 / 编辑进详情。 */
 export function ChannelsPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { data: channels = [], isLoading, isError, error } = useChannels();
   const setEnabled = useSetChannelEnabled();
   const [createOpen, setCreateOpen] = useState(false);
-  const [editChannel, setEditChannel] = useState<ChannelDetail | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [balanceBusy, setBalanceBusy] = useState<string | null>(null);
   const [sorting, setSorting] = useState<SortingState>([{ id: "name", desc: false }]);
+  // 分页：总数 ≤ 10 时 Pagination 自身不渲染
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
 
-  async function openEdit(id: string) {
+  // 各渠道最近一次余额快照
+  const { data: latestBalances = [] } = useQuery({
+    queryKey: ["latest-balances"],
+    queryFn: listLatestBalances,
+  });
+  const balanceMap = useMemo(() => {
+    const map = new Map<string, (typeof latestBalances)[number]>();
+    for (const b of latestBalances) map.set(b.channelId, b);
+    return map;
+  }, [latestBalances]);
+
+  async function refreshBalance(id: string) {
+    setBalanceBusy(id);
     try {
-      setEditChannel(await getChannel(id));
+      const res = await refreshChannelBalance(id);
+      if (res.savedSnapshot) {
+        void queryClient.invalidateQueries({ queryKey: ["latest-balances"] });
+        toast.success(`余额 ${res.currency ?? ""} ${String(res.value ?? "")} 已记录`);
+      } else {
+        toast.warning(
+          res.value === undefined || res.value === null
+            ? `未取到余额：${res.rawSnippet?.slice(0, 120) ?? "无响应"}`
+            : `取到值 ${JSON.stringify(res.value)}，但非数字，未写快照`
+        );
+      }
     } catch (e) {
-      toast.error(`读取渠道失败：${e}`);
+      toast.error(`查询失败：${e}`);
+    } finally {
+      setBalanceBusy(null);
     }
   }
 
@@ -97,15 +128,26 @@ export function ChannelsPage() {
       }),
       columnHelper.accessor("name", {
         header: "名称",
-        cell: (info) => (
-          <button
-            type="button"
-            className="hover:text-primary font-medium underline-offset-4 hover:underline"
-            onClick={() => navigate(`/channels/${info.row.original.id}`)}
-          >
-            {info.getValue()}
-          </button>
-        ),
+        cell: (info) => {
+          const row = info.row.original;
+          return (
+            <button
+              type="button"
+              className="hover:text-primary inline-flex items-center gap-1 font-medium underline-offset-4 hover:underline"
+              title={row.officialUrl ? `打开官网：${row.officialUrl}` : "未配置官网链接（点击行进入详情）"}
+              onClick={() => {
+                if (row.officialUrl) {
+                  void openExternal(row.officialUrl);
+                } else {
+                  toast.info("该渠道未配置官网链接（可在编辑表单填写）");
+                }
+              }}
+            >
+              {info.getValue()}
+              {row.officialUrl ? <ExternalLink className="size-3 shrink-0" /> : null}
+            </button>
+          );
+        },
       }),
       columnHelper.accessor("providerName", {
         header: "服务商",
@@ -139,6 +181,35 @@ export function ChannelsPage() {
           );
         },
       }),
+      columnHelper.display({
+        id: "balance",
+        header: "余额",
+        cell: ({ row }) => {
+          const balance = balanceMap.get(row.original.id);
+          return (
+            <span className="inline-flex items-center gap-1.5">
+              {balance ? (
+                <span className="text-xs tabular-nums" title={`快照时间 ${balance.capturedAt}`}>
+                  {balance.currency} {balance.balance.toFixed(2)}
+                </span>
+              ) : (
+                <span className="text-muted-foreground text-xs">—</span>
+              )}
+              <button
+                type="button"
+                className="text-muted-foreground hover:text-foreground"
+                title="查询余额（写快照）"
+                disabled={balanceBusy === row.original.id}
+                onClick={() => void refreshBalance(row.original.id)}
+              >
+                <RefreshCw
+                  className={`size-3.5 ${balanceBusy === row.original.id ? "animate-spin" : ""}`}
+                />
+              </button>
+            </span>
+          );
+        },
+      }),
       columnHelper.accessor("enabled", {
         header: "启用",
         cell: (info) => (
@@ -157,15 +228,15 @@ export function ChannelsPage() {
           <Button
             variant="ghost"
             size="icon"
-            title="编辑渠道"
-            onClick={() => void openEdit(row.original.id)}
+            title="编辑渠道（进详情页）"
+            onClick={() => navigate(`/channels/${row.original.id}`)}
           >
             <Pencil className="size-4" />
           </Button>
         ),
       }),
     ],
-    [navigate, setEnabled, expandedId]
+    [navigate, setEnabled, expandedId, balanceMap, balanceBusy]
   );
 
   const table = useReactTable({
@@ -176,6 +247,12 @@ export function ChannelsPage() {
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
   });
+
+  // 排序后的行手动切片分页（数据量本地可控，不必引入分页 RowModel）
+  const sortedRows = table.getRowModel().rows;
+  const pageCount = Math.max(Math.ceil(sortedRows.length / pageSize), 1);
+  const safePage = Math.min(page, pageCount);
+  const pageRows = sortedRows.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   return (
     <>
@@ -216,7 +293,7 @@ export function ChannelsPage() {
               ))}
             </TableHeader>
             <TableBody>
-              {table.getRowModel().rows.map((row) => (
+              {pageRows.map((row) => (
                 <Fragment key={row.id}>
                   <TableRow
                     className="cursor-pointer"
@@ -235,6 +312,19 @@ export function ChannelsPage() {
               ))}
             </TableBody>
           </Table>
+          <div className="border-t px-3 pb-2">
+            <Pagination
+              page={safePage}
+              pageCount={pageCount}
+              pageSize={pageSize}
+              total={sortedRows.length}
+              onPageChange={setPage}
+              onPageSizeChange={(size) => {
+                setPageSize(size);
+                setPage(1);
+              }}
+            />
+          </div>
         </div>
       )}
 
@@ -243,19 +333,23 @@ export function ChannelsPage() {
         onOpenChange={setCreateOpen}
         onSaved={(id) => navigate(`/channels/${id}`)}
       />
-      {editChannel ? (
-        <ChannelFormDialog open onOpenChange={(open) => !open && setEditChannel(null)} channel={editChannel} />
-      ) : null}
     </>
   );
 }
 
-/** 展开行：渠道模型清单 + 逐模型快速测试。 */
+/** 展开行：渠道模型清单（分页）+ 逐模型快速测试，测试后行内展示最近结果。 */
 function ChannelModelsSubRow({ channelId, colSpan }: { channelId: string; colSpan: number }) {
   const { data: models = [], isLoading } = useQuery({
     queryKey: ["channel-models", channelId],
     queryFn: () => listChannelModels(channelId),
   });
+  // 最近一次测试结果：ModelTestButton 完成后自动失效刷新
+  const latestMap = useLatestModelTestMap();
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const pageCount = Math.max(Math.ceil(models.length / pageSize), 1);
+  const safePage = Math.min(page, pageCount);
+  const pageModels = models.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   return (
     <TableRow>
@@ -267,29 +361,48 @@ function ChannelModelsSubRow({ channelId, colSpan }: { channelId: string; colSpa
             暂无模型；进入渠道详情「模型」页签获取导入。
           </p>
         ) : (
-          <div className="divide-y">
-            {models.map((m) => (
-              <div key={m.id} className="flex items-center gap-2 px-6 py-1.5">
-                <code className="min-w-40 text-xs font-medium">{m.actualModelId}</code>
-                <Badge variant={TYPE_VARIANT[m.modelType]} className="text-[10px]">
-                  {MODEL_TYPE_LABELS[m.modelType]}
-                </Badge>
-                <span className="text-muted-foreground text-[10px]">
-                  {PROTOCOL_LABELS[m.protocol] ?? m.protocol}
-                </span>
-                {!m.enabled ? (
-                  <Badge variant="secondary" className="text-[10px]">
-                    已禁用
+          <div>
+            <div className="divide-y">
+              {pageModels.map((m) => (
+                <div key={m.id} className="flex items-center gap-2 px-6 py-1.5">
+                  <code className="min-w-40 text-xs font-medium">{m.actualModelId}</code>
+                  <Badge variant={TYPE_VARIANT[m.modelType]} className="text-[10px]">
+                    {MODEL_TYPE_LABELS[m.modelType]}
                   </Badge>
-                ) : null}
-                <span className="flex-1" />
-                <ModelTestButton
-                  channelId={channelId}
-                  actualModelId={m.actualModelId}
-                  protocol={m.protocol}
-                />
-              </div>
-            ))}
+                  <span className="text-muted-foreground text-[10px]">
+                    {PROTOCOL_LABELS[m.protocol] ?? m.protocol}
+                  </span>
+                  {!m.enabled ? (
+                    <Badge variant="secondary" className="text-[10px]">
+                      已禁用
+                    </Badge>
+                  ) : null}
+                  <span className="flex-1" />
+                  <LatestTestResult
+                    latest={latestMap.get(`${channelId}|${m.actualModelId.trim().toLowerCase()}`)}
+                  />
+                  <ModelTestButton
+                    channelId={channelId}
+                    actualModelId={m.actualModelId}
+                    protocol={m.protocol}
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="px-4 pb-2">
+              <Pagination
+                page={safePage}
+                pageCount={pageCount}
+                pageSize={pageSize}
+                total={models.length}
+                onPageChange={setPage}
+                onPageSizeChange={(size) => {
+                  setPageSize(size);
+                  setPage(1);
+                }}
+                unit="个"
+              />
+            </div>
           </div>
         )}
       </TableCell>

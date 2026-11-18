@@ -35,12 +35,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery } from "@tanstack/react-query";
-import { listChannelModels, type AgentCompatStatus } from "@/lib/tauri";
+import { listChannelModels, type AgentCompatStatus, type BalanceQuery } from "@/lib/tauri";
 import {
   useAgentCompat,
   useChannel,
   useDeleteChannel,
   useLaunchAgent,
+  useProviders,
   useSetChannelEnabled,
   useUpsertAgentCompat,
 } from "@/features/channels/api";
@@ -56,11 +57,16 @@ export function ChannelDetailPage() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
   const { data: channel, isLoading, isError, error } = useChannel(id);
+  const { data: providers = [] } = useProviders();
   const setEnabled = useSetChannelEnabled();
   const deleteMutation = useDeleteChannel();
   const [editOpen, setEditOpen] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [balanceOpen, setBalanceOpen] = useState(false);
+  // 服务商 code（决定余额查询方式，与后端派生规则一致）
+  const providerCode = channel
+    ? (providers.find((p) => p.id === channel.providerId)?.code ?? "")
+    : "";
 
   if (isLoading) {
     return (
@@ -220,7 +226,7 @@ export function ChannelDetailPage() {
         </TabsContent>
 
         <TabsContent value="funds" className="space-y-4">
-          <FundsTab channelId={channel.id} />
+          <FundsTab channelId={channel.id} balanceProvider={channel.balanceQuery?.provider} />
         </TabsContent>
 
         <TabsContent value="compat" className="space-y-4">
@@ -249,8 +255,9 @@ export function ChannelDetailPage() {
         open={balanceOpen}
         onOpenChange={setBalanceOpen}
         channelId={channel.id}
-        initialPath={channel.balanceQuery?.path ?? ""}
-        initialJsonPath={channel.balanceQuery?.jsonPath ?? ""}
+        providerCode={providerCode}
+        providerName={channel.providerName}
+        initialQuery={channel.balanceQuery ?? null}
       />
     </>
   );
@@ -461,24 +468,51 @@ function BalanceQueryDialog({
   open,
   onOpenChange,
   channelId,
-  initialPath,
-  initialJsonPath,
+  providerCode,
+  providerName,
+  initialQuery,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   channelId: string;
-  initialPath: string;
-  initialJsonPath: string;
+  /** 渠道已选服务商的 code（决定查询方式，不再手选） */
+  providerCode: string;
+  providerName: string | null;
+  initialQuery: BalanceQuery | null;
 }) {
-  const [path, setPath] = useState(initialPath);
-  const [jsonPath, setJsonPath] = useState(initialJsonPath);
+  // 查询方式由服务商派生（与后端 derive_balance_mode 同规则）
+  const mode =
+    providerCode === "newapi" ? "new_api" : providerCode === "bailian" ? "aliyun_bss" : "generic";
+  const modeLabel =
+    mode === "new_api"
+      ? "NewAPI 用户额度（用户 ID + 系统访问令牌）"
+      : mode === "aliyun_bss"
+        ? "阿里云费用中心（百炼 AccessKey）"
+        : "通用 HTTP（Bearer GET + JSON 路径）";
+
+  const [path, setPath] = useState(initialQuery?.path ?? "");
+  const [jsonPath, setJsonPath] = useState(initialQuery?.jsonPath ?? "");
+  const [currency, setCurrency] = useState(initialQuery?.currency || "CNY");
+  const [userId, setUserId] = useState(initialQuery?.userId ?? "");
+  const [systemToken, setSystemToken] = useState("");
+  const [akId, setAkId] = useState("");
+  const [akSecret, setAkSecret] = useState("");
   const [result, setResult] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function save() {
     const { setBalanceQuery } = await import("@/lib/tauri");
     try {
-      await setBalanceQuery(channelId, path.trim(), jsonPath.trim());
+      await setBalanceQuery(channelId, {
+        path: path.trim(),
+        jsonPath: jsonPath.trim(),
+        currency,
+        userId: userId.trim(),
+        // 凭证：填了才写（留空 = 保持不变；明文只进凭证文件）
+        billingAccessKeyId: akId.trim() === "" ? null : akId.trim(),
+        billingAccessKeySecret: akSecret.trim() === "" ? null : akSecret.trim(),
+        billingSystemToken: systemToken.trim() === "" ? null : systemToken.trim(),
+      });
       toast.success("余额查询配置已保存");
     } catch (error) {
       toast.error(`保存失败：${error}`);
@@ -492,7 +526,9 @@ function BalanceQueryDialog({
       const { queryChannelBalance } = await import("@/lib/tauri");
       const res = await queryChannelBalance(channelId);
       if (res.value != null) {
-        setResult(`余额：${JSON.stringify(res.value)}（HTTP ${res.httpStatus}）`);
+        setResult(
+          `余额：${res.currency ? `${res.currency} ` : ""}${JSON.stringify(res.value)}（HTTP ${res.httpStatus}）`
+        );
       } else {
         setResult(`未提取到余额（HTTP ${res.httpStatus}）\n原始片段：${res.rawSnippet ?? ""}`);
       }
@@ -503,38 +539,119 @@ function BalanceQueryDialog({
     }
   }
 
+  const queryDisabled =
+    busy || (mode === "generic" && !path.trim()) || (mode === "new_api" && !userId.trim());
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>余额查询设置</DialogTitle>
           <DialogDescription>
-            不同服务商余额接口不同（如 NewAPI
-            /dashboard/billing/subscription）。配置后可随时查询；LCM 不自动同步。
+            查询方式由渠道服务商决定（当前：{providerName ?? "自定义"}），无需选择；LCM
+            不自动同步余额。
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div className="space-y-1.5">
-            <Label>查询路径</Label>
-            <Input
-              value={path}
-              onChange={(e) => setPath(e.target.value)}
-              placeholder="/dashboard/billing/subscription 或完整 URL"
-            />
+            <Label>查询方式</Label>
+            <div className="bg-muted flex h-9 items-center rounded-md border px-3 text-sm">
+              {modeLabel}
+            </div>
           </div>
-          <div className="space-y-1.5">
-            <Label>余额 JSON 路径</Label>
-            <Input
-              value={jsonPath}
-              onChange={(e) => setJsonPath(e.target.value)}
-              placeholder="data.total_balance（点路径，支持数组下标）"
-            />
-          </div>
+
+          {mode === "new_api" ? (
+            <>
+              <div className="space-y-1.5">
+                <Label>用户 ID *</Label>
+                <Input
+                  value={userId}
+                  onChange={(e) => setUserId(e.target.value)}
+                  placeholder="对方实例的用户 ID（个人设置页可见）"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>系统访问令牌 *</Label>
+                <Input
+                  type="password"
+                  value={systemToken}
+                  onChange={(e) => setSystemToken(e.target.value)}
+                  placeholder="对方实例「系统设置」生成的访问令牌（已配置时留空 = 保持不变）"
+                />
+              </div>
+              <p className="text-muted-foreground text-xs">
+                走 {`{Base URL}`}/api/user/self 查询该用户剩余额度（Authorization =
+                系统访问令牌，New-Api-User = 用户 ID），按 $1 = 500,000 quota 折算为
+                USD。令牌存本地凭证文件，不明文展示；模型调用的渠道密钥不受影响。
+              </p>
+            </>
+          ) : mode === "aliyun_bss" ? (
+            <>
+              <div className="space-y-1.5">
+                <Label>AccessKey ID（secretId）</Label>
+                <Input
+                  value={akId}
+                  onChange={(e) => setAkId(e.target.value)}
+                  placeholder="LTAI...（已配置时留空 = 保持不变）"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>AccessKey Secret（secretKey）</Label>
+                <Input
+                  type="password"
+                  value={akSecret}
+                  onChange={(e) => setAkSecret(e.target.value)}
+                  placeholder="已配置时留空 = 保持不变"
+                />
+              </div>
+              <p className="text-muted-foreground text-xs">
+                走阿里云 BSS QueryAccountBalance（RPC V1 签名）；AccessKey 需具备费用中心读权限（bss:DescribeAccount）。密钥存本地凭证文件。
+              </p>
+            </>
+          ) : (
+            <>
+              <div className="space-y-1.5">
+                <Label>查询路径</Label>
+                <Input
+                  value={path}
+                  onChange={(e) => setPath(e.target.value)}
+                  placeholder="/dashboard/billing/subscription 或完整 URL"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>余额 JSON 路径</Label>
+                <Input
+                  value={jsonPath}
+                  onChange={(e) => setJsonPath(e.target.value)}
+                  placeholder="data.total_balance（点路径，支持数组下标）"
+                />
+              </div>
+            </>
+          )}
+
+          {mode !== "new_api" ? (
+            <div className="space-y-1.5">
+              <Label>币种（写余额快照用）</Label>
+              <Select value={currency} onValueChange={setCurrency}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="CNY">CNY（人民币）</SelectItem>
+                  <SelectItem value="USD">USD（美元）</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
           <div className="flex gap-2">
             <Button variant="outline" onClick={save}>
               保存配置
             </Button>
-            <Button onClick={query} disabled={busy || !path.trim()}>
+            <Button
+              onClick={query}
+              disabled={queryDisabled}
+              title={mode !== "generic" ? "凭证需先保存再查询" : undefined}
+            >
               <RefreshCw className="size-4" />
               {busy ? "查询中…" : "立即查询"}
             </Button>

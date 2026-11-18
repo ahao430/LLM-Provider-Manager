@@ -125,3 +125,14 @@ wire_api = "responses"
 - 依赖 `channels/`（渠道配置）、`credentials/`（Token 受控读取）。
 - 位于 `src-tauri/src/agent/launcher/`，与其他 agent 模块一样**禁止依赖 `adapters/`**（自动化测试强制）。
 - 凭证只注入子进程环境，不进入日志、快照与诊断。
+
+## 单次探针（Agent 测试）
+
+除交互式启动外，`agent/probe.rs` 提供**单次非交互调用**（测试中心「Agent 测试」）：
+
+- **Claude Code**：`claude -p <prompt> --output-format json [--model m]`，从 JSON 输出提取回复正文、session_id、耗时、成本与 token 用量（解析失败回退原始 stdout）。
+- **Codex**：`codex exec --skip-git-repo-check [-m <model>] <prompt>`，stdout 原样展示。
+- 凭证注入与 launcher 完全一致（`build_claude_launch` / `build_codex_launch` 复用）；**渠道未配置主凭证时快速失败**，不发无鉴权请求。
+- stdout / stderr 捕获上限 256KB，写入 `logs/agent-launches/{launch_id}.log`；超时 10 分钟自动 kill。
+- 只写 `agent_launches` 快照（kind=probe），**不写 request_records**——Agent 原生请求不归档为 LCM 测试记录。
+- 支持自定义 CLI 可执行文件路径（GUI 环境 PATH 与终端可能不同）。
