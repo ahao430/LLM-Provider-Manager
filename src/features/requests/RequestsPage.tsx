@@ -83,9 +83,15 @@ export function RequestsPage() {
                       <code className="text-xs">{r.model ?? "—"}</code>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline">
-                        {r.protocol ? (PROTOCOL_LABELS[r.protocol as Protocol] ?? r.protocol) : "—"}
-                      </Badge>
+                      {r.requestType === "agent_probe" ? (
+                        <Badge variant="secondary">Agent 探针</Badge>
+                      ) : (
+                        <Badge variant="outline">
+                          {r.protocol
+                            ? (PROTOCOL_LABELS[r.protocol as Protocol] ?? r.protocol)
+                            : "—"}
+                        </Badge>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Badge variant={STATUS_VARIANT[r.status] ?? "outline"}>{r.status}</Badge>

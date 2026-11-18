@@ -62,6 +62,7 @@ pub fn latest_per_channel_model(conn: &Connection) -> AppResult<Vec<LatestModelT
                   ) AS rn \
            FROM request_records \
            WHERE channel_id IS NOT NULL AND model IS NOT NULL AND model != '' \
+             AND request_type != 'agent_probe' \
          ) WHERE rn = 1",
     )?;
     let rows = stmt

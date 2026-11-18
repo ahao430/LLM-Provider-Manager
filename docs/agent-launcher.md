@@ -134,5 +134,7 @@ wire_api = "responses"
 - **Codex**：`codex exec --skip-git-repo-check [-m <model>] <prompt>`，stdout 原样展示。
 - 凭证注入与 launcher 完全一致（`build_claude_launch` / `build_codex_launch` 复用）；**渠道未配置主凭证时快速失败**，不发无鉴权请求。
 - stdout / stderr 捕获上限 256KB，写入 `logs/agent-launches/{launch_id}.log`；超时 10 分钟自动 kill。
-- 只写 `agent_launches` 快照（kind=probe），**不写 request_records**——Agent 原生请求不归档为 LCM 测试记录。
+- 每次 probe 写两处记录：`agent_launches` 快照（kind=probe）+ **一条 `request_records` 测试记录**
+  （`request_type=agent_probe`、协议标记 `agent_cli`）：Raw 归档的是 **CLI 调用参数与捕获的 stdout / stderr**，
+  即 LCM 亲自观测到的证据；**Agent 进程自行发出的原生 HTTP 请求依然不归档、不声称已被观测**。
 - 支持自定义 CLI 可执行文件路径（GUI 环境 PATH 与终端可能不同）。

@@ -62,6 +62,11 @@ pub struct ProbeOutcome {
     pub cost_usd: Option<f64>,
     pub input_tokens: Option<i64>,
     pub output_tokens: Option<i64>,
+    /// 测试记录 Raw 归档（CLI 调用参数），相对 data_dir 路径
+    pub request_ref: String,
+    /// 测试记录 Raw 归档（捕获的 stdout / stderr），相对 data_dir 路径
+    pub response_ref: String,
+    pub model: Option<String>,
 }
 
 /// 已 spawn、待等待完成的探针（运行阶段不持有数据库锁）。
@@ -71,6 +76,9 @@ pub struct PreparedProbe {
     pub agent_type: String,
     pub launch_method: String,
     pub warnings: Vec<String>,
+    pub model: Option<String>,
+    pub data_dir: PathBuf,
+    pub request_ref: String,
     stdout_pipe: Option<std::process::ChildStdout>,
     stderr_pipe: Option<std::process::ChildStderr>,
     log_path: PathBuf,
@@ -159,6 +167,25 @@ pub fn prepare(conn: &Connection, data_dir: &Path, req: &ProbeRequest) -> AppRes
         "envNames": envs.iter().map(|(k, _)| k.clone()).collect::<Vec<_>>(),
     });
 
+    // Raw 请求归档（spawn 前写好，内容为 CLI 调用参数；不含凭证值）
+    let raw_request = serde_json::json!({
+        "traceId": launch_id,
+        "kind": "agent_probe",
+        "agentType": req.agent_type,
+        "binary": bin,
+        "model": model.clone(),
+        "workingDirectory": working_dir.to_string_lossy(),
+        "prompt": req.prompt.trim(),
+        "envNames": envs.iter().map(|(k, _)| k.clone()).collect::<Vec<_>>(),
+    });
+    let request_path = crate::storage::paths::write_archive_atomic(
+        &crate::storage::paths::archive_requests_dir(data_dir),
+        &format!("{launch_id}.json"),
+        &serde_json::to_string_pretty(&raw_request)
+            .map_err(|e| AppError::Invalid(format!("Raw 请求序列化失败: {e}")))?,
+    )?;
+    let request_ref = rel_path(data_dir, &request_path);
+
     let mut child = Command::new(bin)
         .args(&args)
         .current_dir(&working_dir)
@@ -198,16 +225,37 @@ pub fn prepare(conn: &Connection, data_dir: &Path, req: &ProbeRequest) -> AppRes
         ],
     )?;
 
+    // 测试记录（request_type=agent_probe）：完成阶段回填状态与归档引用
+    crate::requests::repo::insert_pending(
+        conn,
+        &launch_id,
+        &req.channel_id,
+        None,
+        None,
+        "agent_cli",
+        "agent_probe",
+    )?;
+
     Ok(PreparedProbe {
         child,
         launch_id,
         agent_type: req.agent_type.clone(),
         launch_method: launch_method.to_string(),
         warnings,
+        model,
+        data_dir: data_dir.to_path_buf(),
+        request_ref,
         stdout_pipe,
         stderr_pipe,
         log_path,
     })
+}
+
+/// 归档相对路径（与 engine::rel_path 同规则）。
+fn rel_path(data_dir: &Path, file: &Path) -> String {
+    file.strip_prefix(data_dir)
+        .map(|p| p.to_string_lossy().replace('\\', "/"))
+        .unwrap_or_else(|_| file.to_string_lossy().into_owned())
 }
 
 /// 阶段二（锁外，阻塞）：等待进程结束（超时 kill），收集输出。
@@ -219,6 +267,9 @@ pub fn run_to_completion(prepared: PreparedProbe) -> ProbeOutcome {
         agent_type,
         launch_method: prepared_launch_method,
         warnings: prepared_warnings,
+        model: prepared_model,
+        data_dir: prepared_data_dir,
+        request_ref: prepared_request_ref,
         stdout_pipe,
         stderr_pipe,
         log_path,
@@ -282,7 +333,47 @@ pub fn run_to_completion(prepared: PreparedProbe) -> ProbeOutcome {
     let log_text = format!(
         "# agent probe {launch_id}\n# status: {status_kind}  exit_code: {exit_code:?}  duration_ms: {duration_ms}\n\n--- stdout ---\n{stdout}\n\n--- stderr ---\n{stderr}\n"
     );
-    let _ = fs::write(&log_path, log_text);
+    let _ = fs::write(&log_path, &log_text);
+
+    // Raw 响应归档：捕获到的 stdout / stderr 是 LCM 真实观测到的证据
+    let raw_response = serde_json::json!({
+        "kind": "agent_probe",
+        "status": status_kind,
+        "exitCode": exit_code,
+        "durationMs": duration_ms,
+        "result": result,
+        "stdout": stdout,
+        "stderr": stderr,
+        "sessionId": session_id,
+        "agentDurationMs": agent_duration_ms,
+        "costUsd": cost_usd,
+        "inputTokens": input_tokens,
+        "outputTokens": output_tokens,
+    });
+    // 归档失败不阻断结果：留痕日志、把告警带给前端，记录仍会落库（response_ref 为空）
+    let raw_response_text = serde_json::to_string_pretty(&raw_response).unwrap_or_default();
+    let (response_ref, archive_note) = if raw_response_text.is_empty() {
+        (String::new(), Some("响应归档失败（序列化）".to_string()))
+    } else {
+        match crate::storage::paths::write_archive_atomic(
+            &crate::storage::paths::archive_responses_dir(&prepared_data_dir),
+            &format!("{launch_id}.json"),
+            &raw_response_text,
+        ) {
+            Ok(path) => (rel_path(&prepared_data_dir, &path), None),
+            Err(e) => {
+                let _ = fs::write(
+                    &log_path,
+                    format!("{log_text}\n# response archive failed: {e}\n"),
+                );
+                (String::new(), Some(format!("响应归档失败: {e}")))
+            }
+        }
+    };
+    let mut final_warnings = prepared_warnings;
+    if let Some(note) = archive_note {
+        final_warnings.push(note);
+    }
 
     ProbeOutcome {
         launch_id,
@@ -294,21 +385,78 @@ pub fn run_to_completion(prepared: PreparedProbe) -> ProbeOutcome {
         stdout,
         stderr,
         duration_ms,
-        warnings: prepared_warnings,
+        warnings: final_warnings,
         log_file: prepared_log_file,
         session_id,
         agent_duration_ms,
         cost_usd,
         input_tokens,
         output_tokens,
+        request_ref: prepared_request_ref,
+        response_ref,
+        model: prepared_model,
     }
 }
 
-/// 阶段三（锁内）：回填 exited_at。
-pub fn finish(conn: &Connection, launch_id: &str) -> AppResult<()> {
+/// 阶段三（锁内）：回填 agent_launches.exited_at 与测试记录（request_records）状态。
+///
+/// 归档红线说明：这里记录的是 **LCM 亲自观测到的探针运行**（CLI 调用与捕获的
+/// stdout / stderr），不是 Agent 进程自行发出的原生 HTTP 请求——后者依然不归档、
+/// 不声称已被观测。
+pub fn finish(conn: &Connection, outcome: &ProbeOutcome) -> AppResult<()> {
+    // agent_launches 生命周期回填
     conn.execute(
         "UPDATE agent_launches SET exited_at = ?1 WHERE launch_id = ?2",
-        params![now_rfc3339(), launch_id],
+        params![now_rfc3339(), outcome.launch_id],
+    )?;
+
+    // 测试记录回填：状态映射到 CHECK 允许值（success / failed），
+    // 失败原因放 error_code / error_message，正文与原始输出以归档为准。
+    let (status, error_code, error_message) = match outcome.status.as_str() {
+        "success" => ("success", None, None),
+        "timeout" => (
+            "failed",
+            Some("PROBE_TIMEOUT"),
+            Some("探针超时（10 分钟），进程已终止".to_string()),
+        ),
+        "spawn_error" => (
+            "failed",
+            Some("PROBE_SPAWN_ERROR"),
+            Some("CLI 进程启动失败".to_string()),
+        ),
+        _ => (
+            "failed",
+            Some("PROBE_EXIT_NONZERO"),
+            Some(
+                outcome
+                    .stderr
+                    .chars()
+                    .take(200)
+                    .collect::<String>()
+                    .trim()
+                    .to_string(),
+            ),
+        ),
+    };
+    conn.execute(
+        "UPDATE request_records \
+         SET status = ?2, error_code = ?3, error_message = ?4, request_ref = ?5, \
+             response_ref = ?6, duration_ms = ?7, input_tokens = ?8, output_tokens = ?9, \
+             model = ?10, completed_at = ?11 \
+         WHERE trace_id = ?1",
+        params![
+            outcome.launch_id,
+            status,
+            error_code,
+            error_message,
+            outcome.request_ref,
+            outcome.response_ref,
+            outcome.duration_ms,
+            outcome.input_tokens,
+            outcome.output_tokens,
+            outcome.model,
+            now_rfc3339()
+        ],
     )?;
     Ok(())
 }

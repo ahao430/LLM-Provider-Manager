@@ -66,16 +66,12 @@ pub async fn run_agent_probe(
         probe::prepare(&conn, &state.data_dir, &req)?
     }; // 锁释放后再等待进程结束
 
-    let (outcome, launch_id) = tauri::async_runtime::spawn_blocking(move || {
-        let outcome = probe::run_to_completion(prepared);
-        let launch_id = outcome.launch_id.clone();
-        (outcome, launch_id)
-    })
-    .await
-    .map_err(|e| crate::error::AppError::Invalid(format!("探针任务失败: {e}")))?;
+    let outcome = tauri::async_runtime::spawn_blocking(move || probe::run_to_completion(prepared))
+        .await
+        .map_err(|e| crate::error::AppError::Invalid(format!("探针任务失败: {e}")))?;
 
     let conn = lock_db(&state)?;
-    probe::finish(&conn, &launch_id)?;
+    probe::finish(&conn, &outcome)?;
     Ok(outcome)
 }
 

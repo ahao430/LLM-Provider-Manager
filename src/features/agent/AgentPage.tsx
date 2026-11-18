@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { FolderOpen, Loader2, Rocket, Terminal } from "lucide-react";
@@ -290,6 +291,7 @@ function ProbeResultCard({
 }: {
   outcome: AgentProbeOutcome | null;
 }) {
+  const navigate = useNavigate();
   if (!outcome) {
     return (
       <Card>
@@ -344,6 +346,13 @@ function ProbeResultCard({
             </span>
           ) : null}
           {outcome.sessionId ? <span className="font-mono">session {outcome.sessionId.slice(0, 8)}…</span> : null}
+          <button
+            type="button"
+            className="text-primary hover:underline"
+            onClick={() => navigate(`/requests/${outcome.launchId}`)}
+          >
+            测试记录 →
+          </button>
         </div>
         {outcome.stderr ? (
           <details>

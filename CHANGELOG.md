@@ -4,6 +4,12 @@
 
 遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 格式，版本策略见 [AGENTS.md](./AGENTS.md)：每次改动第三位 +1（patch），较大改动第二位 +1（minor），第一位仅在维护者要求时升级。
 
+## [0.14.1] - 2026-11-19
+
+### 新增
+
+- **真实 Agent 探针现在会写入测试记录**：每次调用写入一条 `request_records`（`request_type=agent_probe`，协议标记 `agent_cli`），完成时回填状态（success / failed）、总耗时、token 用量（claude）与失败原因（PROBE_TIMEOUT / PROBE_EXIT_NONZERO / PROBE_SPAWN_ERROR + stderr 摘要）。Raw 归档为 CLI 调用参数（请求侧）与捕获的 stdout / stderr（响应侧）——记录的是 **LCM 亲自观测到的探针运行**，Agent 进程自行发出的原生 HTTP 请求依然不归档、不声称已被观测。测试记录列表以「Agent 探针」徽章区分；结果卡片新增「测试记录 →」跳转；模型列表「最近测试」不统计探针记录。
+
 ## [0.14.0] - 2026-11-19
 
 ### 变更（较大改动，第二位 +1）
