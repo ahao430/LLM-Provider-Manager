@@ -1,0 +1,1069 @@
+import { Channel, invoke } from "@tauri-apps/api/core";
+
+/** 应用基础信息（Tauri command: get_app_info） */
+export interface AppInfo {
+  name: string;
+  version: string;
+  dataDir: string;
+}
+
+/** 数据库表统计（Tauri command: get_database_stats） */
+export interface TableStat {
+  table: string;
+  rows: number;
+}
+
+export function getAppInfo(): Promise<AppInfo> {
+  return invoke<AppInfo>("get_app_info");
+}
+
+export function getDatabaseStats(): Promise<TableStat[]> {
+  return invoke<TableStat[]>("get_database_stats");
+}
+
+// ------------------------------------------------------------------
+// 渠道管理
+// ------------------------------------------------------------------
+
+export type Protocol = "openai_chat" | "openai_responses" | "anthropic_messages";
+export const PROTOCOL_LABELS: Record<Protocol, string> = {
+  openai_chat: "OpenAI Chat Completions",
+  openai_responses: "OpenAI Responses",
+  anthropic_messages: "Anthropic Messages",
+};
+
+export interface ProviderRow {
+  id: string;
+  code: string;
+  name: string;
+  notes: string | null;
+}
+
+export interface ProviderTemplate {
+  code: string;
+  name: string;
+  defaultBaseUrl: string;
+  defaultProtocol: Protocol;
+  note: string;
+}
+
+export interface ExternalLinkInput {
+  label: string;
+  url: string;
+  kind: string;
+}
+
+export interface ChannelInput {
+  name: string;
+  providerId: string | null;
+  chatBaseUrl: string;
+  anthropicBaseUrl: string | null;
+  responsesBaseUrl: string | null;
+  officialUrl: string | null;
+  notes: string | null;
+  primaryCredential: string | null;
+}
+
+export interface ProtocolUrls {
+  openaiChat: string;
+  anthropicMessages: string;
+  openaiResponses: string;
+}
+
+export interface ChannelRow {
+  id: string;
+  name: string;
+  providerId: string | null;
+  providerName: string | null;
+  channelType: string;
+  /** 兼容旧字段 = chatBaseUrl */
+  baseUrl: string;
+  chatBaseUrl: string;
+  anthropicBaseUrl: string;
+  responsesBaseUrl: string;
+  effectiveUrls: ProtocolUrls;
+  enabled: boolean;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  hasPrimaryCredential: boolean;
+  primaryCredentialMasked: string | null;
+}
+
+export interface BalanceQuery {
+  path: string;
+  jsonPath: string;
+}
+
+export interface ChannelDetail extends ChannelRow {
+  tlsVerify: boolean;
+  externalLinks: ExternalLinkInput[];
+  balanceQuery: BalanceQuery | null;
+}
+
+export function listProviders(): Promise<ProviderRow[]> {
+  return invoke<ProviderRow[]>("list_providers");
+}
+
+export function getProviderTemplates(): Promise<ProviderTemplate[]> {
+  return invoke<ProviderTemplate[]>("provider_templates");
+}
+
+export function listChannels(): Promise<ChannelRow[]> {
+  return invoke<ChannelRow[]>("list_channels");
+}
+
+export function getChannel(id: string): Promise<ChannelDetail> {
+  return invoke<ChannelDetail>("get_channel", { id });
+}
+
+export function createChannel(input: ChannelInput): Promise<ChannelRow> {
+  return invoke<ChannelRow>("create_channel", { input });
+}
+
+export function updateChannel(id: string, input: ChannelInput): Promise<ChannelRow> {
+  return invoke<ChannelRow>("update_channel", { id, input });
+}
+
+export function deleteChannel(id: string): Promise<void> {
+  return invoke<void>("delete_channel", { id });
+}
+
+export function setChannelEnabled(id: string, enabled: boolean): Promise<void> {
+  return invoke<void>("set_channel_enabled", { id, enabled });
+}
+
+// ------------------------------------------------------------------
+// 凭证（受控）
+// ------------------------------------------------------------------
+
+export type CredentialKind = "primary" | `header:${string}`;
+
+export function setChannelCredential(channelId: string, kind: CredentialKind, value: string): Promise<void> {
+  return invoke<void>("set_channel_credential", { channelId, kind, value });
+}
+
+export function revealChannelCredential(channelId: string, kind: CredentialKind): Promise<string | null> {
+  return invoke<string | null>("reveal_channel_credential", { channelId, kind });
+}
+
+export function clearChannelCredential(channelId: string, kind: CredentialKind): Promise<void> {
+  return invoke<void>("clear_channel_credential", { channelId, kind });
+}
+
+// ------------------------------------------------------------------
+// Agent 兼容性
+// ------------------------------------------------------------------
+
+export type AgentCompatStatus = "supported" | "unsupported" | "unverified";
+
+export interface AgentCompatRow {
+  id: string;
+  channelId: string;
+  agent: string;
+  status: AgentCompatStatus;
+  evidence: string | null;
+  testedAt: string | null;
+  notes: string | null;
+  updatedAt: string;
+}
+
+export function listAgentCompat(channelId: string): Promise<AgentCompatRow[]> {
+  return invoke<AgentCompatRow[]>("list_agent_compat", { channelId });
+}
+
+export function upsertAgentCompat(
+  channelId: string,
+  agent: string,
+  status: AgentCompatStatus,
+  evidence: string | null,
+  notes: string | null
+): Promise<AgentCompatRow> {
+  return invoke<AgentCompatRow>("upsert_agent_compat", { channelId, agent, status, evidence, notes });
+}
+
+// ------------------------------------------------------------------
+// Agent 启动器
+// ------------------------------------------------------------------
+
+export type AgentType = "claude_code_cli" | "codex_cli";
+
+export const AGENT_LABELS: Record<AgentType, string> = {
+  claude_code_cli: "Claude Code CLI",
+  codex_cli: "Codex CLI",
+};
+
+export interface LaunchRequest {
+  agentType: AgentType;
+  channelId: string;
+  model: string | null;
+  workingDirectory: string;
+}
+
+export interface LaunchOutcome {
+  launchId: string;
+  agentType: AgentType;
+  launchMethod: string;
+  baseUrl: string;
+  model: string | null;
+  processId: number;
+  logFile: string;
+  warnings: string[];
+}
+
+export interface AgentLaunchRow {
+  launchId: string;
+  agentType: string;
+  channelId: string | null;
+  channelName: string | null;
+  workingDirectory: string | null;
+  launchMethod: string;
+  baseUrl: string | null;
+  model: string | null;
+  processId: number | null;
+  startedAt: string;
+  exitedAt: string | null;
+}
+
+export function launchAgent(req: LaunchRequest): Promise<LaunchOutcome> {
+  return invoke<LaunchOutcome>("launch_agent", { req });
+}
+
+export function listAgentLaunches(limit?: number): Promise<AgentLaunchRow[]> {
+  return invoke<AgentLaunchRow[]>("list_agent_launches", { limit: limit ?? 50 });
+}
+
+// ------------------------------------------------------------------
+// 模型与价格（Phase 2）
+// ------------------------------------------------------------------
+
+export type CapabilityStatus = "supported" | "unsupported" | "unknown";
+
+export interface GlobalModelRow {
+  id: string;
+  name: string;
+  family: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  channelModelCount: number;
+}
+
+export type ModelType = "multimodal" | "image" | "text" | "decision";
+
+export const MODEL_TYPE_LABELS: Record<ModelType, string> = {
+  multimodal: "多模态",
+  image: "图像",
+  text: "文本",
+  decision: "决策",
+};
+
+export interface ChannelModelRow {
+  id: string;
+  channelId: string;
+  modelId: string;
+  modelName: string | null;
+  actualModelId: string;
+  protocol: Protocol;
+  modelType: ModelType;
+  enabled: boolean;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  /** 标注价格（每百万 token；null = 未标注）。仅展示比较用，不参与费用估算。 */
+  priceInputPer1m: number | null;
+  priceOutputPer1m: number | null;
+  /** 空字符串 = 未标注 */
+  priceCurrency: string;
+}
+
+export interface ChannelModelInput {
+  id: string | null;
+  channelId: string;
+  modelId: string;
+  actualModelId: string;
+  protocol: Protocol;
+  modelType: ModelType | null;
+  notes: string | null;
+  enabled: boolean | null;
+  /** 标注价格：整行覆盖保存，编辑其他字段时须回传现有值 */
+  priceInputPer1m: number | null;
+  priceOutputPer1m: number | null;
+  priceCurrency: string | null;
+}
+
+export interface RemoteModel {
+  id: string;
+  displayName: string | null;
+}
+
+/** 全渠道模型视图行（模型列表页按模型聚合用）。 */
+export interface AllChannelModelRow {
+  id: string;
+  channelId: string;
+  channelName: string;
+  channelEnabled: boolean;
+  modelId: string;
+  actualModelId: string;
+  protocol: Protocol;
+  modelType: ModelType;
+  enabled: boolean;
+  priceInputPer1m: number | null;
+  priceOutputPer1m: number | null;
+  priceCurrency: string;
+}
+
+export interface RemoteModelList {
+  channelId: string;
+  url: string;
+  httpStatus: number;
+  models: RemoteModel[];
+  note: string | null;
+}
+
+export interface ImportItem {
+  actualModelId: string;
+}
+
+export interface ImportOutcome {
+  created: string[];
+  skipped: { actualModelId: string; reason: string }[];
+}
+
+export interface ModelPriceRow {
+  id: string;
+  channelModelId: string;
+  inputPrice: number | null;
+  outputPrice: number | null;
+  cacheReadPrice: number | null;
+  cacheWritePrice: number | null;
+  imagePrice: number | null;
+  otherUsagePrice: number | null;
+  currency: string;
+  pricingUnit: string;
+  discountPercent: number | null;
+  effectiveDate: string;
+  notes: string | null;
+  createdAt: string;
+}
+
+export interface AddPriceInput {
+  channelModelId: string;
+  inputPrice: number | null;
+  outputPrice: number | null;
+  cacheReadPrice: number | null;
+  cacheWritePrice: number | null;
+  imagePrice: number | null;
+  otherUsagePrice: number | null;
+  currency: string;
+  pricingUnit: string;
+  discountPercent: number | null;
+  effectiveDate: string;
+  notes: string | null;
+}
+
+export interface DiscountedPrices {
+  input: number | null;
+  output: number | null;
+  cacheRead: number | null;
+  cacheWrite: number | null;
+  image: number | null;
+  otherUsage: number | null;
+}
+
+export interface EffectivePrice extends ModelPriceRow {
+  discounted: DiscountedPrices;
+}
+
+export function listGlobalModels(): Promise<GlobalModelRow[]> {
+  return invoke<GlobalModelRow[]>("list_global_models");
+}
+
+export function createGlobalModel(name: string, family: string | null): Promise<GlobalModelRow> {
+  return invoke<GlobalModelRow>("create_global_model", { name, family });
+}
+
+export function renameGlobalModel(id: string, name: string, family: string | null): Promise<void> {
+  return invoke<void>("rename_global_model", { id, name, family });
+}
+
+export function deleteGlobalModel(id: string): Promise<void> {
+  return invoke<void>("delete_global_model", { id });
+}
+
+export function listChannelModels(channelId: string): Promise<ChannelModelRow[]> {
+  return invoke<ChannelModelRow[]>("list_channel_models", { channelId });
+}
+
+export function upsertChannelModel(input: ChannelModelInput): Promise<ChannelModelRow> {
+  return invoke<ChannelModelRow>("upsert_channel_model", { input });
+}
+
+export function deleteChannelModel(id: string): Promise<void> {
+  return invoke<void>("delete_channel_model", { id });
+}
+
+export function listAllChannelModels(): Promise<AllChannelModelRow[]> {
+  return invoke<AllChannelModelRow[]>("list_all_channel_models");
+}
+
+export function fetchChannelModelList(channelId: string): Promise<RemoteModelList> {
+  return invoke<RemoteModelList>("fetch_channel_model_list", { channelId });
+}
+
+export function importChannelModels(
+  channelId: string,
+  protocol: Protocol,
+  items: ImportItem[]
+): Promise<ImportOutcome> {
+  return invoke<ImportOutcome>("import_channel_models", { channelId, protocol, items });
+}
+
+export function listModelPrices(channelModelId: string): Promise<ModelPriceRow[]> {
+  return invoke<ModelPriceRow[]>("list_model_prices", { channelModelId });
+}
+
+export function getEffectivePrice(channelModelId: string): Promise<EffectivePrice | null> {
+  return invoke<EffectivePrice | null>("get_effective_price", { channelModelId });
+}
+
+export function addModelPrice(input: AddPriceInput): Promise<string> {
+  return invoke<string>("add_model_price", { input });
+}
+
+export function deleteModelPrice(id: string): Promise<void> {
+  return invoke<void>("delete_model_price", { id });
+}
+
+// ------------------------------------------------------------------
+// API 测试工作台（Phase 3）
+// ------------------------------------------------------------------
+
+export interface ApiTestMessagePayload {
+  role: string;
+  content: string;
+}
+
+export interface ApiTestRequestPayload {
+  channelId: string;
+  channelModelId: string | null;
+  model: string;
+  protocol: Protocol;
+  stream: boolean;
+  system: string | null;
+  messages: ApiTestMessagePayload[];
+  params: {
+    temperature: number | null;
+    topP: number | null;
+    maxTokens: number | null;
+    stop: string[];
+  };
+  extraBody: unknown | null;
+  customHeaders: [string, string][];
+  customQuery: [string, string][];
+  rawJson: unknown | null;
+}
+
+export type ApiTestStreamEvent =
+  | { type: "delta"; index: number; delta: string; rawBlock: string }
+  | { type: "status"; message: string };
+
+export interface ToolCallPreview {
+  id: string | null;
+  name: string | null;
+  arguments: string;
+}
+
+export interface UsagePreview {
+  input: number | null;
+  output: number | null;
+  cacheRead: number | null;
+}
+
+export interface ResponsePreview {
+  text: string;
+  thinking: string;
+  toolCalls: ToolCallPreview[];
+  finish: string | null;
+  usage: UsagePreview | null;
+  providerRequestId: string | null;
+  error: unknown | null;
+}
+
+export interface TestRunResult {
+  traceId: string;
+  status: string;
+  httpStatus: number | null;
+  preview: ResponsePreview;
+  requestRef: string | null;
+  responseRef: string | null;
+  ttfbMs: number | null;
+  ttftMs: number | null;
+  durationMs: number | null;
+  tokensPerSecond: number | null;
+  warnings: string[];
+}
+
+export interface RequestRecordRow {
+  traceId: string;
+  parentTraceId: string | null;
+  channelId: string | null;
+  channelName: string | null;
+  channelModelId: string | null;
+  model: string | null;
+  protocol: string | null;
+  requestType: string | null;
+  status: string;
+  requestRef: string | null;
+  responseRef: string | null;
+  errorCode: string | null;
+  errorMessage: string | null;
+  providerRequestId: string | null;
+  httpStatus: number | null;
+  ttfbMs: number | null;
+  ttftMs: number | null;
+  durationMs: number | null;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  cacheTokens: number | null;
+  tokensPerSecond: number | null;
+  createdAt: string;
+  completedAt: string | null;
+}
+
+export interface ProcessingEventRow {
+  eventId: string;
+  traceId: string;
+  stage: string;
+  operation: string;
+  status: string;
+  changed: boolean;
+  description: string | null;
+  metadataJson: string | null;
+  createdAt: string;
+}
+
+export interface TestRecordDetail extends RequestRecordRow {
+  processingEvents: ProcessingEventRow[];
+}
+
+function tauriChannel(onEvent: (event: ApiTestStreamEvent) => void): unknown {
+  const channel = new Channel<ApiTestStreamEvent>();
+  channel.onmessage = onEvent;
+  return channel;
+}
+
+export function sendTestRequest(req: ApiTestRequestPayload): Promise<TestRunResult> {
+  return invoke<TestRunResult>("send_test_request", { req });
+}
+
+export async function sendTestStream(
+  req: ApiTestRequestPayload,
+  onEvent?: (event: ApiTestStreamEvent) => void
+): Promise<TestRunResult> {
+  const onEventChannel = onEvent ? await tauriChannel(onEvent) : undefined;
+  return invoke<TestRunResult>("send_test_stream", { req, onEvent: onEventChannel });
+}
+
+export function listTestRecords(limit?: number): Promise<RequestRecordRow[]> {
+  return invoke<RequestRecordRow[]>("list_test_records", { limit: limit ?? 100 });
+}
+
+export function getTestRecord(traceId: string): Promise<TestRecordDetail> {
+  return invoke<TestRecordDetail>("get_test_record", { traceId });
+}
+
+export function getTestRaw(traceId: string, kind: "request" | "response"): Promise<string> {
+  return invoke<string>("get_test_raw", { traceId, kind });
+}
+
+export function reparseTestResponse(traceId: string): Promise<ResponsePreview> {
+  return invoke<ResponsePreview>("reparse_test_response", { traceId });
+}
+
+// ------------------------------------------------------------------
+// Dashboard 与重放（Phase 5）
+// ------------------------------------------------------------------
+
+export interface CurrencyAmount {
+  currency: string;
+  amount: number;
+}
+
+export interface MonthRequests {
+  month: string;
+  total: number;
+  success: number;
+}
+
+export interface MonthCost {
+  month: string;
+  currency: string;
+  amount: number;
+}
+
+export interface DashboardStats {
+  channelTotal: number;
+  channelEnabled: number;
+  globalModels: number;
+  channelModels: number;
+  requests: { total: number; success: number; failed: number; pending: number };
+  tokensInput: number;
+  tokensOutput: number;
+  tokensCache: number;
+  estimatedCosts: CurrencyAmount[];
+  rechargeTotals: CurrencyAmount[];
+  rechargeCount: number;
+  billTotals: CurrencyAmount[];
+  monthlyRequests: MonthRequests[];
+  monthlyCosts: MonthCost[];
+  recentRequests: RequestRecordRow[];
+  recentErrors: RequestRecordRow[];
+}
+
+export function getDashboardStats(): Promise<DashboardStats> {
+  return invoke<DashboardStats>("get_dashboard_stats");
+}
+
+export function replayTestRequest(traceId: string): Promise<TestRunResult> {
+  return invoke<TestRunResult>("replay_test_request", { traceId });
+}
+
+// ------------------------------------------------------------------
+// 画图工作台（Phase 4）
+// ------------------------------------------------------------------
+
+export interface ImageGenRequestPayload {
+  channelId: string;
+  model: string;
+  prompt: string;
+  size: string | null;
+  n: number | null;
+  responseFormat: string | null;
+  extraBody: unknown | null;
+  customHeaders: [string, string][];
+}
+
+export interface ArchivedImage {
+  filePath: string | null;
+  url: string | null;
+  revisedPrompt: string | null;
+}
+
+export interface ImageGenResult {
+  traceId: string;
+  status: string;
+  httpStatus: number | null;
+  images: ArchivedImage[];
+  error: unknown | null;
+  rawResponseRef: string | null;
+  usageNote: string | null;
+}
+
+export interface VisionImagePayload {
+  /** url | base64 */
+  kind: string;
+  /** url 地址或纯 base64（无 data: 前缀） */
+  value: string;
+  mediaType: string | null;
+}
+
+export interface VisionRequestPayload {
+  channelId: string;
+  model: string;
+  protocol: "openai_chat" | "anthropic_messages";
+  system: string | null;
+  text: string;
+  images: VisionImagePayload[];
+  maxTokens: number | null;
+  customHeaders: [string, string][];
+}
+
+export function generateImage(req: ImageGenRequestPayload): Promise<ImageGenResult> {
+  return invoke<ImageGenResult>("generate_image", { req });
+}
+
+export function sendVisionRequest(req: VisionRequestPayload): Promise<TestRunResultShape> {
+  return invoke<TestRunResultShape>("send_vision_request", { req });
+}
+
+export function readArchivedImage(relPath: string): Promise<string> {
+  return invoke<string>("read_archived_image", { relPath });
+}
+
+// ------------------------------------------------------------------
+// 资金与账单（Phase 6）
+// ------------------------------------------------------------------
+
+export interface RechargeRow {
+  id: string;
+  channelId: string;
+  channelName: string | null;
+  amount: number;
+  currency: string;
+  paymentMethod: string | null;
+  transactionId: string | null;
+  rechargedAt: string;
+  notes: string | null;
+  createdAt: string;
+}
+
+export interface RechargeInput {
+  channelId: string;
+  amount: number;
+  currency: string;
+  paymentMethod: string | null;
+  transactionId: string | null;
+  rechargedAt: string;
+  notes: string | null;
+}
+
+export interface BillRow {
+  id: string;
+  channelId: string;
+  channelName: string | null;
+  billingPeriod: string;
+  amount: number;
+  currency: string;
+  source: string;
+  notes: string | null;
+  createdAt: string;
+}
+
+export interface BalanceSnapshotRow {
+  id: string;
+  channelId: string;
+  channelName: string | null;
+  balance: number;
+  currency: string;
+  capturedAt: string;
+  notes: string | null;
+  createdAt: string;
+}
+
+export interface CurrencyAmount {
+  currency: string;
+  amount: number;
+}
+
+export interface ChannelFunds {
+  rechargeTotals: CurrencyAmount[];
+  rechargeCount: number;
+  billTotals: CurrencyAmount[];
+  estimatedBalance: { currency: string; amount: number }[];
+  latestBalanceSnapshots: BalanceSnapshotRow[];
+}
+
+export function listRecharges(channelId?: string): Promise<RechargeRow[]> {
+  return invoke<RechargeRow[]>("list_recharges", { channelId: channelId ?? null });
+}
+
+export function addRecharge(input: RechargeInput): Promise<string> {
+  return invoke<string>("add_recharge", { input });
+}
+
+export function updateRecharge(id: string, input: RechargeInput): Promise<void> {
+  return invoke<void>("update_recharge", { id, input });
+}
+
+export function deleteRecharge(id: string): Promise<void> {
+  return invoke<void>("delete_recharge", { id });
+}
+
+export function listBills(channelId?: string): Promise<BillRow[]> {
+  return invoke<BillRow[]>("list_bills", { channelId: channelId ?? null });
+}
+
+export function addBill(params: {
+  channelId: string;
+  billingPeriod: string;
+  amount: number;
+  currency: string;
+  source: string | null;
+  notes: string | null;
+}): Promise<string> {
+  return invoke<string>("add_bill", params);
+}
+
+export function deleteBill(id: string): Promise<void> {
+  return invoke<void>("delete_bill", { id });
+}
+
+export function listBalanceSnapshots(channelId?: string): Promise<BalanceSnapshotRow[]> {
+  return invoke<BalanceSnapshotRow[]>("list_balance_snapshots", { channelId: channelId ?? null });
+}
+
+export function addBalanceSnapshot(params: {
+  channelId: string;
+  balance: number;
+  currency: string;
+  capturedAt: string;
+  notes: string | null;
+}): Promise<string> {
+  return invoke<string>("add_balance_snapshot", params);
+}
+
+export function deleteBalanceSnapshot(id: string): Promise<void> {
+  return invoke<void>("delete_balance_snapshot", { id });
+}
+
+export function getChannelFunds(channelId: string): Promise<ChannelFunds> {
+  return invoke<ChannelFunds>("get_channel_funds", { channelId });
+}
+
+// ------------------------------------------------------------------
+// 备份与维护（Phase 7）
+// ------------------------------------------------------------------
+
+export interface BackupSummary {
+  filePath: string;
+  bytes: number;
+  archivedFiles: number;
+  includesCredentials: boolean;
+}
+
+export interface RestoreSummary {
+  restoredDb: boolean;
+  restoredFiles: number;
+  restoredCredentials: number;
+  credentialErrors: string[];
+  preRestoreBackupDir: string;
+  restartRequired: boolean;
+}
+
+export interface ConsistencyReport {
+  archiveFiles: number;
+  referencedFiles: number;
+  missingFiles: string[];
+  orphanFiles: string[];
+  orphanBytes: number;
+}
+
+export interface CleanupSummary {
+  deletedRecords: number;
+  deletedFiles: number;
+  before: string;
+}
+
+export function createBackup(params: {
+  targetPath: string;
+  password: string;
+  includeCredentials: boolean;
+}): Promise<BackupSummary> {
+  return invoke<BackupSummary>("create_backup", params);
+}
+
+export function restoreBackup(params: {
+  backupPath: string;
+  password: string;
+}): Promise<RestoreSummary> {
+  return invoke<RestoreSummary>("restore_backup", params);
+}
+
+export function checkArchiveConsistency(): Promise<ConsistencyReport> {
+  return invoke<ConsistencyReport>("check_archive_consistency");
+}
+
+export function cleanupOldData(before: string): Promise<CleanupSummary> {
+  return invoke<CleanupSummary>("cleanup_old_data", { before });
+}
+
+// ------------------------------------------------------------------
+// 内嵌 Agent（Phase 8 前置）
+// ------------------------------------------------------------------
+
+export type AgentMode = "claude_code" | "codex";
+
+export const AGENT_MODE_LABELS: Record<AgentMode, string> = {
+  claude_code: "Claude Code",
+  codex: "Codex",
+};
+
+export interface ConversationRow {
+  id: string;
+  title: string;
+  mode: AgentMode;
+  channelId: string;
+  channelModelId: string | null;
+  model: string;
+  protocol: "openai_chat" | "anthropic_messages";
+  system: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ConversationInput {
+  channelId: string;
+  channelModelId: string | null;
+  model: string;
+  mode: AgentMode;
+  system: string | null;
+}
+
+export interface AgentMessageRow {
+  id: string;
+  conversationId: string;
+  role: "user" | "assistant";
+  content: string;
+  traceId: string | null;
+  createdAt: string;
+}
+
+export interface AgentReply {
+  traceId: string;
+  conversationId: string;
+  userMessageId: string;
+  assistantMessageId: string;
+  text: string;
+  status: string;
+  httpStatus: number | null;
+  usage: UsagePreview | null;
+}
+
+export function listConversations(): Promise<ConversationRow[]> {
+  return invoke<ConversationRow[]>("list_conversations");
+}
+
+export function createConversation(input: ConversationInput): Promise<ConversationRow> {
+  return invoke<ConversationRow>("create_conversation", { input });
+}
+
+export function deleteConversation(id: string): Promise<void> {
+  return invoke<void>("delete_conversation", { id });
+}
+
+export function listAgentMessages(conversationId: string): Promise<AgentMessageRow[]> {
+  return invoke<AgentMessageRow[]>("list_agent_messages", { conversationId });
+}
+
+export function sendAgentMessage(
+  req: { conversationId: string; content: string },
+  onEvent?: (event: ApiTestStreamEvent) => void
+): Promise<AgentReply> {
+  const onEventChannel = onEvent ? tauriChannel(onEvent) : undefined;
+  return invoke<AgentReply>("send_agent_message", { input: req, onEvent: onEventChannel });
+}
+
+type TestRunResultShape = {
+  traceId: string;
+  status: string;
+  httpStatus: number | null;
+  preview: ResponsePreview;
+};
+
+// ------------------------------------------------------------------
+// 快速测试 / 图片编辑 / 余额查询
+// ------------------------------------------------------------------
+
+export interface QuickTestResult {
+  traceId: string;
+  text: string;
+  status: string;
+  httpStatus: number | null;
+  usage: UsagePreview | null;
+}
+
+export function quickTestChannel(
+  channelId: string,
+  protocol: Protocol,
+  model?: string
+): Promise<QuickTestResult> {
+  return invoke<QuickTestResult>("quick_test_channel", {
+    channelId,
+    protocol,
+    model: model ?? null,
+  });
+}
+
+/** 复制渠道主凭证到系统剪贴板（后端 keyring 读取，明文不进 UI）。 */
+export function copyChannelCredential(channelId: string): Promise<void> {
+  return invoke<void>("copy_channel_credential", { channelId });
+}
+
+export interface ImageEditRequestPayload {
+  channelId: string;
+  model: string;
+  prompt: string;
+  imageBase64: string;
+  imageMime: string;
+  maskBase64: string | null;
+  size: string | null;
+  n: number | null;
+}
+
+export function editImage(req: ImageEditRequestPayload): Promise<ImageGenResult> {
+  return invoke<ImageGenResult>("edit_image", { req });
+}
+
+export function setBalanceQuery(channelId: string, path: string, jsonPath: string): Promise<void> {
+  return invoke<void>("set_balance_query", { channelId, path, jsonPath });
+}
+
+export interface BalanceResult {
+  url: string;
+  httpStatus: number | null;
+  jsonPath: string;
+  value: unknown;
+  rawSnippet: string | null;
+}
+
+export function queryChannelBalance(channelId: string): Promise<BalanceResult> {
+  return invoke<BalanceResult>("query_channel_balance", { channelId });
+}
+
+// ------------------------------------------------------------------
+// 市场信息（内置价格快照 + 渠道标注价对比）
+// ------------------------------------------------------------------
+
+export interface MarketModel {
+  model: string;
+  modelType: ModelType;
+  inputPer1m: number | null;
+  cachedInputPer1m: number | null;
+  outputPer1m: number | null;
+  currency: string;
+  note: string | null;
+}
+
+export interface MarketProvider {
+  id: string;
+  name: string;
+  /** global / cn */
+  region: string;
+  pricingUrl: string;
+  models: MarketModel[];
+}
+
+export interface MarketSnapshot {
+  snapshotDate: string;
+  /** bundled（内置快照）或 models.dev（应用内抓取） */
+  source: string;
+  /** 抓取/生成时间（RFC3339） */
+  fetchedAt: string | null;
+  providers: MarketProvider[];
+}
+
+export function listMarketPrices(): Promise<MarketSnapshot> {
+  return invoke<MarketSnapshot>("list_market_prices");
+}
+
+/** 抓取最新市场价格（models.dev），写入缓存并返回新快照。 */
+export function fetchMarketPrices(): Promise<MarketSnapshot> {
+  return invoke<MarketSnapshot>("fetch_market_prices");
+}
+
+/** 渠道模型标注价（已标注的行），与市场快照并排比较。 */
+export interface ChannelPriceAnnotation {
+  channelId: string;
+  channelName: string;
+  channelModelId: string;
+  actualModelId: string;
+  modelName: string | null;
+  priceInputPer1m: number | null;
+  priceOutputPer1m: number | null;
+  priceCurrency: string;
+}
+
+export function listChannelPriceAnnotations(): Promise<ChannelPriceAnnotation[]> {
+  return invoke<ChannelPriceAnnotation[]>("list_channel_price_annotations");
+}

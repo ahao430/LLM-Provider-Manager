@@ -1,0 +1,24 @@
+# Node
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Tauri / Rust
+src-tauri/target/
+src-tauri/gen/schemas/
+
+# 本地环境与编辑器
+*.local
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# 会话工具目录（与本仓库无关）
+.v2c/
+.video_agent/
+
+# 日志与临时文件
+*.log
+tmp/

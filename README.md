@@ -1,0 +1,185 @@
+# LCM — Local Channel Manager
+
+**本地优先的大模型渠道管理与 API 测试工具。**
+
+[![CI](https://github.com/ahao430/LLM-Provider-Manager/actions/workflows/ci.yml/badge.svg)](https://github.com/ahao430/LLM-Provider-Manager/actions/workflows/ci.yml)
+[![Release](https://github.com/ahao430/LLM-Provider-Manager/actions/workflows/release.yml/badge.svg)](https://github.com/ahao430/LLM-Provider-Manager/actions/workflows/release.yml)
+![Version](https://img.shields.io/badge/version-0.0.1-blue)
+
+LCM 用于统一管理不同 AI 服务商、API 渠道、模型、价格、充值记录和账单，并提供 API 测试、图片生成、测试记录、响应分析和错误诊断能力。
+
+项目的核心原则是：
+
+> **忠实呈现渠道原生能力，不擅自优化、转换或修复用户的请求。**
+
+LCM 不是 AI Gateway、API Proxy、模型路由器或协议转换服务，而是一个帮助用户管理、测试、观察和分析大模型渠道的本地桌面工具。
+
+完整产品设计与开发计划见 [PLAN.md](./PLAN.md)。
+
+---
+
+## 目录
+
+- [核心设计原则](#核心设计原则)
+- [功能概览](#功能概览)
+- [技术栈](#技术栈)
+- [快速开始](#快速开始)
+- [常用命令](#常用命令)
+- [项目结构](#项目结构)
+- [版本策略](#版本策略)
+- [开发路线](#开发路线)
+- [文档](#文档)
+
+---
+
+## 核心设计原则
+
+1. **原生优先** — 用户配置什么就原样发送什么，渠道返回什么就原样记录什么。LCM 不为了让某个渠道「看起来更兼容」而改变它的实际行为。
+2. **Agent 与工作台严格隔离** — Claude Code、Codex 等 Agent 使用渠道原生 API，不经过任何 Adapter；只有 API 测试工作台和画图工作台允许使用 Adapter，且处理过程必须透明记录。
+3. **原始数据与展示数据分离** — 用户输入 / 实际发送 / 原始接收 / 工具处理结果四层分开。Raw 是事实记录，Preview 是解释结果，Preview 不得覆盖 Raw。
+4. **处理透明** — 工具进行的任何处理（序列化、认证头、解析、归档、诊断）都如实记录为 ProcessingEvent。
+5. **失败归因准确** — 请求失败、解析失败、归档失败、诊断失败分别记录；错误性质与错误来源分开，事实与推测分开，置信度必须明确。
+
+## 功能概览
+
+| 模块 | 说明 | 阶段 |
+|---|---|---|
+| Dashboard | 渠道/模型/请求/资金整体情况，三类金额分开统计 | Phase 5 ✅ |
+| 渠道管理 | 服务商模板、多渠道实例、连接配置、凭证安全、Agent 兼容性、模型标注价 | Phase 1 ✅ |
+| 模型列表 | 全渠道模型按模型维度聚合：渠道合并、标注价范围、分渠道快速测试 | v0.10.5 ✅ |
+| 市场信息 | 各厂商模型价格快照：内置 + 一键抓取（models.dev），仅参考不算费用 | v0.10.0 ✅ |
+| 内嵌 Agent | 应用内多轮流式对话（双协议），对话持久化，每轮请求完整记录 | v0.8.0 ✅ |
+| Agent 启动器 | 启动式渠道切换：Claude Code 环境变量注入 / Codex 独立 CODEX_HOME；不修改原配置、不代理请求、启动快照 | Phase 1 ✅ |
+| 测试中心 | API 测试 / Agent 测试 / 画图（生成 + 编辑）/ 图像理解，一个菜单收敛 | v0.10.0 ✅ |
+| 测试记录 | Trace ID、Raw、Preview、TTFB/TTFT/TPS、Token、历史重新解析 | Phase 3 ✅ |
+| 设置 | 应用信息、数据目录、存储状态 | Phase 0（已上线） |
+
+## 技术栈
+
+**桌面端**
+
+- UI 基础组件：[shadcn/ui](https://ui.shadcn.com/)
+- 表单：React Hook Form + Zod
+- 表格：TanStack Table
+- 图表：Recharts
+- 编辑器：Monaco Editor
+- 图标：Lucide
+- 通知：Sonner
+- 状态：Zustand
+- 请求缓存：TanStack Query
+- 样式：Tailwind CSS
+
+**应用与后端**
+
+- Tauri 2 · React · TypeScript · Vite · React Router
+- Rust · rusqlite（SQLite）
+- OS 凭证库（macOS Keychain / Windows Credential Manager / Linux Secret Service）
+
+## 快速开始
+
+### 前置要求
+
+- [Node.js](https://nodejs.org/) ≥ 20（建议 22）与 [pnpm](https://pnpm.io/) ≥ 9
+- [Rust](https://www.rust-lang.org/) stable（含 cargo）
+- 平台依赖：
+  - macOS：Xcode Command Line Tools
+  - Windows：[WebView2](https://developer.microsoft.com/microsoft-edge/webview2/)（一般已内置）、[Build Tools for Visual Studio](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
+  - Linux：`libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev`
+
+### 安装与运行
+
+```bash
+pnpm install        # 安装前端依赖
+pnpm tauri dev      # 启动桌面应用（开发模式，含 Rust 编译）
+```
+
+只想调试前端界面（部分命令不可用）：
+
+```bash
+pnpm dev
+```
+
+## 常用命令
+
+| 命令 | 说明 |
+|---|---|
+| `pnpm tauri dev` | 启动桌面应用开发模式 |
+| `pnpm tauri build` | 构建当前平台安装包 |
+| `pnpm dev` / `pnpm build` | 仅前端开发 / 构建 |
+| `pnpm typecheck` | TypeScript 类型检查 |
+| `pnpm test` | 运行前端测试（Vitest） |
+| `cargo fmt` / `cargo clippy` / `cargo test`（在 `src-tauri/` 下） | Rust 格式化 / 静态检查 / 测试 |
+| `pnpm version:sync 0.0.2` | 同步三处版本号并提醒更新 CHANGELOG |
+
+## 项目结构
+
+```text
+├── src/                        # React 前端
+│   ├── app/                    # 应用入口、路由、布局
+│   ├── components/             # 通用组件（含 shadcn/ui 基础组件）
+│   ├── features/               # 按领域划分的页面（dashboard/channels/api-testing/...）
+│   ├── hooks/ · lib/ · stores/ · types/
+├── src-tauri/                  # Rust 核心
+│   ├── src/
+│   │   ├── commands/           # Tauri Command 层
+│   │   ├── services/           # 业务服务层
+│   │   ├── channels/ · models/ · credentials/ · billing/
+│   │   ├── agent/              # Agent 兼容性（禁止依赖 adapters/）
+│   │   ├── workbenches/        # 工作台（唯一允许调用 adapters/ 的模块）
+│   │   ├── adapters/           # Provider / Protocol Adapter
+│   │   ├── requests/ · processing/ · diagnostics/ · backup/
+│   │   └── storage/            # SQLite + 文件归档
+│   ├── migrations/             # SQL 迁移（只追加）
+│   └── tauri.conf.json
+├── tests/                      # 前端测试
+├── docs/                       # 架构与设计文档
+├── PLAN.md                     # 产品设计与开发计划（单一事实来源）
+├── AGENTS.md                   # AI 协作开发规范
+└── CHANGELOG.md                # 更新日志
+```
+
+## 版本策略
+
+遵循语义化版本（SemVer）：
+
+- **每次改动**：第三位 +1（patch），如 `0.0.1 → 0.0.2`
+- **较大改动**：第二位 +1（minor），如 `0.0.9 → 0.1.0`
+- **第一位（major）**：仅在维护者明确要求时升级
+
+版本号出现在三处（用 `pnpm version:sync` 统一同步）：`package.json`、`src-tauri/Cargo.toml`、`src-tauri/tauri.conf.json`。每个版本在 [CHANGELOG.md](./CHANGELOG.md) 中记录。
+
+## 开发路线
+
+| 阶段 | 内容 | 状态 |
+|---|---|---|
+| Phase 0 | 项目初始化：Tauri 2 + React + SQLite + 迁移 + 导航布局 + CI/CD | ✅ 完成 |
+| Phase 1 | 渠道管理：CRUD、模板、凭证安全、Agent 兼容性、Agent 启动器（Claude Code / Codex） | ✅ 主体完成 |
+| Phase 2 | 模型和价格：全局/渠道模型、列表获取与导入、能力标记、价格历史与折扣 | ✅ 主体完成 |
+| Phase 3 | API 测试工作台：三种协议、流式、Raw + Preview、请求记录 | ✅ 主体完成 |
+| Phase 4 | 画图工作台：图片生成、Vision 理解、本地归档 | ✅ 主体完成 |
+| Phase 5 | 请求记录和 Dashboard：Trace、Raw、指标、费用估算、重放 | ✅ 主体完成 |
+| Phase 6 | 资金与账单：充值、账单、余额快照、估算余额 | ✅ 主体完成 |
+| Phase 7 | 备份与跨平台完善：加密备份、恢复、一致性检查、CSP 收紧 | ✅ 主体完成 |
+| Phase 2 | 模型和价格：全局/渠道模型、导入、价格历史 | ⏳ |
+| Phase 3 | API 测试工作台：三种协议、流式、Raw + Preview | ⏳ |
+| Phase 4 | 画图工作台 | ⏳ |
+| Phase 5 | 请求记录和 Dashboard | ⏳ |
+| Phase 6 | 资金与账单 | ⏳ |
+| Phase 7 | 备份和跨平台完善 | ⏳ |
+| Phase 8 | 高级诊断与 MCP（P2） | ⏳ |
+
+## 文档
+
+- [PLAN.md](./PLAN.md) — 产品设计与开发计划（必读，单一事实来源）
+- [AGENTS.md](./AGENTS.md) — AI 协作开发规范（版本策略、架构红线）
+- [CHANGELOG.md](./CHANGELOG.md) — 更新日志
+- [docs/architecture.md](./docs/architecture.md) — 系统架构
+- [docs/database.md](./docs/database.md) — 数据库结构与迁移规则
+- [docs/security.md](./docs/security.md) — 凭证与安全边界
+- [docs/agent-compatibility.md](./docs/agent-compatibility.md) — Agent 兼容性模型
+- [docs/agent-launcher.md](./docs/agent-launcher.md) — Agent 启动器（启动式渠道切换）
+- [docs/adapter-boundaries.md](./docs/adapter-boundaries.md) — Adapter 边界与强制措施
+
+---
+
+*LCM 的价值不在于让所有渠道表现得一样，而在于让用户清楚地知道每个渠道真实的样子。*

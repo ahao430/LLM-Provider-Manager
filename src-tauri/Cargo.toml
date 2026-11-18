@@ -1,0 +1,39 @@
+[package]
+name = "lcm"
+version = "0.10.5"
+description = "LCM — Local Channel Manager，本地优先的大模型渠道管理与 API 测试工具"
+authors = ["王昊"]
+edition = "2021"
+
+[lib]
+name = "lcm_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-opener = "2"
+tauri-plugin-clipboard-manager = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rusqlite = { version = "0.32", features = ["bundled"] }
+chrono = { version = "0.4", features = ["serde"] }
+thiserror = "2"
+uuid = { version = "1", features = ["v4"] }
+keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service"] }
+toml = "0.8"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream", "multipart"] }
+futures-util = { version = "0.3", default-features = false, features = ["std"] }
+zip = { version = "2", default-features = false, features = ["deflate"] }
+aes-gcm = "0.10"
+rand = "0.9"
+pbkdf2 = "0.12"
+sha2 = "0.10"
+
+[profile.release]
+codegen-units = 1
+lto = true
+strip = true

@@ -1,0 +1,2700 @@
+{
+  "snapshotDate": "2026-11",
+  "source": "bundled",
+  "fetchedAt": "2026-11-18T14:27:53.530Z",
+  "providers": [
+    {
+      "id": "openai",
+      "name": "OpenAI",
+      "region": "global",
+      "pricingUrl": "https://platform.openai.com/docs/models",
+      "models": [
+        {
+          "model": "chatgpt-image-latest",
+          "modelType": "image",
+          "inputPer1m": 5,
+          "cachedInputPer1m": 1.25,
+          "outputPer1m": 10,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gpt-3.5-turbo",
+          "modelType": "text",
+          "inputPer1m": 0.5,
+          "cachedInputPer1m": null,
+          "outputPer1m": 1.5,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gpt-4",
+          "modelType": "text",
+          "inputPer1m": 30,
+          "cachedInputPer1m": null,
+          "outputPer1m": 60,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gpt-4-turbo",
+          "modelType": "multimodal",
+          "inputPer1m": 10,
+          "cachedInputPer1m": null,
+          "outputPer1m": 30,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gpt-4.1",
+          "modelType": "multimodal",
+          "inputPer1m": 2,
+          "cachedInputPer1m": 0.5,
+          "outputPer1m": 8,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gpt-4.1-mini",
+          "modelType": "multimodal",
+          "inputPer1m": 0.4,
+          "cachedInputPer1m": 0.1,
+          "outputPer1m": 1.6,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gpt-4.1-nano",
+          "modelType": "multimodal",
+          "inputPer1m": 0.1,
+          "cachedInputPer1m": 0.025,
+          "outputPer1m": 0.4,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gpt-4o",
+          "modelType": "multimodal",
+          "inputPer1m": 2.5,
+          "cachedInputPer1m": 1.25,
+          "outputPer1m": 10,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gpt-4o-2024-05-13",
+          "modelType": "multimodal",
+          "inputPer1m": 5,
+          "cachedInputPer1m": null,
+          "outputPer1m": 15,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gpt-4o-2024-08-06",
+          "modelType": "multimodal",
+          "inputPer1m": 2.5,
+          "cachedInputPer1m": 1.25,
+          "outputPer1m": 10,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gpt-4o-2024-11-20",
+          "modelType": "multimodal",
+          "inputPer1m": 2.5,
+          "cachedInputPer1m": 1.25,
+          "outputPer1m": 10,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gpt-4o-mini",
+          "modelType": "multimodal",
+          "inputPer1m": 0.15,
+          "cachedInputPer1m": 0.075,
+          "outputPer1m": 0.6,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gpt-5",
+          "modelType": "multimodal",
+          "inputPer1m": 1.25,
+          "cachedInputPer1m": 0.125,
+          "outputPer1m": 10,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gpt-5-mini",
+          "modelType": "multimodal",
+          "inputPer1m": 0.25,
+          "cachedInputPer1m": 0.025,
+          "outputPer1m": 2,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gpt-5-nano",
+          "modelType": "multimodal",
+          "inputPer1m": 0.05,
+          "cachedInputPer1m": 0.005,
+          "outputPer1m": 0.4,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gpt-5-pro",
+          "modelType": "multimodal",
+          "inputPer1m": 15,
+          "cachedInputPer1m": null,
+          "outputPer1m": 120,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gpt-5.1",
+          "modelType": "multimodal",
+          "inputPer1m": 1.25,
+          "cachedInputPer1m": 0.125,
+          "outputPer1m": 10,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gpt-5.2",
+          "modelType": "multimodal",
+          "inputPer1m": 1.75,
+          "cachedInputPer1m": 0.175,
+          "outputPer1m": 14,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gpt-5.2-pro",
+          "modelType": "multimodal",
+          "inputPer1m": 21,
+          "cachedInputPer1m": null,
+          "outputPer1m": 168,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gpt-5.3-codex",
+          "modelType": "multimodal",
+          "inputPer1m": 1.75,
+          "cachedInputPer1m": 0.175,
+          "outputPer1m": 14,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gpt-5.3-codex-spark",
+          "modelType": "multimodal",
+          "inputPer1m": 1.75,
+          "cachedInputPer1m": 0.175,
+          "outputPer1m": 14,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gpt-5.4",
+          "modelType": "multimodal",
+          "inputPer1m": 2.5,
+          "cachedInputPer1m": 0.25,
+          "outputPer1m": 15,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gpt-5.4-mini",
+          "modelType": "multimodal",
+          "inputPer1m": 0.75,
+          "cachedInputPer1m": 0.075,
+          "outputPer1m": 4.5,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gpt-5.4-nano",
+          "modelType": "multimodal",
+          "inputPer1m": 0.2,
+          "cachedInputPer1m": 0.02,
+          "outputPer1m": 1.25,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gpt-5.4-pro",
+          "modelType": "multimodal",
+          "inputPer1m": 30,
+          "cachedInputPer1m": null,
+          "outputPer1m": 180,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gpt-5.5",
+          "modelType": "multimodal",
+          "inputPer1m": 5,
+          "cachedInputPer1m": 0.5,
+          "outputPer1m": 30,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gpt-5.5-pro",
+          "modelType": "multimodal",
+          "inputPer1m": 30,
+          "cachedInputPer1m": null,
+          "outputPer1m": 180,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gpt-5.6",
+          "modelType": "multimodal",
+          "inputPer1m": 4,
+          "cachedInputPer1m": 0.4,
+          "outputPer1m": 20,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gpt-5.6-luna",
+          "modelType": "multimodal",
+          "inputPer1m": 0.2,
+          "cachedInputPer1m": 0.02,
+          "outputPer1m": 1.2,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gpt-5.6-sol",
+          "modelType": "multimodal",
+          "inputPer1m": 4,
+          "cachedInputPer1m": 0.4,
+          "outputPer1m": 20,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gpt-5.6-terra",
+          "modelType": "multimodal",
+          "inputPer1m": 2,
+          "cachedInputPer1m": 0.2,
+          "outputPer1m": 12,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gpt-6-astra",
+          "modelType": "multimodal",
+          "inputPer1m": 10,
+          "cachedInputPer1m": 1,
+          "outputPer1m": 50,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gpt-6-luna",
+          "modelType": "multimodal",
+          "inputPer1m": 0.1,
+          "cachedInputPer1m": 0.01,
+          "outputPer1m": 0.5,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gpt-6-sol",
+          "modelType": "multimodal",
+          "inputPer1m": 2,
+          "cachedInputPer1m": 0.2,
+          "outputPer1m": 10,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gpt-6.1-sol",
+          "modelType": "multimodal",
+          "inputPer1m": 2,
+          "cachedInputPer1m": 0.1,
+          "outputPer1m": 10,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gpt-6.1-terra",
+          "modelType": "multimodal",
+          "inputPer1m": 1,
+          "cachedInputPer1m": 0.05,
+          "outputPer1m": 5,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gpt-6.2-astra",
+          "modelType": "multimodal",
+          "inputPer1m": 8,
+          "cachedInputPer1m": 0.4,
+          "outputPer1m": 40,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gpt-6.2-sol",
+          "modelType": "multimodal",
+          "inputPer1m": 2,
+          "cachedInputPer1m": 0.1,
+          "outputPer1m": 10,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gpt-daybreak-blue-latest",
+          "modelType": "multimodal",
+          "inputPer1m": 4,
+          "cachedInputPer1m": 0.4,
+          "outputPer1m": 20,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gpt-daybreak-red-latest",
+          "modelType": "multimodal",
+          "inputPer1m": 12.5,
+          "cachedInputPer1m": 1.25,
+          "outputPer1m": 75,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gpt-image-1.5",
+          "modelType": "image",
+          "inputPer1m": 5,
+          "cachedInputPer1m": 1.25,
+          "outputPer1m": 10,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gpt-realtime-2.1",
+          "modelType": "multimodal",
+          "inputPer1m": 4,
+          "cachedInputPer1m": 0.4,
+          "outputPer1m": 24,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "o1",
+          "modelType": "multimodal",
+          "inputPer1m": 15,
+          "cachedInputPer1m": 7.5,
+          "outputPer1m": 60,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "o1-pro",
+          "modelType": "multimodal",
+          "inputPer1m": 150,
+          "cachedInputPer1m": null,
+          "outputPer1m": 600,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "o3",
+          "modelType": "multimodal",
+          "inputPer1m": 2,
+          "cachedInputPer1m": 0.5,
+          "outputPer1m": 8,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "o3-mini",
+          "modelType": "decision",
+          "inputPer1m": 1.1,
+          "cachedInputPer1m": 0.55,
+          "outputPer1m": 4.4,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "o3-pro",
+          "modelType": "multimodal",
+          "inputPer1m": 20,
+          "cachedInputPer1m": null,
+          "outputPer1m": 80,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "o4-mini",
+          "modelType": "multimodal",
+          "inputPer1m": 1.1,
+          "cachedInputPer1m": 0.275,
+          "outputPer1m": 4.4,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "text-embedding-3-large",
+          "modelType": "text",
+          "inputPer1m": 0.13,
+          "cachedInputPer1m": null,
+          "outputPer1m": 0,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "text-embedding-3-small",
+          "modelType": "text",
+          "inputPer1m": 0.02,
+          "cachedInputPer1m": null,
+          "outputPer1m": 0,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "text-embedding-ada-002",
+          "modelType": "text",
+          "inputPer1m": 0.1,
+          "cachedInputPer1m": null,
+          "outputPer1m": 0,
+          "currency": "USD",
+          "note": null
+        }
+      ]
+    },
+    {
+      "id": "anthropic",
+      "name": "Anthropic",
+      "region": "global",
+      "pricingUrl": "https://docs.anthropic.com/en/docs/about-claude/models",
+      "models": [
+        {
+          "model": "claude-fable-5",
+          "modelType": "multimodal",
+          "inputPer1m": 10,
+          "cachedInputPer1m": 1,
+          "outputPer1m": 50,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "claude-fable-5-1",
+          "modelType": "multimodal",
+          "inputPer1m": 10,
+          "cachedInputPer1m": 0.25,
+          "outputPer1m": 50,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "claude-fable-5-2",
+          "modelType": "multimodal",
+          "inputPer1m": 8,
+          "cachedInputPer1m": 0.2,
+          "outputPer1m": 40,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "claude-haiku-4-5",
+          "modelType": "multimodal",
+          "inputPer1m": 1,
+          "cachedInputPer1m": 0.1,
+          "outputPer1m": 5,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "claude-haiku-4-5-20251001",
+          "modelType": "multimodal",
+          "inputPer1m": 1,
+          "cachedInputPer1m": 0.1,
+          "outputPer1m": 5,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "claude-haiku-5-5",
+          "modelType": "multimodal",
+          "inputPer1m": 0.1,
+          "cachedInputPer1m": 0.01,
+          "outputPer1m": 0.5,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "claude-opus-4-5",
+          "modelType": "multimodal",
+          "inputPer1m": 5,
+          "cachedInputPer1m": 0.5,
+          "outputPer1m": 25,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "claude-opus-4-5-20251101",
+          "modelType": "multimodal",
+          "inputPer1m": 5,
+          "cachedInputPer1m": 0.5,
+          "outputPer1m": 25,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "claude-opus-4-6",
+          "modelType": "multimodal",
+          "inputPer1m": 5,
+          "cachedInputPer1m": 0.5,
+          "outputPer1m": 25,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "claude-opus-4-7",
+          "modelType": "multimodal",
+          "inputPer1m": 5,
+          "cachedInputPer1m": 0.5,
+          "outputPer1m": 25,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "claude-opus-4-8",
+          "modelType": "multimodal",
+          "inputPer1m": 5,
+          "cachedInputPer1m": 0.5,
+          "outputPer1m": 25,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "claude-opus-5",
+          "modelType": "multimodal",
+          "inputPer1m": 5,
+          "cachedInputPer1m": 0.5,
+          "outputPer1m": 25,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "claude-opus-5-5",
+          "modelType": "multimodal",
+          "inputPer1m": 4,
+          "cachedInputPer1m": 0.2,
+          "outputPer1m": 20,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "claude-sonnet-4-5",
+          "modelType": "multimodal",
+          "inputPer1m": 3,
+          "cachedInputPer1m": 0.3,
+          "outputPer1m": 15,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "claude-sonnet-4-5-20250929",
+          "modelType": "multimodal",
+          "inputPer1m": 3,
+          "cachedInputPer1m": 0.3,
+          "outputPer1m": 15,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "claude-sonnet-4-6",
+          "modelType": "multimodal",
+          "inputPer1m": 3,
+          "cachedInputPer1m": 0.3,
+          "outputPer1m": 15,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "claude-sonnet-5",
+          "modelType": "multimodal",
+          "inputPer1m": 2,
+          "cachedInputPer1m": 0.2,
+          "outputPer1m": 10,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "claude-sonnet-5-5",
+          "modelType": "multimodal",
+          "inputPer1m": 2,
+          "cachedInputPer1m": 0.1,
+          "outputPer1m": 10,
+          "currency": "USD",
+          "note": null
+        }
+      ]
+    },
+    {
+      "id": "google",
+      "name": "Google Gemini",
+      "region": "global",
+      "pricingUrl": "https://ai.google.dev/gemini-api/docs/models",
+      "models": [
+        {
+          "model": "deep-research-max-preview-04-2026",
+          "modelType": "image",
+          "inputPer1m": 2,
+          "cachedInputPer1m": 0.2,
+          "outputPer1m": 12,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "deep-research-preview-04-2026",
+          "modelType": "image",
+          "inputPer1m": 2,
+          "cachedInputPer1m": 0.2,
+          "outputPer1m": 12,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gemini-2.5-computer-use-preview-10-2025",
+          "modelType": "multimodal",
+          "inputPer1m": 1.25,
+          "cachedInputPer1m": null,
+          "outputPer1m": 10,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gemini-2.5-flash",
+          "modelType": "multimodal",
+          "inputPer1m": 0.3,
+          "cachedInputPer1m": 0.03,
+          "outputPer1m": 2.5,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gemini-2.5-flash-image",
+          "modelType": "image",
+          "inputPer1m": 0.3,
+          "cachedInputPer1m": 0.075,
+          "outputPer1m": 2.5,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gemini-2.5-flash-lite",
+          "modelType": "multimodal",
+          "inputPer1m": 0.1,
+          "cachedInputPer1m": 0.01,
+          "outputPer1m": 0.4,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gemini-2.5-flash-preview-tts",
+          "modelType": "text",
+          "inputPer1m": 0.5,
+          "cachedInputPer1m": null,
+          "outputPer1m": 10,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gemini-2.5-pro",
+          "modelType": "multimodal",
+          "inputPer1m": 1.25,
+          "cachedInputPer1m": 0.125,
+          "outputPer1m": 10,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gemini-2.5-pro-preview-tts",
+          "modelType": "text",
+          "inputPer1m": 1,
+          "cachedInputPer1m": null,
+          "outputPer1m": 20,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gemini-3-flash-preview",
+          "modelType": "multimodal",
+          "inputPer1m": 0.5,
+          "cachedInputPer1m": 0.05,
+          "outputPer1m": 3,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gemini-3-pro-image",
+          "modelType": "image",
+          "inputPer1m": 2,
+          "cachedInputPer1m": null,
+          "outputPer1m": 12,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gemini-3.1-flash-image",
+          "modelType": "image",
+          "inputPer1m": 0.5,
+          "cachedInputPer1m": null,
+          "outputPer1m": 3,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gemini-3.1-flash-lite",
+          "modelType": "multimodal",
+          "inputPer1m": 0.25,
+          "cachedInputPer1m": 0.025,
+          "outputPer1m": 1.5,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gemini-3.1-flash-lite-image",
+          "modelType": "image",
+          "inputPer1m": 0.25,
+          "cachedInputPer1m": null,
+          "outputPer1m": 1.5,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gemini-3.1-flash-lite-preview",
+          "modelType": "multimodal",
+          "inputPer1m": 0.25,
+          "cachedInputPer1m": 0.025,
+          "outputPer1m": 1.5,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gemini-3.1-flash-live-preview",
+          "modelType": "multimodal",
+          "inputPer1m": 0.75,
+          "cachedInputPer1m": null,
+          "outputPer1m": 4.5,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gemini-3.1-flash-tts-preview",
+          "modelType": "decision",
+          "inputPer1m": 1,
+          "cachedInputPer1m": null,
+          "outputPer1m": 20,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gemini-3.1-pro-preview",
+          "modelType": "multimodal",
+          "inputPer1m": 2,
+          "cachedInputPer1m": 0.2,
+          "outputPer1m": 12,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gemini-3.1-pro-preview-customtools",
+          "modelType": "multimodal",
+          "inputPer1m": 2,
+          "cachedInputPer1m": 0.2,
+          "outputPer1m": 12,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gemini-3.5-flash",
+          "modelType": "multimodal",
+          "inputPer1m": 1.5,
+          "cachedInputPer1m": 0.15,
+          "outputPer1m": 9,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gemini-3.5-flash-lite",
+          "modelType": "multimodal",
+          "inputPer1m": 0.3,
+          "cachedInputPer1m": 0.03,
+          "outputPer1m": 2.5,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gemini-3.5-live-translate-preview",
+          "modelType": "text",
+          "inputPer1m": 3.5,
+          "cachedInputPer1m": null,
+          "outputPer1m": 21,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gemini-3.6-flash",
+          "modelType": "multimodal",
+          "inputPer1m": 0.75,
+          "cachedInputPer1m": 0.075,
+          "outputPer1m": 3.75,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gemini-3.7-flash",
+          "modelType": "multimodal",
+          "inputPer1m": 0.75,
+          "cachedInputPer1m": 0.075,
+          "outputPer1m": 3.75,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gemini-3.8-flash",
+          "modelType": "multimodal",
+          "inputPer1m": 0.75,
+          "cachedInputPer1m": 0.075,
+          "outputPer1m": 3.75,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gemini-4-argon",
+          "modelType": "multimodal",
+          "inputPer1m": 2,
+          "cachedInputPer1m": 0.1,
+          "outputPer1m": 10,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gemini-4-carbon",
+          "modelType": "multimodal",
+          "inputPer1m": 2,
+          "cachedInputPer1m": 0.1,
+          "outputPer1m": 10,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gemini-4-hydrogen",
+          "modelType": "multimodal",
+          "inputPer1m": 1.5,
+          "cachedInputPer1m": 0.075,
+          "outputPer1m": 7.5,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gemini-embedding-001",
+          "modelType": "text",
+          "inputPer1m": 0.15,
+          "cachedInputPer1m": null,
+          "outputPer1m": 0,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gemini-embedding-2",
+          "modelType": "multimodal",
+          "inputPer1m": 0.2,
+          "cachedInputPer1m": null,
+          "outputPer1m": 0,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gemini-flash-latest",
+          "modelType": "multimodal",
+          "inputPer1m": 0.75,
+          "cachedInputPer1m": 0.075,
+          "outputPer1m": 3.75,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gemini-flash-lite-latest",
+          "modelType": "multimodal",
+          "inputPer1m": 0.3,
+          "cachedInputPer1m": 0.03,
+          "outputPer1m": 2.5,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gemini-omni-flash-preview",
+          "modelType": "multimodal",
+          "inputPer1m": 1.5,
+          "cachedInputPer1m": null,
+          "outputPer1m": 17.5,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gemini-pro-latest",
+          "modelType": "multimodal",
+          "inputPer1m": 2,
+          "cachedInputPer1m": 0.2,
+          "outputPer1m": 12,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gemma-4-26b-a4b-it",
+          "modelType": "multimodal",
+          "inputPer1m": 0,
+          "cachedInputPer1m": null,
+          "outputPer1m": 0,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gemma-4-31b-it",
+          "modelType": "multimodal",
+          "inputPer1m": 0,
+          "cachedInputPer1m": null,
+          "outputPer1m": 0,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "lyria-3-clip-preview",
+          "modelType": "multimodal",
+          "inputPer1m": 0,
+          "cachedInputPer1m": null,
+          "outputPer1m": 0,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "lyria-3-pro-preview",
+          "modelType": "multimodal",
+          "inputPer1m": 0,
+          "cachedInputPer1m": null,
+          "outputPer1m": 0,
+          "currency": "USD",
+          "note": null
+        }
+      ]
+    },
+    {
+      "id": "xai",
+      "name": "xAI",
+      "region": "global",
+      "pricingUrl": "https://docs.x.ai/docs/models",
+      "models": [
+        {
+          "model": "grok-4.20-0309-non-reasoning",
+          "modelType": "multimodal",
+          "inputPer1m": 1.25,
+          "cachedInputPer1m": 0.2,
+          "outputPer1m": 2.5,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "grok-4.20-0309-reasoning",
+          "modelType": "multimodal",
+          "inputPer1m": 1.25,
+          "cachedInputPer1m": 0.2,
+          "outputPer1m": 2.5,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "grok-4.20-multi-agent-0309",
+          "modelType": "multimodal",
+          "inputPer1m": 1.25,
+          "cachedInputPer1m": 0.2,
+          "outputPer1m": 2.5,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "grok-4.3",
+          "modelType": "multimodal",
+          "inputPer1m": 1.25,
+          "cachedInputPer1m": 0.2,
+          "outputPer1m": 2.5,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "grok-4.5",
+          "modelType": "multimodal",
+          "inputPer1m": 2,
+          "cachedInputPer1m": 0.3,
+          "outputPer1m": 6,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "grok-4.6",
+          "modelType": "multimodal",
+          "inputPer1m": 2,
+          "cachedInputPer1m": 0.5,
+          "outputPer1m": 6,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "grok-4.7",
+          "modelType": "multimodal",
+          "inputPer1m": 2,
+          "cachedInputPer1m": 0.5,
+          "outputPer1m": 6,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "grok-build-0.1",
+          "modelType": "multimodal",
+          "inputPer1m": 1,
+          "cachedInputPer1m": 0.2,
+          "outputPer1m": 2,
+          "currency": "USD",
+          "note": null
+        }
+      ]
+    },
+    {
+      "id": "mistral",
+      "name": "Mistral",
+      "region": "global",
+      "pricingUrl": "https://docs.mistral.ai/getting-started/models/",
+      "models": [
+        {
+          "model": "codestral-2508",
+          "modelType": "text",
+          "inputPer1m": 0.3,
+          "cachedInputPer1m": 0.03,
+          "outputPer1m": 0.9,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "codestral-latest",
+          "modelType": "text",
+          "inputPer1m": 0.3,
+          "cachedInputPer1m": 0.03,
+          "outputPer1m": 0.9,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "deepseek-v4-1-flash-1017",
+          "modelType": "multimodal",
+          "inputPer1m": 0.3,
+          "cachedInputPer1m": 0.007,
+          "outputPer1m": 1.2,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "devstral-2512",
+          "modelType": "text",
+          "inputPer1m": 0.4,
+          "cachedInputPer1m": null,
+          "outputPer1m": 2,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "devstral-latest",
+          "modelType": "text",
+          "inputPer1m": 0.4,
+          "cachedInputPer1m": null,
+          "outputPer1m": 2,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "devstral-medium-latest",
+          "modelType": "text",
+          "inputPer1m": 0.4,
+          "cachedInputPer1m": null,
+          "outputPer1m": 2,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "glm-5-2",
+          "modelType": "decision",
+          "inputPer1m": 1.4,
+          "cachedInputPer1m": 0.14,
+          "outputPer1m": 4.4,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "labs-devstral-small-2512",
+          "modelType": "multimodal",
+          "inputPer1m": 0,
+          "cachedInputPer1m": null,
+          "outputPer1m": 0,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "labs-leanstral-1-5-1",
+          "modelType": "multimodal",
+          "inputPer1m": 0,
+          "cachedInputPer1m": null,
+          "outputPer1m": 0,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "magistral-medium-latest",
+          "modelType": "multimodal",
+          "inputPer1m": 2,
+          "cachedInputPer1m": null,
+          "outputPer1m": 5,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "ministral-14b-2512",
+          "modelType": "multimodal",
+          "inputPer1m": 0.2,
+          "cachedInputPer1m": 0.02,
+          "outputPer1m": 0.2,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "ministral-3b-2512",
+          "modelType": "multimodal",
+          "inputPer1m": 0.1,
+          "cachedInputPer1m": 0.01,
+          "outputPer1m": 0.1,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "ministral-3b-latest",
+          "modelType": "multimodal",
+          "inputPer1m": 0.1,
+          "cachedInputPer1m": 0.01,
+          "outputPer1m": 0.1,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "ministral-8b-2512",
+          "modelType": "multimodal",
+          "inputPer1m": 0.15,
+          "cachedInputPer1m": 0.015,
+          "outputPer1m": 0.15,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "ministral-8b-latest",
+          "modelType": "multimodal",
+          "inputPer1m": 0.15,
+          "cachedInputPer1m": 0.015,
+          "outputPer1m": 0.15,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "mistral-embed",
+          "modelType": "text",
+          "inputPer1m": 0.1,
+          "cachedInputPer1m": null,
+          "outputPer1m": 0,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "mistral-large-2512",
+          "modelType": "multimodal",
+          "inputPer1m": 0.5,
+          "cachedInputPer1m": 0.05,
+          "outputPer1m": 1.5,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "mistral-large-4",
+          "modelType": "multimodal",
+          "inputPer1m": 0.7,
+          "cachedInputPer1m": 0.07,
+          "outputPer1m": 2.1,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "mistral-large-4-0-8",
+          "modelType": "multimodal",
+          "inputPer1m": 0.7,
+          "cachedInputPer1m": 0.07,
+          "outputPer1m": 2.1,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "mistral-large-latest",
+          "modelType": "multimodal",
+          "inputPer1m": 0.7,
+          "cachedInputPer1m": 0.07,
+          "outputPer1m": 2.1,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "mistral-medium-2505",
+          "modelType": "multimodal",
+          "inputPer1m": 0.4,
+          "cachedInputPer1m": null,
+          "outputPer1m": 2,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "mistral-medium-2508",
+          "modelType": "multimodal",
+          "inputPer1m": 0.4,
+          "cachedInputPer1m": null,
+          "outputPer1m": 2,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "mistral-medium-2604",
+          "modelType": "multimodal",
+          "inputPer1m": 1.5,
+          "cachedInputPer1m": 0.15,
+          "outputPer1m": 7.5,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "mistral-medium-latest",
+          "modelType": "multimodal",
+          "inputPer1m": 1.5,
+          "cachedInputPer1m": 0.15,
+          "outputPer1m": 7.5,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "mistral-small-2506",
+          "modelType": "multimodal",
+          "inputPer1m": 0.1,
+          "cachedInputPer1m": null,
+          "outputPer1m": 0.3,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "mistral-small-2603",
+          "modelType": "multimodal",
+          "inputPer1m": 0.15,
+          "cachedInputPer1m": 0.015,
+          "outputPer1m": 0.6,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "mistral-small-latest",
+          "modelType": "multimodal",
+          "inputPer1m": 0.15,
+          "cachedInputPer1m": 0.015,
+          "outputPer1m": 0.6,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "open-mistral-nemo",
+          "modelType": "text",
+          "inputPer1m": 0.15,
+          "cachedInputPer1m": null,
+          "outputPer1m": 0.15,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "pixtral-12b",
+          "modelType": "multimodal",
+          "inputPer1m": 0.15,
+          "cachedInputPer1m": null,
+          "outputPer1m": 0.15,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "voxtral-small-2507",
+          "modelType": "text",
+          "inputPer1m": 0.1,
+          "cachedInputPer1m": null,
+          "outputPer1m": 0.4,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "voxtral-small-latest",
+          "modelType": "text",
+          "inputPer1m": 0.1,
+          "cachedInputPer1m": null,
+          "outputPer1m": 0.4,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "zai-glm-5-2",
+          "modelType": "decision",
+          "inputPer1m": 1.4,
+          "cachedInputPer1m": 0.14,
+          "outputPer1m": 4.4,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "zai-glm-5-3",
+          "modelType": "decision",
+          "inputPer1m": 1.4,
+          "cachedInputPer1m": 0.14,
+          "outputPer1m": 4.4,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "zai-glm-5-3-flash",
+          "modelType": "multimodal",
+          "inputPer1m": 0.15,
+          "cachedInputPer1m": 0.03,
+          "outputPer1m": 0.5,
+          "currency": "USD",
+          "note": null
+        }
+      ]
+    },
+    {
+      "id": "cohere",
+      "name": "Cohere",
+      "region": "global",
+      "pricingUrl": "https://docs.cohere.com/docs/models",
+      "models": [
+        {
+          "model": "c4ai-aya-expanse-32b",
+          "modelType": "text",
+          "inputPer1m": 0.5,
+          "cachedInputPer1m": null,
+          "outputPer1m": 1.5,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "command-a-03-2025",
+          "modelType": "text",
+          "inputPer1m": 2.5,
+          "cachedInputPer1m": null,
+          "outputPer1m": 10,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "command-a-plus-05-2026",
+          "modelType": "multimodal",
+          "inputPer1m": 2.5,
+          "cachedInputPer1m": null,
+          "outputPer1m": 10,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "command-a-reasoning-08-2025",
+          "modelType": "decision",
+          "inputPer1m": 2.5,
+          "cachedInputPer1m": null,
+          "outputPer1m": 10,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "command-a-translate-08-2025",
+          "modelType": "text",
+          "inputPer1m": 2.5,
+          "cachedInputPer1m": null,
+          "outputPer1m": 10,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "command-a-vision-07-2025",
+          "modelType": "multimodal",
+          "inputPer1m": 2.5,
+          "cachedInputPer1m": null,
+          "outputPer1m": 10,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "command-r-08-2024",
+          "modelType": "text",
+          "inputPer1m": 0.15,
+          "cachedInputPer1m": null,
+          "outputPer1m": 0.6,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "command-r-plus-08-2024",
+          "modelType": "text",
+          "inputPer1m": 2.5,
+          "cachedInputPer1m": null,
+          "outputPer1m": 10,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "command-r7b-12-2024",
+          "modelType": "text",
+          "inputPer1m": 0.0375,
+          "cachedInputPer1m": null,
+          "outputPer1m": 0.15,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "command-r7b-arabic-02-2025",
+          "modelType": "text",
+          "inputPer1m": 0.0375,
+          "cachedInputPer1m": null,
+          "outputPer1m": 0.15,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "north-mini-code-1-0",
+          "modelType": "decision",
+          "inputPer1m": 0,
+          "cachedInputPer1m": null,
+          "outputPer1m": 0,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "north-small-translate-09-2026",
+          "modelType": "text",
+          "inputPer1m": 0,
+          "cachedInputPer1m": null,
+          "outputPer1m": 0,
+          "currency": "USD",
+          "note": null
+        }
+      ]
+    },
+    {
+      "id": "perplexity",
+      "name": "Perplexity",
+      "region": "global",
+      "pricingUrl": "https://docs.perplexity.ai",
+      "models": [
+        {
+          "model": "sonar",
+          "modelType": "text",
+          "inputPer1m": 1,
+          "cachedInputPer1m": null,
+          "outputPer1m": 1,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "sonar-deep-research",
+          "modelType": "decision",
+          "inputPer1m": 2,
+          "cachedInputPer1m": null,
+          "outputPer1m": 8,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "sonar-pro",
+          "modelType": "multimodal",
+          "inputPer1m": 3,
+          "cachedInputPer1m": null,
+          "outputPer1m": 15,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "sonar-reasoning-pro",
+          "modelType": "multimodal",
+          "inputPer1m": 2,
+          "cachedInputPer1m": null,
+          "outputPer1m": 8,
+          "currency": "USD",
+          "note": null
+        }
+      ]
+    },
+    {
+      "id": "meta",
+      "name": "Meta (Llama)",
+      "region": "global",
+      "pricingUrl": "https://dev.meta.ai/docs",
+      "models": [
+        {
+          "model": "muse-ember-1.0",
+          "modelType": "multimodal",
+          "inputPer1m": 0.1,
+          "cachedInputPer1m": 0.004,
+          "outputPer1m": 0.5,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "muse-spark-1.1",
+          "modelType": "multimodal",
+          "inputPer1m": 1.25,
+          "cachedInputPer1m": 0.15,
+          "outputPer1m": 4.25,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "muse-spark-1.2",
+          "modelType": "multimodal",
+          "inputPer1m": 1.25,
+          "cachedInputPer1m": 0.15,
+          "outputPer1m": 4.25,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "muse-spark-1.2-contributor",
+          "modelType": "multimodal",
+          "inputPer1m": 0.1,
+          "cachedInputPer1m": 0.002,
+          "outputPer1m": 0.2,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "muse-spark-1.3",
+          "modelType": "multimodal",
+          "inputPer1m": 1.25,
+          "cachedInputPer1m": 0.15,
+          "outputPer1m": 4.25,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "muse-spark-1.3-contributor",
+          "modelType": "multimodal",
+          "inputPer1m": 0.1,
+          "cachedInputPer1m": 0.002,
+          "outputPer1m": 0.2,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "muse-wonder-1.0",
+          "modelType": "multimodal",
+          "inputPer1m": 4,
+          "cachedInputPer1m": 0.2,
+          "outputPer1m": 20,
+          "currency": "USD",
+          "note": null
+        }
+      ]
+    },
+    {
+      "id": "deepseek",
+      "name": "DeepSeek",
+      "region": "cn",
+      "pricingUrl": "https://api-docs.deepseek.com/quick_start/pricing",
+      "models": [
+        {
+          "model": "deepseek-flash",
+          "modelType": "multimodal",
+          "inputPer1m": 0.15,
+          "cachedInputPer1m": 0.003,
+          "outputPer1m": 0.6,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "deepseek-v4-flash",
+          "modelType": "multimodal",
+          "inputPer1m": 0.15,
+          "cachedInputPer1m": 0.003,
+          "outputPer1m": 0.6,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "deepseek-v4-flash-vision-exp",
+          "modelType": "multimodal",
+          "inputPer1m": 0.15,
+          "cachedInputPer1m": 0.003,
+          "outputPer1m": 0.6,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "deepseek-v4-pro",
+          "modelType": "decision",
+          "inputPer1m": 0.66,
+          "cachedInputPer1m": 0.022,
+          "outputPer1m": 1.98,
+          "currency": "USD",
+          "note": null
+        }
+      ]
+    },
+    {
+      "id": "alibaba",
+      "name": "阿里云百炼（通义千问）",
+      "region": "cn",
+      "pricingUrl": "https://www.alibabacloud.com/help/en/model-studio/models",
+      "models": [
+        {
+          "model": "deepseek-v4-flash-0731",
+          "modelType": "decision",
+          "inputPer1m": 0.44,
+          "cachedInputPer1m": 0.088,
+          "outputPer1m": 1.32,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "glm-5.2",
+          "modelType": "decision",
+          "inputPer1m": 1.4,
+          "cachedInputPer1m": 0.28,
+          "outputPer1m": 4.4,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "kimi-k3",
+          "modelType": "multimodal",
+          "inputPer1m": 3,
+          "cachedInputPer1m": 0.3,
+          "outputPer1m": 15,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qvq-max",
+          "modelType": "multimodal",
+          "inputPer1m": 1.2,
+          "cachedInputPer1m": null,
+          "outputPer1m": 4.8,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qwen-flash",
+          "modelType": "decision",
+          "inputPer1m": 0.05,
+          "cachedInputPer1m": 0.01,
+          "outputPer1m": 0.4,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qwen-max",
+          "modelType": "text",
+          "inputPer1m": 1.6,
+          "cachedInputPer1m": null,
+          "outputPer1m": 6.4,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qwen-mt-plus",
+          "modelType": "text",
+          "inputPer1m": 2.46,
+          "cachedInputPer1m": null,
+          "outputPer1m": 7.37,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qwen-mt-turbo",
+          "modelType": "text",
+          "inputPer1m": 0.16,
+          "cachedInputPer1m": null,
+          "outputPer1m": 0.49,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qwen-omni-turbo",
+          "modelType": "multimodal",
+          "inputPer1m": 0.07,
+          "cachedInputPer1m": null,
+          "outputPer1m": 0.27,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qwen-omni-turbo-realtime",
+          "modelType": "multimodal",
+          "inputPer1m": 0.27,
+          "cachedInputPer1m": null,
+          "outputPer1m": 1.07,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qwen-plus",
+          "modelType": "decision",
+          "inputPer1m": 0.4,
+          "cachedInputPer1m": 0.08,
+          "outputPer1m": 1.2,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qwen-plus-character-ja",
+          "modelType": "text",
+          "inputPer1m": 0.5,
+          "cachedInputPer1m": null,
+          "outputPer1m": 1.4,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qwen-turbo",
+          "modelType": "decision",
+          "inputPer1m": 0.05,
+          "cachedInputPer1m": null,
+          "outputPer1m": 0.2,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qwen-vl-max",
+          "modelType": "multimodal",
+          "inputPer1m": 0.8,
+          "cachedInputPer1m": null,
+          "outputPer1m": 3.2,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qwen-vl-ocr",
+          "modelType": "multimodal",
+          "inputPer1m": 0.07,
+          "cachedInputPer1m": null,
+          "outputPer1m": 0.16,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qwen-vl-plus",
+          "modelType": "multimodal",
+          "inputPer1m": 0.21,
+          "cachedInputPer1m": null,
+          "outputPer1m": 0.63,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qwen2-5-omni-7b",
+          "modelType": "multimodal",
+          "inputPer1m": 0.1,
+          "cachedInputPer1m": null,
+          "outputPer1m": 0.4,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qwen3-14b",
+          "modelType": "decision",
+          "inputPer1m": 0.35,
+          "cachedInputPer1m": null,
+          "outputPer1m": 1.4,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qwen3-235b-a22b",
+          "modelType": "decision",
+          "inputPer1m": 0.7,
+          "cachedInputPer1m": null,
+          "outputPer1m": 2.8,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qwen3-32b",
+          "modelType": "decision",
+          "inputPer1m": 0.7,
+          "cachedInputPer1m": null,
+          "outputPer1m": 2.8,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qwen3-8b",
+          "modelType": "decision",
+          "inputPer1m": 0.18,
+          "cachedInputPer1m": null,
+          "outputPer1m": 0.7,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qwen3-coder-30b-a3b-instruct",
+          "modelType": "text",
+          "inputPer1m": 0.45,
+          "cachedInputPer1m": null,
+          "outputPer1m": 2.25,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qwen3-coder-480b-a35b-instruct",
+          "modelType": "text",
+          "inputPer1m": 1.5,
+          "cachedInputPer1m": null,
+          "outputPer1m": 7.5,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qwen3-coder-flash",
+          "modelType": "text",
+          "inputPer1m": 0.3,
+          "cachedInputPer1m": 0.06,
+          "outputPer1m": 1.5,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qwen3-coder-plus",
+          "modelType": "text",
+          "inputPer1m": 1,
+          "cachedInputPer1m": null,
+          "outputPer1m": 5,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qwen3-livetranslate-flash-realtime",
+          "modelType": "multimodal",
+          "inputPer1m": 10,
+          "cachedInputPer1m": null,
+          "outputPer1m": 10,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qwen3-max",
+          "modelType": "text",
+          "inputPer1m": 1.2,
+          "cachedInputPer1m": null,
+          "outputPer1m": 6,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qwen3-next-80b-a3b-instruct",
+          "modelType": "text",
+          "inputPer1m": 0.5,
+          "cachedInputPer1m": null,
+          "outputPer1m": 2,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qwen3-next-80b-a3b-thinking",
+          "modelType": "decision",
+          "inputPer1m": 0.5,
+          "cachedInputPer1m": null,
+          "outputPer1m": 6,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qwen3-omni-flash",
+          "modelType": "multimodal",
+          "inputPer1m": 0.43,
+          "cachedInputPer1m": null,
+          "outputPer1m": 1.66,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qwen3-omni-flash-realtime",
+          "modelType": "multimodal",
+          "inputPer1m": 0.52,
+          "cachedInputPer1m": null,
+          "outputPer1m": 1.99,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qwen3-vl-235b-a22b",
+          "modelType": "multimodal",
+          "inputPer1m": 0.7,
+          "cachedInputPer1m": null,
+          "outputPer1m": 2.8,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qwen3-vl-30b-a3b",
+          "modelType": "multimodal",
+          "inputPer1m": 0.2,
+          "cachedInputPer1m": null,
+          "outputPer1m": 0.8,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qwen3-vl-plus",
+          "modelType": "multimodal",
+          "inputPer1m": 0.2,
+          "cachedInputPer1m": 0.04,
+          "outputPer1m": 1.6,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qwen3.5-122b-a10b",
+          "modelType": "multimodal",
+          "inputPer1m": 0.4,
+          "cachedInputPer1m": null,
+          "outputPer1m": 3.2,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qwen3.5-27b",
+          "modelType": "multimodal",
+          "inputPer1m": 0.3,
+          "cachedInputPer1m": null,
+          "outputPer1m": 2.4,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qwen3.5-35b-a3b",
+          "modelType": "multimodal",
+          "inputPer1m": 0.25,
+          "cachedInputPer1m": null,
+          "outputPer1m": 2,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qwen3.5-397b-a17b",
+          "modelType": "multimodal",
+          "inputPer1m": 0.6,
+          "cachedInputPer1m": null,
+          "outputPer1m": 3.6,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qwen3.5-flash",
+          "modelType": "multimodal",
+          "inputPer1m": 0.1,
+          "cachedInputPer1m": 0.01,
+          "outputPer1m": 0.4,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qwen3.5-plus",
+          "modelType": "multimodal",
+          "inputPer1m": 0.4,
+          "cachedInputPer1m": null,
+          "outputPer1m": 2.4,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qwen3.6-27b",
+          "modelType": "multimodal",
+          "inputPer1m": 0.6,
+          "cachedInputPer1m": null,
+          "outputPer1m": 3.6,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qwen3.6-35b-a3b",
+          "modelType": "multimodal",
+          "inputPer1m": 0.375,
+          "cachedInputPer1m": null,
+          "outputPer1m": 2.25,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qwen3.6-flash",
+          "modelType": "multimodal",
+          "inputPer1m": 0.25,
+          "cachedInputPer1m": 0.025,
+          "outputPer1m": 1.5,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qwen3.6-max-preview",
+          "modelType": "decision",
+          "inputPer1m": 1.3,
+          "cachedInputPer1m": 0.13,
+          "outputPer1m": 7.8,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qwen3.6-plus",
+          "modelType": "multimodal",
+          "inputPer1m": 0.5,
+          "cachedInputPer1m": 0.05,
+          "outputPer1m": 3,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qwen3.7-flash",
+          "modelType": "multimodal",
+          "inputPer1m": 0.03,
+          "cachedInputPer1m": 0.006,
+          "outputPer1m": 0.13,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qwen3.7-max",
+          "modelType": "decision",
+          "inputPer1m": 2.5,
+          "cachedInputPer1m": 0.5,
+          "outputPer1m": 7.5,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qwen3.7-plus",
+          "modelType": "multimodal",
+          "inputPer1m": 0.4,
+          "cachedInputPer1m": 0.08,
+          "outputPer1m": 1.6,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qwen3.8-flash",
+          "modelType": "multimodal",
+          "inputPer1m": 0.15,
+          "cachedInputPer1m": 0.016,
+          "outputPer1m": 0.47,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qwen3.8-max",
+          "modelType": "multimodal",
+          "inputPer1m": 2,
+          "cachedInputPer1m": 0.25,
+          "outputPer1m": 6,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qwen3.8-omni-flash",
+          "modelType": "multimodal",
+          "inputPer1m": 0.15,
+          "cachedInputPer1m": 0.016,
+          "outputPer1m": 0.47,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "qwq-plus",
+          "modelType": "decision",
+          "inputPer1m": 0.8,
+          "cachedInputPer1m": null,
+          "outputPer1m": 2.4,
+          "currency": "USD",
+          "note": null
+        }
+      ]
+    },
+    {
+      "id": "moonshotai",
+      "name": "月之暗面（Kimi）",
+      "region": "cn",
+      "pricingUrl": "https://platform.moonshot.ai/docs/api/chat",
+      "models": [
+        {
+          "model": "kimi-k2.6",
+          "modelType": "multimodal",
+          "inputPer1m": 0.95,
+          "cachedInputPer1m": 0.16,
+          "outputPer1m": 4,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "kimi-k2.7-code",
+          "modelType": "multimodal",
+          "inputPer1m": 0.95,
+          "cachedInputPer1m": 0.19,
+          "outputPer1m": 4,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "kimi-k2.7-code-highspeed",
+          "modelType": "multimodal",
+          "inputPer1m": 1.9,
+          "cachedInputPer1m": 0.38,
+          "outputPer1m": 8,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "kimi-k3",
+          "modelType": "multimodal",
+          "inputPer1m": 3,
+          "cachedInputPer1m": 0.3,
+          "outputPer1m": 15,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "kimi-k3.1-pro",
+          "modelType": "multimodal",
+          "inputPer1m": 2,
+          "cachedInputPer1m": 0.2,
+          "outputPer1m": 10,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "kimi-k3.1-pro-highspeed",
+          "modelType": "multimodal",
+          "inputPer1m": 4,
+          "cachedInputPer1m": 0.2,
+          "outputPer1m": 20,
+          "currency": "USD",
+          "note": null
+        }
+      ]
+    },
+    {
+      "id": "zhipuai",
+      "name": "智谱 AI（GLM）",
+      "region": "cn",
+      "pricingUrl": "https://docs.bigmodel.cn/cn/guide/start/pricing",
+      "models": [
+        {
+          "model": "glm-4.5",
+          "modelType": "decision",
+          "inputPer1m": 0.6,
+          "cachedInputPer1m": 0.11,
+          "outputPer1m": 2.2,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "glm-4.5-air",
+          "modelType": "decision",
+          "inputPer1m": 0.11952,
+          "cachedInputPer1m": 0.0239,
+          "outputPer1m": 0.89637,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "glm-4.5-flash",
+          "modelType": "decision",
+          "inputPer1m": 0,
+          "cachedInputPer1m": null,
+          "outputPer1m": 0,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "glm-4.5v",
+          "modelType": "multimodal",
+          "inputPer1m": 0.29879,
+          "cachedInputPer1m": 0.05976,
+          "outputPer1m": 0.89637,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "glm-4.6",
+          "modelType": "decision",
+          "inputPer1m": 0.6,
+          "cachedInputPer1m": 0.11,
+          "outputPer1m": 2.2,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "glm-4.6v",
+          "modelType": "multimodal",
+          "inputPer1m": 0.1494,
+          "cachedInputPer1m": 0.02988,
+          "outputPer1m": 0.44819,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "glm-4.6v-flash",
+          "modelType": "multimodal",
+          "inputPer1m": 0,
+          "cachedInputPer1m": null,
+          "outputPer1m": 0,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "glm-4.7",
+          "modelType": "decision",
+          "inputPer1m": 0.44819,
+          "cachedInputPer1m": 0.08964,
+          "outputPer1m": 2.09153,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "glm-4.7-flash",
+          "modelType": "decision",
+          "inputPer1m": 0,
+          "cachedInputPer1m": null,
+          "outputPer1m": 0,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "glm-4.7-flashx",
+          "modelType": "decision",
+          "inputPer1m": 0.0747,
+          "cachedInputPer1m": 0.01494,
+          "outputPer1m": 0.44819,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "glm-5",
+          "modelType": "decision",
+          "inputPer1m": 0.59758,
+          "cachedInputPer1m": 0.1494,
+          "outputPer1m": 2.68911,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "glm-5.1",
+          "modelType": "decision",
+          "inputPer1m": 0.89637,
+          "cachedInputPer1m": 0.19421,
+          "outputPer1m": 3.58548,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "glm-5.2",
+          "modelType": "decision",
+          "inputPer1m": 1.19516,
+          "cachedInputPer1m": 0.29879,
+          "outputPer1m": 4.18306,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "glm-5.3",
+          "modelType": "decision",
+          "inputPer1m": 1.19516,
+          "cachedInputPer1m": 0.29879,
+          "outputPer1m": 4.18306,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "glm-5.3-flash",
+          "modelType": "multimodal",
+          "inputPer1m": 0.11952,
+          "cachedInputPer1m": 0.03436,
+          "outputPer1m": 0.41831,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "glm-5.3-flashx",
+          "modelType": "multimodal",
+          "inputPer1m": 0.29879,
+          "cachedInputPer1m": 0.08516,
+          "outputPer1m": 1.04577,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "glm-5v-turbo",
+          "modelType": "multimodal",
+          "inputPer1m": 0.74698,
+          "cachedInputPer1m": 0.17927,
+          "outputPer1m": 3.28669,
+          "currency": "USD",
+          "note": null
+        }
+      ]
+    },
+    {
+      "id": "volcengine",
+      "name": "火山方舟（豆包）",
+      "region": "cn",
+      "pricingUrl": "https://www.volcengine.com/docs/82379/1330310",
+      "models": [
+        {
+          "model": "deepseek-v4-flash-ga-260731",
+          "modelType": "decision",
+          "inputPer1m": 0.4453,
+          "cachedInputPer1m": 0.01484,
+          "outputPer1m": 1.3359,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "deepseek-v4-pro-ga-260813",
+          "modelType": "decision",
+          "inputPer1m": 1.3359,
+          "cachedInputPer1m": 0.04453,
+          "outputPer1m": 4.00771,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "doubao-seed-1-6-251015",
+          "modelType": "multimodal",
+          "inputPer1m": 0.11875,
+          "cachedInputPer1m": 0.02375,
+          "outputPer1m": 1.18747,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "doubao-seed-1-6-flash-250828",
+          "modelType": "multimodal",
+          "inputPer1m": 0.02227,
+          "cachedInputPer1m": 0.00445,
+          "outputPer1m": 0.22265,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "doubao-seed-1-6-vision-250815",
+          "modelType": "multimodal",
+          "inputPer1m": 0.11875,
+          "cachedInputPer1m": 0.02375,
+          "outputPer1m": 1.18747,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "doubao-seed-1-8-251228",
+          "modelType": "multimodal",
+          "inputPer1m": 0.11875,
+          "cachedInputPer1m": 0.02375,
+          "outputPer1m": 1.18747,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "doubao-seed-2-0-code-preview-260215",
+          "modelType": "multimodal",
+          "inputPer1m": 0.47499,
+          "cachedInputPer1m": 0.095,
+          "outputPer1m": 2.37494,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "doubao-seed-2-0-lite-260428",
+          "modelType": "multimodal",
+          "inputPer1m": 0.08906,
+          "cachedInputPer1m": 0.01781,
+          "outputPer1m": 0.53436,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "doubao-seed-2-0-mini-260428",
+          "modelType": "multimodal",
+          "inputPer1m": 0.02969,
+          "cachedInputPer1m": 0.00594,
+          "outputPer1m": 0.29687,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "doubao-seed-2-0-pro-260215",
+          "modelType": "multimodal",
+          "inputPer1m": 0.47499,
+          "cachedInputPer1m": 0.095,
+          "outputPer1m": 2.37494,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "doubao-seed-2-1-pro-260628",
+          "modelType": "multimodal",
+          "inputPer1m": 0.8906,
+          "cachedInputPer1m": 0.17812,
+          "outputPer1m": 4.45301,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "doubao-seed-2-1-turbo-260628",
+          "modelType": "multimodal",
+          "inputPer1m": 0.4453,
+          "cachedInputPer1m": 0.08906,
+          "outputPer1m": 2.22651,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "doubao-seed-character-260628",
+          "modelType": "multimodal",
+          "inputPer1m": 0.11875,
+          "cachedInputPer1m": 0.02375,
+          "outputPer1m": 0.29687,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "doubao-seed-evolving",
+          "modelType": "multimodal",
+          "inputPer1m": 0.8906,
+          "cachedInputPer1m": 0.17812,
+          "outputPer1m": 4.45301,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "glm-5-2-260617",
+          "modelType": "decision",
+          "inputPer1m": 1.18747,
+          "cachedInputPer1m": 0.29687,
+          "outputPer1m": 4.15615,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "glm-5-3-flash-260828",
+          "modelType": "multimodal",
+          "inputPer1m": 0.11875,
+          "cachedInputPer1m": 0.03414,
+          "outputPer1m": 0.41563,
+          "currency": "USD",
+          "note": null
+        }
+      ]
+    },
+    {
+      "id": "minimax",
+      "name": "MiniMax",
+      "region": "cn",
+      "pricingUrl": "https://platform.minimax.io/docs/guides/quickstart",
+      "models": [
+        {
+          "model": "MiniMax-M2",
+          "modelType": "decision",
+          "inputPer1m": 0.3,
+          "cachedInputPer1m": null,
+          "outputPer1m": 1.2,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "MiniMax-M2.1",
+          "modelType": "decision",
+          "inputPer1m": 0.3,
+          "cachedInputPer1m": 0.03,
+          "outputPer1m": 1.2,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "MiniMax-M2.5",
+          "modelType": "decision",
+          "inputPer1m": 0.3,
+          "cachedInputPer1m": 0.03,
+          "outputPer1m": 1.2,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "MiniMax-M2.5-highspeed",
+          "modelType": "decision",
+          "inputPer1m": 0.6,
+          "cachedInputPer1m": 0.03,
+          "outputPer1m": 2.4,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "MiniMax-M2.7",
+          "modelType": "decision",
+          "inputPer1m": 0.3,
+          "cachedInputPer1m": 0.06,
+          "outputPer1m": 1.2,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "MiniMax-M2.7-highspeed",
+          "modelType": "decision",
+          "inputPer1m": 0.6,
+          "cachedInputPer1m": 0.06,
+          "outputPer1m": 2.4,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "MiniMax-M3",
+          "modelType": "multimodal",
+          "inputPer1m": 0.3,
+          "cachedInputPer1m": 0.06,
+          "outputPer1m": 1.2,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "MiniMax-M3.1-Flash",
+          "modelType": "multimodal",
+          "inputPer1m": 0.15,
+          "cachedInputPer1m": 0.015,
+          "outputPer1m": 0.6,
+          "currency": "USD",
+          "note": null
+        }
+      ]
+    },
+    {
+      "id": "stepfun",
+      "name": "阶跃星辰",
+      "region": "cn",
+      "pricingUrl": "https://platform.stepfun.com/docs/zh/overview/concept",
+      "models": [
+        {
+          "model": "step-3.5-flash",
+          "modelType": "decision",
+          "inputPer1m": 0.10461,
+          "cachedInputPer1m": 0.02092,
+          "outputPer1m": 0.31384,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "step-3.5-flash-2603",
+          "modelType": "decision",
+          "inputPer1m": 0.10461,
+          "cachedInputPer1m": 0.02092,
+          "outputPer1m": 0.31384,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "step-3.7-flash",
+          "modelType": "multimodal",
+          "inputPer1m": 0.20175,
+          "cachedInputPer1m": 0.04035,
+          "outputPer1m": 1.21052,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "step-5-preview",
+          "modelType": "multimodal",
+          "inputPer1m": 1.04613,
+          "cachedInputPer1m": 0.10461,
+          "outputPer1m": 2.98895,
+          "currency": "USD",
+          "note": null
+        }
+      ]
+    },
+    {
+      "id": "xiaomi",
+      "name": "小米",
+      "region": "cn",
+      "pricingUrl": "https://platform.xiaomimimo.com/#/docs",
+      "models": [
+        {
+          "model": "mimo-v2.5",
+          "modelType": "multimodal",
+          "inputPer1m": 0.14,
+          "cachedInputPer1m": 0.0028,
+          "outputPer1m": 0.28,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "mimo-v2.5-pro",
+          "modelType": "decision",
+          "inputPer1m": 0.435,
+          "cachedInputPer1m": 0.0036,
+          "outputPer1m": 0.87,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "mimo-v2.5-pro-ultraspeed",
+          "modelType": "decision",
+          "inputPer1m": 1.305,
+          "cachedInputPer1m": 0.0108,
+          "outputPer1m": 2.61,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "mimo-v2.6-flash",
+          "modelType": "multimodal",
+          "inputPer1m": 0.14,
+          "cachedInputPer1m": 0.0028,
+          "outputPer1m": 0.28,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "mimo-v2.6-pro",
+          "modelType": "multimodal",
+          "inputPer1m": 0.435,
+          "cachedInputPer1m": 0.0036,
+          "outputPer1m": 0.87,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "mimo-v2.6-pro-ultraspeed",
+          "modelType": "multimodal",
+          "inputPer1m": 4.35,
+          "cachedInputPer1m": 0.036,
+          "outputPer1m": 8.7,
+          "currency": "USD",
+          "note": null
+        }
+      ]
+    }
+  ]
+}
