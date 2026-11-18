@@ -1,9 +1,11 @@
 [package]
 name = "lcm"
-version = "0.15.0"
+version = "0.16.1"
 description = "LCM — Local Channel Manager，本地优先的大模型渠道管理与 API 测试工具"
 authors = ["王昊"]
 edition = "2021"
+# 有多个 bin 目标（lcm / lcm-mcp）时必须指定默认二进制，否则 tauri dev 的 cargo run 会报歧义
+default-run = "lcm"
 
 [lib]
 name = "lcm_lib"

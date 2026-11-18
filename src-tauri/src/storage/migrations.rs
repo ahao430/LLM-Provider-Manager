@@ -47,6 +47,10 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "0010_model_type_multimodal_families",
         include_str!("../../migrations/0010_model_type_multimodal_families.sql"),
     ),
+    (
+        "0011_error_knowledge",
+        include_str!("../../migrations/0011_error_knowledge.sql"),
+    ),
 ];
 
 pub fn run(conn: &Connection) -> AppResult<()> {

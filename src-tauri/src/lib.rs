@@ -13,6 +13,7 @@ mod billing;
 mod channels;
 mod commands;
 mod credentials;
+pub mod diagnostics;
 mod error;
 mod market;
 // MCP 只读服务器（bin/lcm-mcp 使用；App 内不调用）
@@ -56,6 +57,7 @@ use crate::commands::credentials::{
     set_channel_credential,
 };
 use crate::commands::dashboard::get_dashboard_stats;
+use crate::commands::diagnostics::diagnose_request;
 use crate::commands::image::{
     edit_image, generate_image, read_archived_image, send_vision_request,
 };
@@ -145,6 +147,7 @@ pub fn run() {
             reparse_test_response,
             replay_test_request,
             get_dashboard_stats,
+            diagnose_request,
             list_recharges,
             add_recharge,
             update_recharge,

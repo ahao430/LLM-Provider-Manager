@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ArrowLeft, RefreshCw, Terminal } from "lucide-react";
 
@@ -9,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { copyTestCurl } from "@/lib/tauri";
+import { copyTestCurl, diagnoseRequest, type Diagnosis } from "@/lib/tauri";
 import { useReparse, useTestRaw, useTestRecord, useReplayRequest } from "@/features/api-testing/api";
 
 /** 测试详情：Overview / Request Raw / Response Raw / Timeline / Processing。 */
@@ -218,26 +219,87 @@ export function RequestDetailPage() {
         </TabsContent>
 
         <TabsContent value="diagnosis">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">错误诊断（Phase 8 / P2）</CardTitle>
-              <CardDescription>
-                错误性质与来源分开、事实与推测分开、置信度必须明确。多层网关归因、NewAPI 知识库与 AI 诊断将在后续版本提供。
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {detail.errorCode || detail.errorMessage ? (
-                <pre className="text-destructive rounded-md border p-3 text-xs">
-                  {JSON.stringify({ errorCode: detail.errorCode, errorMessage: detail.errorMessage }, null, 2)}
-                </pre>
-              ) : (
-                <p className="text-muted-foreground text-sm">该请求无错误记录。</p>
-              )}
-            </CardContent>
-          </Card>
+          <DiagnosisCard traceId={traceId} hasError={Boolean(detail.errorCode || detail.errorMessage)} />
         </TabsContent>
       </Tabs>
     </>
+  );
+}
+
+/** 诊断卡片：知识库匹配结果，事实与建议分开、置信度明确（只读，不自动执行建议）。 */
+function DiagnosisCard({ traceId, hasError }: { traceId: string; hasError: boolean }) {
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ["diagnosis", traceId],
+    queryFn: () => diagnoseRequest(traceId),
+  });
+
+  const CONFIDENCE_VARIANT: Record<Diagnosis["confidence"], "default" | "secondary" | "outline"> = {
+    confirmed: "default",
+    probable: "secondary",
+    unknown: "outline",
+  };
+  const CONFIDENCE_LABELS: Record<Diagnosis["confidence"], string> = {
+    confirmed: "确认（错误码精确命中）",
+    probable: "可能（状态 / 关键词命中）",
+    unknown: "证据不足",
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">错误诊断（知识库）</CardTitle>
+        <CardDescription>
+          事实与建议分开、置信度明确；诊断只读，LCM 不会自动执行任何建议。
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3 text-sm">
+        {isLoading ? (
+          <Skeleton className="h-32 w-full" />
+        ) : isError ? (
+          <p className="text-destructive text-sm">诊断失败：{String(error)}</p>
+        ) : (
+          data ? (
+            <>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant={CONFIDENCE_VARIANT[data.confidence]}>
+                {CONFIDENCE_LABELS[data.confidence]}
+              </Badge>
+              {data.matched ? (
+                <>
+                  <Badge variant="outline">{data.matched.errorType}</Badge>
+                  <span className="text-sm font-medium">{data.matched.title}</span>
+                </>
+              ) : null}
+            </div>
+            <div className="rounded-md border p-3">
+              <p className="text-muted-foreground text-xs">事实</p>
+              <p className="text-xs">{data.evidence}</p>
+              {data.matched ? <p className="mt-1 text-xs">{data.matched.facts}</p> : null}
+            </div>
+            <div className="rounded-md border p-3">
+              <p className="text-muted-foreground text-xs">建议（推测性内容，仅供参考）</p>
+              <p className="text-xs">{data.advice}</p>
+            </div>
+            {data.failedEvents.length > 0 ? (
+              <div>
+                <p className="text-muted-foreground mb-1 text-xs">失败的处理事件</p>
+                <ul className="space-y-0.5 text-xs">
+                  {data.failedEvents.map((e, i) => (
+                    <li key={i} className="font-mono">
+                      {e}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            {!hasError ? (
+              <p className="text-muted-foreground text-xs">该请求无错误记录；以上为通用状态。</p>
+              ) : null}
+            </>
+          ) : null
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

@@ -1375,7 +1375,8 @@ MCP 不返回 API Key、Bearer Token、AccessKey Secret 或其他渠道凭证。
 > 9 个只读工具——list_channels / list_models / search_request_records / get_request_record /
 > get_request_error / get_request_raw / list_balances / list_funds / search_market_prices；
 > DB 只读打开、凭证零输出。注册方式见 App 设置页「MCP」卡片。
-> `diagnose_request_error` / `search_error_docs` / `get_error_chain` 依赖错误知识库，仍属 Phase 8 后续。
+> **v0.16.0 已提供**：错误知识库（迁移 0011，内置 15 条）+ 三档置信度诊断引擎（diagnostics/），
+> 测试详情页「错误诊断」Tab 与 MCP 的 diagnose_request_error / search_error_docs / get_error_chain 三个工具随之可用；多层网关归因（跨中转层的自动定位）仍属后续。
 
 ---
 

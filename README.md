@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/ahao430/LLM-Provider-Manager/actions/workflows/ci.yml/badge.svg)](https://github.com/ahao430/LLM-Provider-Manager/actions/workflows/ci.yml)
 [![Release](https://github.com/ahao430/LLM-Provider-Manager/actions/workflows/release.yml/badge.svg)](https://github.com/ahao430/LLM-Provider-Manager/actions/workflows/release.yml)
-![Version](https://img.shields.io/badge/version-0.15.0-blue)
+![Version](https://img.shields.io/badge/version-0.16.0-blue)
 
 LCM 用于统一管理不同 AI 服务商、API 渠道、模型、价格、充值记录和账单，并提供 API 测试、真实 Agent 调用（Claude Code / Codex CLI）、图片生成与理解、测试记录与响应分析能力。
 
@@ -54,7 +54,7 @@ LCM 不是 AI Gateway、API Proxy、模型路由器或协议转换服务，而�
 | 测试中心 | API 测试 / Agent 测试 / 画图（生成 + 编辑）/ 图像理解，一个菜单收敛 | v0.10.0 ✅ |
 | 测试记录 | Trace ID、Raw、Preview、TTFB/TTFT/TPS、Token、历史重新解析、重放、复制 curl | Phase 3 ✅ |
 | 设置 | 常规（应用 / 外观主题 / MCP 接入）/ 数据（加密备份·一致性·清理）/ 更新（GitHub Release 检测） | Phase 0（已上线） |
-| MCP | `lcm-mcp` 只读 MCP 服务器（stdio）：渠道、模型与标注价、测试记录、余额、账单、市场行情；凭证零输出 | v0.15.0 ✅ |
+| MCP | `lcm-mcp` 只读 MCP 服务器（stdio）：渠道、模型与标注价、测试记录、错误诊断（知识库）、余额、账单、市场行情；凭证零输出 | v0.15.0 ✅ |
 
 ## 技术栈
 

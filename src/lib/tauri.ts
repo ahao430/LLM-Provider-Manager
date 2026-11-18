@@ -677,6 +677,34 @@ export function copyTestCurl(traceId: string): Promise<string> {
   return invoke<string>("copy_test_curl", { traceId });
 }
 
+/** 知识条目（诊断命中时返回）。 */
+export interface DiagnosisMatched {
+  id: string;
+  errorType: string;
+  title: string;
+  /** 事实：从错误记录中观察到的东西 */
+  facts: string;
+  /** 建议：推测性内容，LCM 不会自动执行 */
+  advice: string;
+}
+
+/** 诊断结果：事实（evidence / facts）与建议分开，置信度必填。 */
+export interface Diagnosis {
+  traceId: string;
+  status: string;
+  confidence: "confirmed" | "probable" | "unknown";
+  /** 命中依据 */
+  evidence: string;
+  matched: DiagnosisMatched | null;
+  advice: string;
+  failedEvents: string[];
+}
+
+/** 对测试记录做知识库诊断（只读，不自动执行建议）。 */
+export function diagnoseRequest(traceId: string): Promise<Diagnosis> {
+  return invoke<Diagnosis>("diagnose_request", { traceId });
+}
+
 export function reparseTestResponse(traceId: string): Promise<ResponsePreview> {
   return invoke<ResponsePreview>("reparse_test_response", { traceId });
 }

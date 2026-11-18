@@ -97,6 +97,35 @@ pub fn tool_descriptors() -> Vec<Value> {
             }
         }),
         json!({
+            "name": "diagnose_request_error",
+            "description": "对一条失败测试记录做知识库诊断：事实（命中依据）与建议分开，置信度 confirmed/probable/unknown。",
+            "inputSchema": {
+                "type": "object",
+                "properties": { "traceId": { "type": "string" } },
+                "required": ["traceId"]
+            }
+        }),
+        json!({
+            "name": "search_error_docs",
+            "description": "检索错误知识库条目（内置常见中转 / 协议错误：认证、额度、限频、网关、超时等）。",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "query": { "type": "string", "description": "按标题 / 事实 / 类型关键词过滤（可选）" },
+                    "limit": { "type": "integer", "description": "默认 20，上限 100" }
+                }
+            }
+        }),
+        json!({
+            "name": "get_error_chain",
+            "description": "取错误链路事实：错误字段 + 全部处理事件（不含任何推测）。",
+            "inputSchema": {
+                "type": "object",
+                "properties": { "traceId": { "type": "string" } },
+                "required": ["traceId"]
+            }
+        }),
+        json!({
             "name": "search_market_prices",
             "description": "搜索各厂商模型价格快照（models.dev 数据）。",
             "inputSchema": {
@@ -128,6 +157,9 @@ pub fn call_tool(
         "list_balances" => list_balances(conn),
         "list_funds" => list_funds(conn, args),
         "search_market_prices" => search_market_prices(conn, args),
+        "diagnose_request_error" => diagnose_request_error(conn, args),
+        "search_error_docs" => search_error_docs(conn, args),
+        "get_error_chain" => get_error_chain(conn, args),
         other => return Err(format!("未知工具: {other}（可用工具见 tools/list）")),
     }?;
     serde_json::to_string_pretty(&value).map_err(|e| format!("结果序列化失败: {e}"))
@@ -380,6 +412,55 @@ fn search_market_prices(conn: &Connection, args: &Value) -> Result<Value, String
         }
     }
     Ok(json!({ "items": items, "total": items.len() }))
+}
+
+/// 知识库诊断（事实与建议分开，置信度明确）。
+fn diagnose_request_error(conn: &Connection, args: &Value) -> Result<Value, String> {
+    let trace_id = arg_str(args, "traceId").ok_or_else(|| "缺少 traceId".to_string())?;
+    let diagnosis =
+        crate::diagnostics::engine::diagnose(conn, &trace_id).map_err(|e| e.to_string())?;
+    serde_json::to_value(&diagnosis).map_err(|e| format!("诊断序列化失败: {e}"))
+}
+
+/// 错误知识库检索。
+fn search_error_docs(conn: &Connection, args: &Value) -> Result<Value, String> {
+    let entries = crate::diagnostics::knowledge::list_all(conn).map_err(|e| e.to_string())?;
+    let query = arg_str(args, "query").map(|q| q.trim().to_lowercase());
+    let limit = arg_limit(args, 20, 100);
+    let items: Vec<Value> = entries
+        .into_iter()
+        .filter(|e| {
+            query
+                .as_ref()
+                .map(|q| {
+                    e.title.to_lowercase().contains(q.as_str())
+                        || e.facts.to_lowercase().contains(q.as_str())
+                        || e.error_type.contains(q.as_str())
+                })
+                .unwrap_or(true)
+        })
+        .take(limit as usize)
+        .map(|e| serde_json::to_value(&e).unwrap_or(Value::Null))
+        .collect();
+    Ok(json!({ "entries": items, "total": items.len() }))
+}
+
+/// 错误链路事实：错误字段 + 全部处理事件（不含推测）。
+fn get_error_chain(conn: &Connection, args: &Value) -> Result<Value, String> {
+    let trace_id = arg_str(args, "traceId").ok_or_else(|| "缺少 traceId".to_string())?;
+    let record = request_repo::get(conn, &trace_id).map_err(|e| e.to_string())?;
+    let events = request_repo::list_events(conn, &trace_id).map_err(|e| e.to_string())?;
+    Ok(json!({
+        "traceId": record.trace_id,
+        "status": record.status,
+        "protocol": record.protocol,
+        "errorCode": record.error_code,
+        "errorMessage": record.error_message,
+        "httpStatus": record.http_status,
+        "requestRef": record.request_ref,
+        "responseRef": record.response_ref,
+        "events": serde_json::to_value(&events).unwrap_or(Value::Null),
+    }))
 }
 
 #[cfg(test)]

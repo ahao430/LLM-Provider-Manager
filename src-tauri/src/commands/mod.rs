@@ -8,6 +8,7 @@ pub mod billing;
 pub mod channels;
 pub mod credentials;
 pub mod dashboard;
+pub mod diagnostics;
 pub mod image;
 pub mod market;
 pub mod models;

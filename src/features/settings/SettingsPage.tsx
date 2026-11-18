@@ -582,8 +582,9 @@ function McpCard({ dataDir }: { dataDir: string }) {
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
         <p className="text-muted-foreground text-xs">
-          9 个只读工具：list_channels / list_models / search_request_records / get_request_record /
-          get_request_error / get_request_raw / list_balances / list_funds / search_market_prices。
+          12 个只读工具：list_channels / list_models / search_request_records / get_request_record /
+          get_request_error / get_request_raw / list_balances / list_funds / search_market_prices /
+          diagnose_request_error / search_error_docs / get_error_chain。
           凭证零输出（红线）；数据库以只读方式打开，App 无需常驻。
         </p>
         <div className="space-y-1">

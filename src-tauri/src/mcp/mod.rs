@@ -24,7 +24,7 @@ use tools::ToolContext;
 const PROTOCOL_VERSION: &str = "2024-11-05";
 /// 服务器名（注册后客户端列表里显示）。
 pub const SERVER_NAME: &str = "lcm-mcp";
-pub const SERVER_VERSION: &str = "0.15.0";
+pub const SERVER_VERSION: &str = "0.16.0";
 
 /// MCP 服务器运行状态：只读连接 + 数据目录。
 pub struct McpState {
@@ -81,7 +81,7 @@ pub fn handle_line(state: &McpState, line: &str) -> Option<String> {
         "initialize" => Ok(json!({
             "protocolVersion": PROTOCOL_VERSION,
             "capabilities": { "tools": {} },
-            "serverInfo": { "name": SERVER_NAME, "version": "0.15.0" },
+            "serverInfo": { "name": SERVER_NAME, "version": SERVER_VERSION },
         })),
         "notifications/initialized" => return None,
         "notifications/cancelled" => return None,
