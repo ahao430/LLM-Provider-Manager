@@ -1,6 +1,6 @@
 [package]
 name = "lcm"
-version = "0.14.1"
+version = "0.15.0"
 description = "LCM — Local Channel Manager，本地优先的大模型渠道管理与 API 测试工具"
 authors = ["王昊"]
 edition = "2021"
@@ -8,6 +8,11 @@ edition = "2021"
 [lib]
 name = "lcm_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
+
+# 独立 MCP 命令（只读查询，stdio）：`cargo build --bin lcm-mcp`
+[[bin]]
+name = "lcm-mcp"
+path = "src/bin/lcm_mcp.rs"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }

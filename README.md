@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/ahao430/LLM-Provider-Manager/actions/workflows/ci.yml/badge.svg)](https://github.com/ahao430/LLM-Provider-Manager/actions/workflows/ci.yml)
 [![Release](https://github.com/ahao430/LLM-Provider-Manager/actions/workflows/release.yml/badge.svg)](https://github.com/ahao430/LLM-Provider-Manager/actions/workflows/release.yml)
-![Version](https://img.shields.io/badge/version-0.14.0-blue)
+![Version](https://img.shields.io/badge/version-0.15.0-blue)
 
 LCM 用于统一管理不同 AI 服务商、API 渠道、模型、价格、充值记录和账单，并提供 API 测试、真实 Agent 调用（Claude Code / Codex CLI）、图片生成与理解、测试记录与响应分析能力。
 
@@ -53,7 +53,8 @@ LCM 不是 AI Gateway、API Proxy、模型路由器或协议转换服务，而�
 | 资金与账单 | 充值 / 供应商账单 / 余额快照；余额查询方式按服务商自动派生（NewAPI 用户额度、阿里云百炼费用中心，支持账单按月净额导入） | Phase 6 ✅ |
 | 测试中心 | API 测试 / Agent 测试 / 画图（生成 + 编辑）/ 图像理解，一个菜单收敛 | v0.10.0 ✅ |
 | 测试记录 | Trace ID、Raw、Preview、TTFB/TTFT/TPS、Token、历史重新解析、重放、复制 curl | Phase 3 ✅ |
-| 设置 | 常规（应用 / 外观主题）/ 数据（加密备份·一致性·清理）/ 更新（GitHub Release 检测） | Phase 0（已上线） |
+| 设置 | 常规（应用 / 外观主题 / MCP 接入）/ 数据（加密备份·一致性·清理）/ 更新（GitHub Release 检测） | Phase 0（已上线） |
+| MCP | `lcm-mcp` 只读 MCP 服务器（stdio）：渠道、模型与标注价、测试记录、余额、账单、市场行情；凭证零输出 | v0.15.0 ✅ |
 
 ## 技术栈
 
@@ -110,6 +111,7 @@ pnpm dev
 | `pnpm typecheck` | TypeScript 类型检查 |
 | `pnpm test` | 运行前端测试（Vitest） |
 | `cargo fmt` / `cargo clippy` / `cargo test`（在 `src-tauri/` 下） | Rust 格式化 / 静态检查 / 测试 |
+| `cargo build --release --bin lcm-mcp` | 构建 MCP 只读服务器（注册到 Claude Code / Codex，见设置页「MCP」） |
 | `pnpm version:sync 0.0.2` | 同步三处版本号并提醒更新 CHANGELOG |
 
 ## 项目结构
@@ -125,7 +127,8 @@ pnpm dev
 │   │   ├── commands/           # Tauri Command 层
 │   │   ├── services/           # 业务服务层
 │   │   ├── channels/ · models/ · credentials/ · billing/
-│   │   ├── agent/              # Agent 兼容性（禁止依赖 adapters/）
+│   │   ├── agent/              # Agent 兼容性 + Launcher + 真实 Agent 探针（禁止依赖 adapters/）
+│   │   ├── mcp/                # 只读 MCP 服务器（bin/lcm-mcp；凭证零输出）
 │   │   ├── workbenches/        # 工作台（唯一允许调用 adapters/ 的模块）
 │   │   ├── adapters/           # Provider / Protocol Adapter
 │   │   ├── requests/ · processing/ · diagnostics/ · backup/

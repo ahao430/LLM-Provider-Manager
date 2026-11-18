@@ -21,15 +21,19 @@ jobs:
           - platform: macos-latest
             args: --target aarch64-apple-darwin
             rust-targets: aarch64-apple-darwin
+            mcp-target: aarch64-apple-darwin
           - platform: macos-latest
             args: --target x86_64-apple-darwin
             rust-targets: x86_64-apple-darwin
+            mcp-target: x86_64-apple-darwin
           - platform: ubuntu-22.04
             args: ""
-            rust-targets: ""
+            rust-targets: x86_64-unknown-linux-gnu
+            mcp-target: x86_64-unknown-linux-gnu
           - platform: windows-latest
             args: ""
-            rust-targets: ""
+            rust-targets: x86_64-pc-windows-msvc
+            mcp-target: x86_64-pc-windows-msvc
 
     runs-on: ${{ matrix.platform }}
 
@@ -81,3 +85,22 @@ jobs:
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
+
+      # 附赠只读 MCP 服务器二进制（设置页「MCP」卡片指引注册）
+      - name: Build lcm-mcp
+        shell: bash
+        run: cargo build --release --bin lcm-mcp --target ${{ matrix.mcp-target }}
+        working-directory: src-tauri
+
+      - name: Upload lcm-mcp to draft release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          version=$(jq -r '.version' src-tauri/tauri.conf.json)
+          ext=""
+          if [[ "${{ matrix.mcp-target }}" == *"windows"* ]]; then ext=".exe"; fi
+          src="src-tauri/target/${{ matrix.mcp-target }}/release/lcm-mcp${ext}"
+          asset="lcm-mcp-${{ matrix.mcp-target }}${ext}"
+          cp "$src" "$asset"
+          gh release upload "v${version}" "$asset" --clobber

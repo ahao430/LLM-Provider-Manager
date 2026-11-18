@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { open as openDialog, save as saveDialog } from "@tauri-apps/plugin-dialog";
+import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import {
   Archive,
   CheckCircle2,
@@ -134,6 +135,8 @@ export function SettingsPage() {
               )}
             </CardContent>
           </Card>
+
+          <McpCard dataDir={appInfo?.dataDir ?? ""} />
         </TabsContent>
 
         <TabsContent value="data" className="space-y-6">
@@ -552,6 +555,68 @@ function CleanupCard() {
         <p className="text-muted-foreground text-xs">
           渠道 / 模型 / 价格 / 充值等管理数据不受影响，仅清理测试记录与对应 Raw 文件。
         </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+/** MCP 接入卡片：只读工具清单 + 注册命令（可复制）。 */
+function McpCard({ dataDir }: { dataDir: string }) {
+  const claudeCmd = `claude mcp add lcm -- /path/to/lcm-mcp --data-dir ${dataDir || "<数据目录>"}`;
+  const codexSnippet = `[mcp_servers.lcm]\ncommand = "/path/to/lcm-mcp"\nargs = ["--data-dir", "${dataDir || "<数据目录>"}"]`;
+
+  async function copy(text: string, label: string) {
+    try {
+      await writeText(text);
+      toast.success(`${label}已复制`);
+    } catch (error) {
+      toast.error(`复制失败：${error}`);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>MCP（外部 AI Agent 只读接入）</CardTitle>
+        <CardDescription>把 LCM 数据以只读工具开放给 Claude Code / Codex 等外部 Agent。</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3 text-sm">
+        <p className="text-muted-foreground text-xs">
+          9 个只读工具：list_channels / list_models / search_request_records / get_request_record /
+          get_request_error / get_request_raw / list_balances / list_funds / search_market_prices。
+          凭证零输出（红线）；数据库以只读方式打开，App 无需常驻。
+        </p>
+        <div className="space-y-1">
+          <Label>1. 构建 MCP 命令</Label>
+          <code className="bg-muted block overflow-x-auto rounded-md px-2.5 py-1.5 text-xs">
+            cargo build --release --bin lcm-mcp
+          </code>
+          <p className="text-muted-foreground text-xs">
+            产物 <code>src-tauri/target/release/lcm-mcp</code>（开发期 target/debug 亦可）；把下述命令中的 /path/to/lcm-mcp 换成实际路径。
+          </p>
+        </div>
+        <div className="space-y-1">
+          <Label>2. 注册到 Claude Code</Label>
+          <div className="flex items-center gap-2">
+            <code className="bg-muted min-w-0 flex-1 overflow-x-auto rounded-md px-2.5 py-1.5 text-xs whitespace-pre">
+              {claudeCmd}
+            </code>
+            <Button size="sm" variant="outline" onClick={() => copy(claudeCmd, "注册命令")}>
+              复制
+            </Button>
+          </div>
+        </div>
+        <div className="space-y-1">
+          <Label>3. 注册到 Codex（config.toml）</Label>
+          <div className="flex items-start gap-2">
+            <pre className="bg-muted min-w-0 flex-1 overflow-x-auto rounded-md px-2.5 py-1.5 text-xs">
+              {codexSnippet}
+            </pre>
+            <Button size="sm" variant="outline" onClick={() => copy(codexSnippet, "Codex 配置片段")}>
+              复制
+            </Button>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );

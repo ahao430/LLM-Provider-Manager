@@ -81,6 +81,7 @@ Provider / Protocol Adapter（adapters/）
 | `processing/` | ProcessingEvent 生成与查询 | Phase 3 |
 | `diagnostics/` | 错误诊断与多层网关归因 | Phase 8 |
 | `backup/` | 加密备份与恢复 | Phase 7 |
+| `mcp/` | 只读 MCP 服务器（stdio，供外部 AI Agent 查询；凭证零输出，bin 目标 `lcm-mcp`） | v0.15.0 |
 
 ## 数据流四层分离
 

@@ -1371,6 +1371,12 @@ MCP 不返回 API Key、Bearer Token、AccessKey Secret 或其他渠道凭证。
 
 完整 Prompt 和图片等内容需要根据用户授权决定是否提供。
 
+> **v0.15.0 已提供**：`lcm-mcp` stdio 只读服务器（`src-tauri/src/mcp/` + `src/bin/lcm_mcp.rs`），
+> 9 个只读工具——list_channels / list_models / search_request_records / get_request_record /
+> get_request_error / get_request_raw / list_balances / list_funds / search_market_prices；
+> DB 只读打开、凭证零输出。注册方式见 App 设置页「MCP」卡片。
+> `diagnose_request_error` / `search_error_docs` / `get_error_chain` 依赖错误知识库，仍属 Phase 8 后续。
+
 ---
 
 ## 数据存储

@@ -4,6 +4,15 @@
 
 遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 格式，版本策略见 [AGENTS.md](./AGENTS.md)：每次改动第三位 +1（patch），较大改动第二位 +1（minor），第一位仅在维护者要求时升级。
 
+## [0.15.0] - 2026-11-19
+
+### 新增（较大改动，第二位 +1）
+
+- **提供只读 MCP 服务器 `lcm-mcp`**（stdio JSON-RPC，零新增依赖）：外部 AI Agent（Claude Code / Codex 等）可查询 LCM 数据。9 个只读工具——`list_channels`（含最近余额）/ `list_models`（模型 + 标注价）/ `search_request_records` / `get_request_record`（含处理事件）/ `get_request_error` / `get_request_raw`（归档原文，Header 已脱敏）/ `list_balances` / `list_funds`（账单 + 充值）/ `search_market_prices`（models.dev 快照）。
+- **安全边界**：数据库以 `SQLITE_OPEN_READ_ONLY` 打开（WAL 多进程并发），不读取 credentials.json，**任何工具输出零凭证**（白名单序列化）；App 无需常驻。注册方式见设置页「MCP」卡片（`claude mcp add lcm -- ...` / Codex config.toml 片段，一键复制）；`cargo build --release --bin lcm-mcp` 构建产物。
+- `diagnose_request_error` / `search_error_docs` / `get_error_chain` 依赖错误知识库，仍属 Phase 8 后续。
+- Release 工作流随版本发布各平台 `lcm-mcp` 二进制（macOS arm64/x86_64、Linux、Windows），安装包之外可直接下载注册。
+
 ## [0.14.1] - 2026-11-19
 
 ### 新增

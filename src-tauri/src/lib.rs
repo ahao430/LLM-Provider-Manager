@@ -15,6 +15,8 @@ mod commands;
 mod credentials;
 mod error;
 mod market;
+// MCP 只读服务器（bin/lcm-mcp 使用；App 内不调用）
+pub mod mcp;
 mod models;
 mod processing;
 mod requests;
