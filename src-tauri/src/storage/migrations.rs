@@ -87,6 +87,10 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "0020_channel_ops",
         include_str!("../../migrations/0020_channel_ops.sql"),
     ),
+    (
+        "0021_ops_logs_todos",
+        include_str!("../../migrations/0021_ops_logs_todos.sql"),
+    ),
 ];
 
 pub fn run(conn: &Connection) -> AppResult<()> {

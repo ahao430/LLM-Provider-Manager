@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { listLatestBalances, refreshChannelBalance } from "@/lib/tauri";
 import { useChannels } from "@/features/channels/api";
 import { useDashboardStats } from "@/features/api-testing/api";
+import { OpsJournalCards } from "@/features/dashboard/OpsJournalCards";
 
 /** 仪表盘：渠道/模型/请求整体情况。充值与供应商账单分开统计。 */
 export function DashboardPage() {
@@ -69,6 +70,8 @@ export function DashboardPage() {
         {/* 置顶渠道卡片：与统计卡同一网格流式排布（前面有空位就接排，不强制换行） */}
         <PinnedChannelCards />
       </div>
+
+      <OpsJournalCards />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <MoneyCard

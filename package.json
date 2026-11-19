@@ -1,7 +1,7 @@
 {
   "name": "lcm",
   "private": true,
-  "version": "0.33.0",
+  "version": "0.34.0",
   "type": "module",
   "description": "LCM — Local Channel Manager，本地优先的大模型渠道管理与 API 测试工具",
   "packageManager": "pnpm@10.9.0",

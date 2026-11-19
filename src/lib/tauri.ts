@@ -848,6 +848,63 @@ export function getRecordIncident(traceId: string): Promise<IncidentRow | null> 
   return invoke<IncidentRow | null>("get_record_incident", { traceId });
 }
 
+// ------------------------------------------------------------------
+// 运维日志与待办（v0.34.0，仪表盘管理）
+// ------------------------------------------------------------------
+
+export interface OpsLogRow {
+  id: string;
+  channelId: string | null;
+  channelName: string | null;
+  content: string;
+  createdAt: string;
+}
+
+export interface TodoRow {
+  id: string;
+  channelId: string | null;
+  channelName: string | null;
+  title: string;
+  note: string | null;
+  dueDate: string | null;
+  done: boolean;
+  doneAt: string | null;
+  createdAt: string;
+}
+
+export function listOpsLogs(limit = 20): Promise<OpsLogRow[]> {
+  return invoke<OpsLogRow[]>("list_ops_logs", { limit });
+}
+
+export function addOpsLog(content: string, channelId?: string | null): Promise<string> {
+  return invoke<string>("add_ops_log", { input: { content, channelId: channelId ?? null } });
+}
+
+export function deleteOpsLog(id: string): Promise<void> {
+  return invoke<void>("delete_ops_log", { id });
+}
+
+export function listTodos(includeDone = false): Promise<TodoRow[]> {
+  return invoke<TodoRow[]>("list_todos", { includeDone });
+}
+
+export function addTodo(input: {
+  title: string;
+  channelId?: string | null;
+  note?: string | null;
+  dueDate?: string | null;
+}): Promise<string> {
+  return invoke<string>("add_todo", { input });
+}
+
+export function toggleTodo(id: string, done: boolean): Promise<void> {
+  return invoke<void>("toggle_todo", { id, done });
+}
+
+export function deleteTodo(id: string): Promise<void> {
+  return invoke<void>("delete_todo", { id });
+}
+
 export async function sendTestStream(
   req: ApiTestRequestPayload,
   onEvent?: (event: ApiTestStreamEvent) => void

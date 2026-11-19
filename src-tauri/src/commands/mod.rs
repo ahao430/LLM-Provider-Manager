@@ -12,4 +12,5 @@ pub mod diagnostics;
 pub mod image;
 pub mod market;
 pub mod models;
+pub mod ops_journal;
 pub mod workbench;

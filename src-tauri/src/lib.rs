@@ -75,6 +75,9 @@ use crate::commands::models::{
     list_all_channel_models, list_channel_models, list_global_models, list_model_prices,
     rename_global_model, upsert_channel_model,
 };
+use crate::commands::ops_journal::{
+    add_ops_log, add_todo, delete_ops_log, delete_todo, list_ops_logs, list_todos, toggle_todo,
+};
 use crate::commands::workbench::replay_test_request;
 use crate::commands::workbench::{
     copy_test_curl, get_test_raw, get_test_record, list_latest_model_tests, list_test_records,
@@ -127,6 +130,13 @@ pub fn run() {
             resolve_incident,
             list_incidents,
             get_record_incident,
+            add_ops_log,
+            add_todo,
+            delete_ops_log,
+            delete_todo,
+            list_ops_logs,
+            list_todos,
+            toggle_todo,
             list_channel_groups,
             create_channel_group,
             rename_channel_group,
