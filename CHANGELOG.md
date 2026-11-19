@@ -4,6 +4,17 @@
 
 遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 格式，版本策略见 [AGENTS.md](./AGENTS.md)：每次改动第三位 +1（patch），较大改动第二位 +1（minor），第一位仅在维护者要求时升级。
 
+## [0.30.3] - 2026-11-19
+
+### 新增
+
+- **项目主页**：[ahao430.github.io/LLM-Provider-Manager](https://ahao430.github.io/LLM-Provider-Manager/)——产品介绍 / 功能一览 / 设计原则 / 下载入口（`site/` 静态页，GitHub Pages 自动发布，README 已挂链接）。
+
+### 变更
+
+- **检测更新反馈统一为 toast**：设置 → 关于「检测更新」的结果此前以卡片内文字块展示，现与侧边栏一致弹 toast（发现新版本 / 已是最新 / 失败分色）。全局排查确认其余操作反馈均已是 toast（sonner 顶部居中悬浮，fixed 定位不影响页面高度）。
+- **首页置顶渠道卡片**：移除卡片上的「取消置顶」按钮（置顶管理收敛到渠道卡片 / 详情页），卡片保留固定角标；新增余额刷新按钮（查询写快照，toast 反馈，转圈动画）。
+
 ## [0.30.2] - 2026-11-19
 
 ### 修复

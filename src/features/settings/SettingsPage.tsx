@@ -182,7 +182,12 @@ function UpdateCard() {
 
   async function check() {
     try {
-      await refetch();
+      const res = await refetch();
+      if (res.data) {
+        toast.info(`发现新版本 v${res.data.latestVersion}（${res.data.publishedAt?.slice(0, 10) ?? ""} 发布）`);
+      } else {
+        toast.success(`已是最新版本（v${appInfo?.version ?? "?"}）`);
+      }
     } catch (error) {
       toast.error(`检测失败：${error}`);
     }

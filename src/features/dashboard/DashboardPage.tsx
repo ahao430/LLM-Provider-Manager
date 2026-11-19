@@ -1,12 +1,14 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { PinOff } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { Pin, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { listLatestBalances } from "@/lib/tauri";
-import { useChannels, useSetChannelPinned } from "@/features/channels/api";
+import { listLatestBalances, refreshChannelBalance } from "@/lib/tauri";
+import { useChannels } from "@/features/channels/api";
 import { useDashboardStats } from "@/features/api-testing/api";
 
 /** 仪表盘：渠道/模型/请求整体情况。充值与供应商账单分开统计。 */
@@ -88,18 +90,36 @@ export function DashboardPage() {
   );
 }
 
-/** 置顶渠道卡片（dashboard_pinned=1 的渠道），点击进详情，可直接取消置顶。 */
+/** 置顶渠道卡片（dashboard_pinned=1 的渠道），点击进详情，可就地查询余额（写快照）。 */
 /** 置顶渠道卡片（dashboard_pinned=1 的渠道），作为 Fragment 直接排进统计卡同一网格；无置顶返回 null。 */
 function PinnedChannelCards() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { data: channels = [] } = useChannels();
-  const setPinned = useSetChannelPinned();
   const { data: latestBalances = [] } = useQuery({
     queryKey: ["latest-balances"],
     queryFn: listLatestBalances,
   });
+  const [balanceBusyId, setBalanceBusyId] = useState<string | null>(null);
   const pinned = channels.filter((c) => c.dashboardPinned);
   if (pinned.length === 0) return null;
+
+  async function refreshBalance(id: string) {
+    setBalanceBusyId(id);
+    try {
+      const res = await refreshChannelBalance(id);
+      if (res.savedSnapshot) {
+        void queryClient.invalidateQueries({ queryKey: ["latest-balances"] });
+        toast.success(`余额 ${res.currency ?? ""} ${String(res.value ?? "")} 已记录`);
+      } else {
+        toast.warning(`未取到余额${res.rawSnippet ? `：${res.rawSnippet.slice(0, 120)}` : ""}`);
+      }
+    } catch (e) {
+      toast.error(`查询失败：${e}`);
+    } finally {
+      setBalanceBusyId(null);
+    }
+  }
 
   return (
     <>
@@ -112,20 +132,9 @@ function PinnedChannelCards() {
             onClick={() => navigate(`/channels/${c.id}`)}
           >
             <CardHeader className="pb-2">
-              <CardTitle className="flex items-center justify-between text-sm font-medium">
+              <CardTitle className="flex items-center gap-1.5 text-sm font-medium">
+                <Pin className="size-3 shrink-0 text-primary" />
                 <span className="truncate">{c.name}</span>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="size-6"
-                  title="取消置顶"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setPinned.mutate({ id: c.id, pinned: false });
-                  }}
-                >
-                  <PinOff className="size-3.5" />
-                </Button>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-1.5 text-xs">
@@ -137,13 +146,31 @@ function PinnedChannelCards() {
                 </Badge>
               </div>
               <p className="text-muted-foreground font-mono truncate">{c.chatBaseUrl}</p>
-              {balance ? (
-                <span className="tabular-nums">
-                  余额 {balance.currency} {balance.balance.toFixed(2)}
+              <div className="flex items-center gap-1.5">
+                <span
+                  className={balance ? "tabular-nums" : "text-muted-foreground"}
+                  title={balance ? `快照时间 ${balance.capturedAt}` : undefined}
+                >
+                  {balance
+                    ? `余额 ${balance.currency} ${balance.balance.toFixed(2)}`
+                    : "无余额记录"}
                 </span>
-              ) : (
-                <span className="text-muted-foreground">无余额记录</span>
-              )}
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="size-5"
+                  title="查询余额（写快照）"
+                  disabled={balanceBusyId === c.id}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void refreshBalance(c.id);
+                  }}
+                >
+                  <RefreshCw
+                    className={`size-3 ${balanceBusyId === c.id ? "animate-spin" : ""}`}
+                  />
+                </Button>
+              </div>
             </CardContent>
           </Card>
         );

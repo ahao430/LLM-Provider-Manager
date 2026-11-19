@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LCM — Local Channel Manager · 本地优先的大模型渠道管理与 API 测试工具</title>
+<meta name="description" content="LCM 用于统一管理不同 AI 服务商、API 渠道、模型、价格、充值记录和账单，提供 API 测试、真实 Agent 调用、图片生成与理解、测试记录与响应分析能力。忠实呈现渠道原生能力，不擅自优化、转换或修复用户的请求。" />
+<style>
+  :root {
+    --bg: #0b0f19;
+    --bg-soft: #111827;
+    --card: #131b2c;
+    --border: #1f2a44;
+    --text: #e5e9f2;
+    --muted: #8b94a8;
+    --accent: #6d8dff;
+    --accent-2: #37c8a5;
+    --gradient: linear-gradient(120deg, #6d8dff, #37c8a5 60%, #b58cff);
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f7f8fb;
+      --bg-soft: #ffffff;
+      --card: #ffffff;
+      --border: #e3e7f0;
+      --text: #1a2233;
+      --muted: #5c6577;
+      --accent: #3d63e0;
+      --accent-2: #0e9e7e;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+  header {
+    position: sticky; top: 0; z-index: 10;
+    background: color-mix(in srgb, var(--bg) 82%, transparent);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+  }
+  nav { display: flex; align-items: center; justify-content: space-between; height: 60px; }
+  .logo { font-weight: 700; font-size: 18px; letter-spacing: 0.5px; }
+  .logo .dot { color: var(--accent); }
+  nav .links { display: flex; gap: 20px; align-items: center; }
+  nav a { color: var(--muted); text-decoration: none; font-size: 14px; }
+  nav a:hover { color: var(--text); }
+  nav a.cta {
+    color: var(--text);
+    border: 1px solid var(--border);
+    background: var(--card);
+    padding: 7px 14px; border-radius: 10px; font-weight: 600;
+  }
+  nav a.cta:hover { border-color: var(--accent); }
+  .hero { padding: 96px 0 72px; text-align: center; position: relative; }
+  .hero::before {
+    content: ""; position: absolute; inset: -40% 20% auto 20%; height: 420px;
+    background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 22%, transparent), transparent);
+    filter: blur(20px); pointer-events: none;
+  }
+  .badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    border: 1px solid var(--border); background: var(--card);
+    color: var(--muted); font-size: 13px;
+    padding: 6px 14px; border-radius: 999px; margin-bottom: 28px;
+  }
+  .badge b { color: var(--accent-2); font-weight: 600; }
+  h1 {
+    font-size: clamp(34px, 6vw, 56px); line-height: 1.15; font-weight: 800;
+    letter-spacing: -0.5px; margin-bottom: 20px;
+  }
+  h1 .grad {
+    background: var(--gradient);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .hero p.lead {
+    max-width: 720px; margin: 0 auto 16px;
+    color: var(--muted); font-size: 17px;
+  }
+  blockquote {
+    max-width: 640px; margin: 26px auto 40px;
+    border-left: 3px solid var(--accent);
+    padding: 10px 20px; text-align: left;
+    color: var(--text); background: var(--card);
+    border-radius: 0 12px 12px 0; font-size: 15px;
+  }
+  blockquote span { color: var(--muted); font-size: 13px; display: block; margin-top: 6px; }
+  .actions { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 12px 22px; border-radius: 12px; font-weight: 600; font-size: 15px;
+    text-decoration: none; transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .btn:hover { transform: translateY(-1px); }
+  .btn.primary { background: var(--gradient); color: #fff; box-shadow: 0 8px 24px color-mix(in srgb, var(--accent) 35%, transparent); }
+  .btn.ghost { border: 1px solid var(--border); color: var(--text); background: var(--card); }
+  section { padding: 64px 0; }
+  .sec-head { text-align: center; margin-bottom: 44px; }
+  .sec-head h2 { font-size: 28px; font-weight: 700; margin-bottom: 10px; }
+  .sec-head p { color: var(--muted); }
+  .grid {
+    display: grid; gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  }
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 22px;
+    transition: border-color 0.2s ease, transform 0.2s ease;
+  }
+  .card:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); transform: translateY(-2px); }
+  .card .icon { font-size: 22px; margin-bottom: 10px; }
+  .card h3 { font-size: 16px; margin-bottom: 6px; }
+  .card p { color: var(--muted); font-size: 13.5px; }
+  .principles { background: var(--bg-soft); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+  .principles ol { list-style: none; display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+  .principles li { display: flex; gap: 12px; align-items: flex-start; }
+  .principles .num {
+    flex: 0 0 26px; height: 26px; border-radius: 8px; display: grid; place-items: center;
+    background: var(--gradient); color: #fff; font-size: 13px; font-weight: 700; margin-top: 2px;
+  }
+  .principles b { display: block; font-size: 14.5px; }
+  .principles span { color: var(--muted); font-size: 13px; }
+  .update-note {
+    max-width: 760px; margin: 0 auto; text-align: center;
+    background: var(--card); border: 1px dashed var(--border);
+    border-radius: 16px; padding: 26px; font-size: 14px; color: var(--muted);
+  }
+  .update-note b { color: var(--text); }
+  footer { border-top: 1px solid var(--border); padding: 32px 0; text-align: center; color: var(--muted); font-size: 13px; }
+  footer a { color: var(--accent); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <div class="logo">LCM<span class="dot">.</span></div>
+    <div class="links">
+      <a href="#features">功能</a>
+      <a href="#principles">设计原则</a>
+      <a href="https://github.com/ahao430/LLM-Provider-Manager/blob/main/README.md">文档</a>
+      <a class="cta" href="https://github.com/ahao430/LLM-Provider-Manager/releases/latest" target="_blank" rel="noreferrer">下载</a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="hero wrap">
+    <div class="badge"><b>v0.30</b> · 应用内一键更新已上线</div>
+    <h1>本地管理你的每一个<br /><span class="grad">大模型渠道</span></h1>
+    <p class="lead">
+      统一管理 AI 服务商、API 渠道、模型、价格、充值与账单；内置 API 测试、真实 Agent 调用
+      （Claude Code / Codex CLI）、画图与图像理解、测试记录与响应分析。数据全部保存在本机。
+    </p>
+    <blockquote>
+      忠实呈现渠道原生能力，不擅自优化、转换或修复用户的请求。
+      <span>LCM 不是 AI Gateway、API Proxy 或协议转换服务 —— 它帮助你看清每个渠道真实的样子。</span>
+    </blockquote>
+    <div class="actions">
+      <a class="btn primary" href="https://github.com/ahao430/LLM-Provider-Manager/releases/latest" target="_blank" rel="noreferrer">⬇ 下载最新版</a>
+      <a class="btn ghost" href="https://github.com/ahao430/LLM-Provider-Manager" target="_blank" rel="noreferrer">GitHub 仓库</a>
+    </div>
+  </section>
+
+  <section id="features" class="wrap">
+    <div class="sec-head">
+      <h2>功能一览</h2>
+      <p>本地优先 · Tauri 2 + Rust + SQLite · macOS / Windows / Linux</p>
+    </div>
+    <div class="grid">
+      <div class="card"><div class="icon">🔌</div><h3>渠道管理</h3><p>服务商模板、多渠道实例、按协议配置 Base URL、凭证安全（系统凭证库 + 掩码展示）、Agent 兼容性记录。</p></div>
+      <div class="card"><div class="icon">💰</div><h3>模型与价格</h3><p>单一价 / 阶梯价 / 分时段价 + 倍率折算实际价，市场价弹窗参考填写，比价与排序按最高档口径。</p></div>
+      <div class="card"><div class="icon">🌍</div><h3>市场信息</h3><p>models.dev 与自定义 NewAPI 数据源价格快照，常用模型快捷筛选、币种换算、与自有渠道标注价并排比价。</p></div>
+      <div class="card"><div class="icon">🧪</div><h3>API 测试工作台</h3><p>Chat Completions / Anthropic / Responses 三协议，流式输出，Raw 与 Preview 分离归档，可复制 curl 复现。</p></div>
+      <div class="card"><div class="icon">🤖</div><h3>Agent 启动器</h3><p>启动式渠道切换：Claude Code 环境变量注入 / Codex 独立 CODEX_HOME；不改已有配置、不代理请求。</p></div>
+      <div class="card"><div class="icon">🎨</div><h3>画图与理解</h3><p>图片生成 / 编辑 / 图像理解工作台，结果本地归档，随时回看与重新解析。</p></div>
+      <div class="card"><div class="icon">🧾</div><h3>资金与账单</h3><p>充值、供应商账单（CSV / Excel 导入）、余额快照与估算余额三分开；NewAPI / 百炼余额查询。</p></div>
+      <div class="card"><div class="icon">🔍</div><h3>错误诊断与归因</h3><p>知识库匹配 + 多层网关归因：区分中转网关层与上游厂商，事实与推测分开，置信度明确。</p></div>
+      <div class="card"><div class="icon">🔗</div><h3>只读 MCP</h3><p>lcm-mcp（stdio）：把渠道、模型、测试记录、诊断暴露给外部 AI；凭证零输出。</p></div>
+      <div class="card"><div class="icon">🔄</div><h3>应用内更新</h3><p>检测新版本后一键更新：下载 → minisign 验签 → 自动替换 → 自动重启，无需手动覆盖安装。</p></div>
+    </div>
+  </section>
+
+  <section id="principles" class="principles">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2>设计原则</h2>
+        <p>这些红线决定了 LCM 与「网关类工具」的本质区别</p>
+      </div>
+      <ol>
+        <li><i class="num">1</i><div><b>原生优先</b><span>用户配置什么就原样发送什么，渠道返回什么就原样记录什么。</span></div></li>
+        <li><i class="num">2</i><div><b>Agent 与工作台严格隔离</b><span>Agent 使用渠道原生 API 不经过 Adapter；只有工作台允许 Adapter 且透明记录。</span></div></li>
+        <li><i class="num">3</i><div><b>原始数据与展示数据分离</b><span>Raw 是事实记录，Preview 是解释结果，Preview 不得覆盖 Raw。</span></div></li>
+        <li><i class="num">4</i><div><b>处理透明</b><span>任何处理（序列化、认证头、解析、归档、诊断）如实记录为 ProcessingEvent。</span></div></li>
+        <li><i class="num">5</i><div><b>失败归因准确</b><span>错误性质与来源分开，事实与推测分开，置信度必须明确。</span></div></li>
+        <li><i class="num">6</i><div><b>凭证安全</b><span>密钥不明文入库、不进日志与 AI 上下文；默认掩码，明文查看由用户主动操作。</span></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="update-note">
+      <b>数据保存在哪里？</b><br />
+      全部数据（SQLite、归档、凭证）保存在本机应用数据目录，没有云服务、没有账号体系。
+      应用内更新经 minisign 签名校验，更新包被篡改无法通过验证。
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <a href="https://github.com/ahao430/LLM-Provider-Manager" target="_blank" rel="noreferrer">GitHub</a> ·
+    <a href="https://github.com/ahao430/LLM-Provider-Manager/releases" target="_blank" rel="noreferrer">Releases</a> ·
+    <a href="https://github.com/ahao430/LLM-Provider-Manager/blob/main/README.md" target="_blank" rel="noreferrer">README</a> ·
+    <a href="https://github.com/ahao430/LLM-Provider-Manager/blob/main/CHANGELOG.md" target="_blank" rel="noreferrer">CHANGELOG</a>
+    <div style="margin-top: 10px">LCM 的价值不在于让所有渠道表现得一样，而在于让用户清楚地知道每个渠道真实的样子。</div>
+  </div>
+</footer>
+
+</body>
+</html>

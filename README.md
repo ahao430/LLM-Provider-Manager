@@ -8,6 +8,8 @@
 
 LCM 用于统一管理不同 AI 服务商、API 渠道、模型、价格、充值记录和账单，并提供 API 测试、真实 Agent 调用（Claude Code / Codex CLI）、图片生成与理解、测试记录与响应分析能力。
 
+**项目主页**：[ahao430.github.io/LLM-Provider-Manager](https://ahao430.github.io/LLM-Provider-Manager/)（源码 [site/index.html](./site/index.html)，经 GitHub Pages 发布）
+
 项目的核心原则是：
 
 > **忠实呈现渠道原生能力，不擅自优化、转换或修复用户的请求。**
