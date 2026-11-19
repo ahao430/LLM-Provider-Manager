@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { FolderOpen, Loader2, Rocket, Terminal } from "lucide-react";
+import { FolderOpen, Loader2, Rocket, Square, Terminal } from "lucide-react";
 import { open as pickDirectory } from "@tauri-apps/plugin-dialog";
 
 import { PageHeader } from "@/components/PageHeader";
@@ -20,19 +20,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   AGENT_LABELS,
+  copyAgentCliCommand,
   runAgentProbe,
-  type AgentLaunchRow,
   type AgentProbeOutcome,
   type AgentType,
 } from "@/lib/tauri";
 import { useChannelsForTest, useModelsForTest } from "@/features/api-testing/api";
-import { useAgentLaunches } from "@/features/channels/api";
 
 const LS_WORKING_DIR = "lcm-agent-probe-working-dir";
 const LS_BINARY = (t: AgentType) => `lcm-agent-probe-binary-${t}`;
+
+/** claude 会话上下文（多轮续接；sessionStorage 会话级保存）。 */
+interface ClaudeSessionState {
+  sessionId: string | null;
+  rounds: number;
+}
 
 const STATUS_LABELS: Record<string, string> = {
   success: "成功",
@@ -70,8 +76,22 @@ export function AgentPage() {
   }, [agentType, channelId, model, prompt]);
   const [outcome, setOutcome] = useState<AgentProbeOutcome | null>(null);
   const { data: models = [] } = useModelsForTest(channelId);
-  const { data: launches = [] } = useAgentLaunches(20);
   const runningRef = useRef(false);
+
+  // 多轮会话：claude 记 sessionId + 轮次；codex 只有「续接最近线程」开关（实验）
+  const [claudeSession, setClaudeSession] = useState<ClaudeSessionState>(() =>
+    loadSessionState("lcm-agent-session-claude", { sessionId: null as string | null, rounds: 0 })
+  );
+  const [continueSession, setContinueSession] = useState(true);
+  const [resumeLast, setResumeLast] = useState(
+    () => loadSessionState("lcm-agent-codex-resume", { on: false }).on
+  );
+  useEffect(() => {
+    saveSessionState("lcm-agent-session-claude", claudeSession);
+  }, [claudeSession]);
+  useEffect(() => {
+    saveSessionState("lcm-agent-codex-resume", { on: resumeLast });
+  }, [resumeLast]);
 
   // 切换 Agent 类型时恢复各自的 CLI 路径覆盖
   useEffect(() => {
@@ -120,6 +140,9 @@ export function AgentPage() {
     runningRef.current = true;
     forceTick((n) => n + 1);
     setOutcome(null);
+    // 多轮续接：claude 用已存会话 id；codex 用 resume --last
+    const resumeSessionId =
+      agentType === "claude_code_cli" && continueSession ? claudeSession.sessionId : null;
     try {
       const res = await runAgentProbe({
         agentType,
@@ -128,21 +151,55 @@ export function AgentPage() {
         workingDirectory: workingDirectory.trim(),
         prompt: prompt.trim(),
         binaryPath: binaryPath.trim() || null,
+        sessionId: resumeSessionId,
+        resumeLast: agentType === "codex_cli" && resumeLast,
       });
       setOutcome(res);
       if (res.status === "success") {
         toast.success(`Agent 调用成功（${(res.durationMs / 1000).toFixed(1)}s）`);
+        // claude：成功后更新会话上下文（新会话→第 1 轮；续接→轮次 +1）
+        if (agentType === "claude_code_cli") {
+          setClaudeSession((prev) => {
+            if (res.sessionId) {
+              return resumeSessionId
+                ? { sessionId: res.sessionId, rounds: prev.rounds + 1 }
+                : { sessionId: res.sessionId, rounds: 1 };
+            }
+            return prev;
+          });
+        }
       } else {
         toast.warning(
           `Agent 未成功：${STATUS_LABELS[res.status] ?? res.status}${res.exitCode != null ? `（exit ${res.exitCode}）` : ""}`
         );
       }
-      void queryClient.invalidateQueries({ queryKey: ["agent-launches"] });
+      void queryClient.invalidateQueries({ queryKey: ["test-records"] });
     } catch (error) {
       toast.error(`Agent 测试失败：${error}`);
     } finally {
       runningRef.current = false;
       forceTick((n) => n + 1);
+    }
+  }
+
+  /** 显式开启新会话：清空 claude 会话上下文与 codex 续接开关。 */
+  function resetSession() {
+    setClaudeSession({ sessionId: null, rounds: 0 });
+    setResumeLast(false);
+    toast.info("已开启新会话，下一条 prompt 从头开始");
+  }
+
+  async function handleCopyCommand() {
+    if (!channelId) {
+      toast.error("请先选择渠道");
+      return;
+    }
+    try {
+      const cmd = await copyAgentCliCommand(channelId, model.trim() || null);
+      toast.success("已复制终端启动命令（含真实凭证，仅进剪贴板），粘贴到终端即可启动 claude");
+      void cmd;
+    } catch (error) {
+      toast.error(`复制失败：${error}`);
     }
   }
 
@@ -263,28 +320,76 @@ export function AgentPage() {
               />
             </div>
 
-            <Button
-              onClick={handleRun}
-              disabled={pending || !channelId || !prompt.trim()}
-            >
-              {pending ? (
-                <>
-                  <Loader2 className="size-4 animate-spin" />
-                  Agent 运行中… {elapsed}s
-                </>
-              ) : (
-                <>
-                  <Rocket className="size-4" />
-                  发送给 Agent
-                </>
-              )}
-            </Button>
+            {/* 多轮会话续接：claude 按已存会话 id 续接；codex 续接最近线程（实验） */}
+            <div className="space-y-1.5 rounded-md border p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <Label className="text-sm">
+                    {agentType === "claude_code_cli" ? "续接上次会话" : "续接最近线程（实验）"}
+                  </Label>
+                  <p className="text-muted-foreground truncate text-xs">
+                    {agentType === "claude_code_cli"
+                      ? claudeSession.sessionId
+                        ? `会话 ${claudeSession.sessionId.slice(0, 8)}… · 已 ${claudeSession.rounds} 轮，开启后在本会话继续`
+                        : "尚无会话，首次发送将创建新会话"
+                      : "codex exec resume --last 接最近线程；失败可关闭后重试"}
+                  </p>
+                </div>
+                <Switch
+                  checked={
+                    agentType === "claude_code_cli"
+                      ? continueSession && claudeSession.sessionId != null
+                      : resumeLast
+                  }
+                  disabled={agentType === "claude_code_cli" && claudeSession.sessionId == null}
+                  onCheckedChange={(v) =>
+                    agentType === "claude_code_cli" ? setContinueSession(v) : setResumeLast(v)
+                  }
+                />
+              </div>
+              {claudeSession.sessionId != null ? (
+                <Button type="button" size="sm" variant="outline" onClick={resetSession}>
+                  <Square className="size-3.5" />
+                  新会话
+                </Button>
+              ) : null}
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <Button
+                onClick={handleRun}
+                disabled={pending || !channelId || !prompt.trim()}
+              >
+                {pending ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    Agent 运行中… {elapsed}s
+                  </>
+                ) : (
+                  <>
+                    <Rocket className="size-4" />
+                    发送给 Agent
+                  </>
+                )}
+              </Button>
+              {agentType === "claude_code_cli" ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleCopyCommand}
+                  disabled={!channelId}
+                  title="把渠道 env 注入转成单行 shell 命令（仅进剪贴板），粘贴到终端即可启动 claude"
+                >
+                  <Terminal className="size-4" />
+                  复制终端命令
+                </Button>
+              ) : null}
+            </div>
           </CardContent>
         </Card>
 
         <div className="space-y-4">
-          <ProbeResultCard outcome={outcome} />
-          <LaunchHistoryCard launches={launches} />
+          <ProbeResultCard outcome={outcome} claudeSession={claudeSession} />
         </div>
       </div>
     </>
@@ -298,11 +403,13 @@ const STATUS_VARIANT: Record<string, "default" | "destructive" | "secondary" | "
   spawn_error: "destructive",
 };
 
-/** 探针结果卡片：状态 / 耗时 / 回复正文 / 错误输出 / 警告 / 日志路径。 */
+/** 探针结果卡片：状态 / 耗时 / 回复正文（含会话与轮次）/ 错误输出 / 警告 / 日志路径。 */
 function ProbeResultCard({
   outcome,
+  claudeSession,
 }: {
   outcome: AgentProbeOutcome | null;
+  claudeSession: ClaudeSessionState;
 }) {
   const navigate = useNavigate();
   if (!outcome) {
@@ -356,7 +463,12 @@ function ProbeResultCard({
               Tokens {outcome.inputTokens ?? "—"}/{outcome.outputTokens ?? "—"}
             </span>
           ) : null}
-          {outcome.sessionId ? <span className="font-mono">session {outcome.sessionId.slice(0, 8)}…</span> : null}
+          {outcome.sessionId ? (
+            <span className="font-mono">
+              会话 {outcome.sessionId.slice(0, 8)}…
+              {claudeSession.sessionId === outcome.sessionId ? ` · 第 ${claudeSession.rounds} 轮` : ""}
+            </span>
+          ) : null}
           <button
             type="button"
             className="text-primary hover:underline"
@@ -379,37 +491,3 @@ function ProbeResultCard({
   );
 }
 
-/** 最近启动 / 探针历史（agent_launches 快照）。 */
-function LaunchHistoryCard({
-  launches,
-}: {
-  launches: AgentLaunchRow[];
-}) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">最近运行</CardTitle>
-        <CardDescription>真实 Agent 启动与探针快照（不含凭证明文）。</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-2">
-        {launches.length === 0 ? (
-          <p className="text-muted-foreground text-sm">暂无运行记录。</p>
-        ) : (
-          launches.slice(0, 8).map((l) => (
-            <div key={l.launchId} className="flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs">
-              <Badge variant={l.exitedAt ? "outline" : "secondary"} className="text-[10px]">
-                {l.exitedAt ? "已退出" : "运行中"}
-              </Badge>
-              <span>{AGENT_LABELS[l.agentType as AgentType] ?? l.agentType}</span>
-              <span className="text-muted-foreground truncate">{l.channelName ?? "—"}</span>
-              <span className="text-muted-foreground truncate">{l.model ?? ""}</span>
-              <span className="text-muted-foreground ml-auto shrink-0 tabular-nums">
-                {l.startedAt.slice(5, 16).replace("T", " ")}
-              </span>
-            </div>
-          ))
-        )}
-      </CardContent>
-    </Card>
-  );
-}

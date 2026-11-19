@@ -38,6 +38,12 @@ pub struct ProbeRequest {
     pub prompt: String,
     /// CLI 可执行文件路径覆盖（默认按 PATH 查找 claude / codex；GUI 环境 PATH 可能不同）
     pub binary_path: Option<String>,
+    /// 续接 claude 会话（--resume <session_id>）；None = 新会话
+    #[serde(default)]
+    pub session_id: Option<String>,
+    /// codex 续接最近线程（exec resume --last，实验特性）；false / None = 新线程
+    #[serde(default)]
+    pub resume_last: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -149,7 +155,17 @@ pub fn prepare(conn: &Connection, data_dir: &Path, req: &ProbeRequest) -> AppRes
         .filter(|b| !b.is_empty())
         .unwrap_or(default_bin);
 
-    let args = build_cli_args(req.agent_type.as_str(), model.as_deref(), req.prompt.trim());
+    let args = build_cli_args(
+        req.agent_type.as_str(),
+        model.as_deref(),
+        req.prompt.trim(),
+        req.session_id.as_deref(),
+        req.resume_last.unwrap_or(false),
+    );
+    // codex 续接为实验特性，显式提示可关闭重试
+    if req.agent_type == AGENT_CODEX_CLI && req.resume_last.unwrap_or(false) {
+        warnings.push("codex 会话续接为实验特性，失败可关闭「续接」后重试".to_string());
+    }
 
     let log_dir = data_dir.join("logs").join("agent-launches");
     fs::create_dir_all(&log_dir)?;
@@ -442,7 +458,7 @@ pub fn finish(conn: &Connection, outcome: &ProbeOutcome) -> AppResult<()> {
         "UPDATE request_records \
          SET status = ?2, error_code = ?3, error_message = ?4, request_ref = ?5, \
              response_ref = ?6, duration_ms = ?7, input_tokens = ?8, output_tokens = ?9, \
-             model = ?10, completed_at = ?11 \
+             model = ?10, completed_at = ?11, session_id = ?12 \
          WHERE trace_id = ?1",
         params![
             outcome.launch_id,
@@ -455,23 +471,34 @@ pub fn finish(conn: &Connection, outcome: &ProbeOutcome) -> AppResult<()> {
             outcome.input_tokens,
             outcome.output_tokens,
             outcome.model,
-            now_rfc3339()
+            now_rfc3339(),
+            outcome.session_id
         ],
     )?;
     Ok(())
 }
 
 /// 按 Agent 类型构建 CLI 参数（纯函数，单测覆盖）。
-fn build_cli_args(agent_type: &str, model: Option<&str>, prompt: &str) -> Vec<String> {
+/// session_id：claude 续接指定会话（--resume）；resume_last：codex 续接最近线程。
+fn build_cli_args(
+    agent_type: &str,
+    model: Option<&str>,
+    prompt: &str,
+    session_id: Option<&str>,
+    resume_last: bool,
+) -> Vec<String> {
     match agent_type {
         // print 模式单次调用，JSON 输出便于提取回复正文
         AGENT_CLAUDE_CODE_CLI => {
-            let mut args = vec![
-                "-p".to_string(),
-                prompt.to_string(),
-                "--output-format".to_string(),
-                "json".to_string(),
-            ];
+            let mut args = Vec::new();
+            if let Some(sid) = session_id.filter(|s| !s.trim().is_empty()) {
+                args.push("--resume".to_string());
+                args.push(sid.to_string());
+            }
+            args.push("-p".to_string());
+            args.push(prompt.to_string());
+            args.push("--output-format".to_string());
+            args.push("json".to_string());
             if let Some(m) = model {
                 args.push("--model".to_string());
                 args.push(m.to_string());
@@ -480,7 +507,13 @@ fn build_cli_args(agent_type: &str, model: Option<&str>, prompt: &str) -> Vec<St
         }
         // exec 非交互执行；工作目录可能不是 git 仓库，跳过检查
         AGENT_CODEX_CLI => {
-            let mut args = vec!["exec".to_string(), "--skip-git-repo-check".to_string()];
+            let mut args = vec!["exec".to_string()];
+            if resume_last {
+                // codex 会话续接为实验特性：exec resume --last 接最近线程
+                args.push("resume".to_string());
+                args.push("--last".to_string());
+            }
+            args.push("--skip-git-repo-check".to_string());
             if let Some(m) = model {
                 args.push("-m".to_string());
                 args.push(m.to_string());
@@ -552,7 +585,13 @@ mod tests {
 
     #[test]
     fn claude_args_include_print_and_json_flags() {
-        let args = build_cli_args(AGENT_CLAUDE_CODE_CLI, Some("claude-sonnet-4-5"), "你好");
+        let args = build_cli_args(
+            AGENT_CLAUDE_CODE_CLI,
+            Some("claude-sonnet-4-5"),
+            "你好",
+            None,
+            false,
+        );
         assert_eq!(
             args,
             vec![
@@ -567,11 +606,35 @@ mod tests {
     }
 
     #[test]
+    fn claude_args_resume_session() {
+        let args = build_cli_args(AGENT_CLAUDE_CODE_CLI, None, "继续", Some("sess-123"), false);
+        assert_eq!(args[..4], ["--resume", "sess-123", "-p", "继续"]);
+        assert!(args.contains(&"--output-format".to_string()));
+    }
+
+    #[test]
     fn codex_args_use_exec_mode() {
-        let args = build_cli_args(AGENT_CODEX_CLI, None, "列出当前目录文件");
+        let args = build_cli_args(AGENT_CODEX_CLI, None, "列出当前目录文件", None, false);
         assert_eq!(
             args,
             vec!["exec", "--skip-git-repo-check", "列出当前目录文件"]
+        );
+    }
+
+    #[test]
+    fn codex_args_resume_last() {
+        let args = build_cli_args(AGENT_CODEX_CLI, Some("gpt-5"), "继续", None, true);
+        assert_eq!(
+            args,
+            vec![
+                "exec",
+                "resume",
+                "--last",
+                "--skip-git-repo-check",
+                "-m",
+                "gpt-5",
+                "继续"
+            ]
         );
     }
 

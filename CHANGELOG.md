@@ -4,6 +4,18 @@
 
 遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 格式，版本策略见 [AGENTS.md](./AGENTS.md)：每次改动第三位 +1（patch），较大改动第二位 +1（minor），第一位仅在维护者要求时升级。
 
+## [0.20.0] - 2026-11-19
+
+### 新增（较大改动，第二位 +1）
+
+- **Agent 测试多轮会话**：不再每轮都是新会话——claude 用上一轮提取的 session_id 加 `--resume` 在同一会话继续（结果卡显示「会话 xxx · 第 N 轮」，sessionStorage 会话级保存）；codex 提供「续接最近线程（实验）」开关（`exec resume --last`，失败可关闭重试）；「新会话」按钮随时回到单轮模式。每轮 session_id 回填 `request_records.session_id`（迁移 0014）。
+- **测试记录按会话合并**：同一会话的多轮 agent 探针在测试记录列表合并为一行（渠道 / 模型 / 「Agent 会话 · N 轮」/ 最新状态 / 累计耗时 / 累计 Tokens），点击展开逐轮详情（时间 / 轮次 / 状态 / 耗时 / Tokens / 详情入口），分页按合并后行数计数。
+- **复制 Claude Code 终端命令**：Agent 测试页新按钮——把渠道 env 注入（`ANTHROPIC_BASE_URL` / `ANTHROPIC_AUTH_TOKEN` 等）转成单行 shell 命令复制到剪贴板，粘贴终端即可启动 claude；POSIX 单引号转义复用 curl 复制实现；**凭证仅进剪贴板**（不落日志 / DB / 归档）。Codex 依赖 CODEX_HOME 配置目录，不做单行命令。
+
+### 变更
+
+- Agent 测试页移除「最近运行」卡片（该信息已由测试记录页承载）。
+
 ## [0.19.0] - 2026-11-19
 
 ### 新增（较大改动，第二位 +1）

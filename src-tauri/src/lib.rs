@@ -33,7 +33,8 @@ use rusqlite::Connection;
 use tauri::Manager;
 
 use crate::commands::agent::{
-    launch_agent, list_agent_compat, list_agent_launches, run_agent_probe, upsert_agent_compat,
+    copy_agent_cli_command, launch_agent, list_agent_compat, list_agent_launches, run_agent_probe,
+    upsert_agent_compat,
 };
 use crate::commands::app::{get_app_info, get_database_stats};
 use crate::commands::backup::{
@@ -128,6 +129,7 @@ pub fn run() {
             launch_agent,
             list_agent_launches,
             run_agent_probe,
+            copy_agent_cli_command,
             list_global_models,
             create_global_model,
             rename_global_model,

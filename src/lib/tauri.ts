@@ -290,6 +290,10 @@ export interface AgentProbeRequest {
   prompt: string;
   /** CLI 可执行文件路径覆盖（默认 PATH 查找；GUI 环境 PATH 可能不同） */
   binaryPath: string | null;
+  /** 续接 claude 会话（--resume <id>）；null = 新会话 */
+  sessionId: string | null;
+  /** codex 续接最近线程（exec resume --last，实验特性） */
+  resumeLast: boolean;
 }
 
 export interface AgentProbeOutcome {
@@ -323,6 +327,9 @@ export function runAgentProbe(req: AgentProbeRequest): Promise<AgentProbeOutcome
  * 复制 Claude Code 终端启动命令（渠道 env 注入转单行 shell 命令，仅进剪贴板）。
  * Codex 不支持：依赖 CODEX_HOME 配置目录，无法单行命令表达。
  */
+export function copyAgentCliCommand(channelId: string, model: string | null): Promise<string> {
+  return invoke<string>("copy_agent_cli_command", { channelId, model });
+}
 
 // ------------------------------------------------------------------
 // 模型与价格（Phase 2）
@@ -666,6 +673,8 @@ export interface RequestRecordRow {
   tokensPerSecond: number | null;
   createdAt: string;
   completedAt: string | null;
+  /** Agent 探针所属会话 id（多轮续接合并展示用）；其余请求类型为 null */
+  sessionId: string | null;
 }
 
 export interface ProcessingEventRow {

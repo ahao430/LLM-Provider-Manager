@@ -18,7 +18,8 @@ pub fn build_command(url: &str, headers: &[(String, String)], body: &str) -> Str
 }
 
 /// POSIX shell 单引号包裹：' → '\''（单引号内无法直接表示单引号的通用写法）。
-fn quote(s: &str) -> String {
+/// pub(crate)：Agent 终端命令复制等同场景复用。
+pub(crate) fn quote(s: &str) -> String {
     format!("'{}'", s.replace('\'', "'\\''"))
 }
 

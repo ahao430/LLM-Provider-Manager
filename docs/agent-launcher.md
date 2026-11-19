@@ -130,8 +130,10 @@ wire_api = "responses"
 
 除交互式启动外，`agent/probe.rs` 提供**单次非交互调用**（测试中心「Agent 测试」）：
 
-- **Claude Code**：`claude -p <prompt> --output-format json [--model m]`，从 JSON 输出提取回复正文、session_id、耗时、成本与 token 用量（解析失败回退原始 stdout）。
-- **Codex**：`codex exec --skip-git-repo-check [-m <model>] <prompt>`，stdout 原样展示。
+- **Claude Code**：`claude [--resume <session_id>] -p <prompt> --output-format json [--model m]`，从 JSON 输出提取回复正文、session_id、耗时、成本与 token 用量（解析失败回退原始 stdout）。
+- **Codex**：`codex exec [--skip-git-repo-check] [-m <model>] <prompt>`（实验：续接最近线程用 `codex exec resume --last …`），stdout 原样展示。
+- **多轮会话续接**：开启「续接上次会话」后，claude 用上一轮提取的 session_id 加 `--resume` 在同一会话继续；codex 用 `exec resume --last`（实验特性，失败可关闭续接重试）。每轮的 session_id 回填到 `request_records.session_id`（迁移 0014），测试记录列表**按会话合并展示**（组行 + 展开逐轮）。
+- **复制终端命令**：Claude Code 渠道可把 env 注入转成单行 shell 命令（`ANTHROPIC_BASE_URL='…' ANTHROPIC_AUTH_TOKEN='…' claude`）复制到剪贴板，用户粘贴到终端即可启动；**仅进剪贴板，不落日志 / DB / 归档**。Codex 依赖 CODEX_HOME 配置目录，不支持单行命令。
 - 凭证注入与 launcher 完全一致（`build_claude_launch` / `build_codex_launch` 复用）；**渠道未配置主凭证时快速失败**，不发无鉴权请求。
 - stdout / stderr 捕获上限 256KB，写入 `logs/agent-launches/{launch_id}.log`；超时 10 分钟自动 kill。
 - 每次 probe 写两处记录：`agent_launches` 快照（kind=probe）+ **一条 `request_records` 测试记录**
