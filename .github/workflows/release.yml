@@ -120,6 +120,35 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Verify updater assets before publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          version=$(jq -r '.version' src-tauri/tauri.conf.json)
+          tag="v${version}"
+          echo "校验 ${tag} 的更新链路资产（防多矩阵上传竞态导致半成品发布）..."
+          assets=$(gh release view "$tag" --json assets --jq '.assets[].name')
+          missing=0
+          check() {
+            if ! echo "$assets" | grep -qx "$1"; then
+              echo "❌ 缺少资产: $1"
+              missing=1
+            fi
+          }
+          check "latest.json"
+          # 各平台 updater 签名（tauri-action 在注入私钥时生成）
+          for pat in "aarch64.app.tar.gz.sig" "x64.app.tar.gz.sig" "_setup.exe.sig" "AppImage.sig"; do
+            if ! echo "$assets" | grep -q "$pat"; then
+              echo "❌ 缺少签名产物（匹配: $pat）"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo "::error::发布资产不完整（多矩阵上传竞态）。草稿已保留：Re-run failed jobs 补齐资产后再发布。"
+            exit 1
+          fi
+          echo "✅ 资产齐全"
+
       - name: Publish draft release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
