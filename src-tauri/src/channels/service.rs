@@ -21,6 +21,7 @@ fn validate(conn: &Connection, input: &ChannelInput) -> AppResult<()> {
         ));
     }
     for (label, url) in [
+        ("Chat Completions", &input.chat_completions_url),
         ("Anthropic", &input.anthropic_base_url),
         ("Responses", &input.responses_base_url),
     ] {

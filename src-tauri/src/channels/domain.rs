@@ -2,32 +2,47 @@
 
 use serde::{Deserialize, Serialize};
 
-/// 协议 → 对应 Base URL 字段。anthropic / responses 未单独填写时回退 chat 地址。
+/// 协议 → 对应 Base URL 字段（不含 /v1 拼接；拼接见 [`ensure_v1`]）。
+/// chat completions / anthropic / responses 专用地址未填时回退主地址。
 pub fn base_url_for_protocol(
     chat: &str,
+    chat_completions: &str,
     anthropic: &str,
     responses: &str,
     protocol: &str,
 ) -> String {
     match protocol {
-        "anthropic_messages" => {
-            let a = anthropic.trim();
-            if a.is_empty() {
-                chat.trim().to_string()
-            } else {
-                a.to_string()
-            }
-        }
-        "openai_responses" => {
-            let r = responses.trim();
-            if r.is_empty() {
-                chat.trim().to_string()
-            } else {
-                r.to_string()
-            }
-        }
-        _ => chat.trim().to_string(),
+        "openai_chat" => pick_url(chat_completions, chat),
+        "anthropic_messages" => pick_url(anthropic, chat),
+        "openai_responses" => pick_url(responses, chat),
+        _ => pick_url(chat_completions, chat),
     }
+}
+
+/// 专用地址优先，空则回退主地址。
+fn pick_url(override_url: &str, fallback: &str) -> String {
+    let o = override_url.trim();
+    if o.is_empty() {
+        fallback.trim().to_string()
+    } else {
+        o.to_string()
+    }
+}
+
+/// 确保请求基础地址带 /v1 版本段（openai 兼容系约定）：已以 /v<数字> 结尾则原样返回，
+/// 否则补 /v1（主地址只填基础域名的新约定；旧渠道地址已含 /v1 不受影响）。
+pub fn ensure_v1(base: &str) -> String {
+    let b = base.trim().trim_end_matches('/');
+    if b.is_empty() {
+        return String::new();
+    }
+    if let Some(idx) = b.rfind("/v") {
+        let suffix = &b[idx + 2..];
+        if !suffix.is_empty() && suffix.chars().all(|c| c.is_ascii_digit()) {
+            return b.to_string();
+        }
+    }
+    format!("{b}/v1")
 }
 
 /// 渠道模型类型（人工标记）：多模态 / 图像 / 文本 / 决策。
@@ -140,6 +155,8 @@ pub struct ChannelRow {
     pub chat_base_url: String,
     pub anthropic_base_url: String,
     pub responses_base_url: String,
+    /// Chat Completions 专用地址（可空 = 主地址 + ensure_v1）
+    pub chat_completions_url: String,
     /// 按协议取有效 Base URL（未单独填写时回退 chat）
     pub effective_urls: ProtocolUrls,
     pub enabled: bool,
@@ -178,10 +195,11 @@ pub struct ProtocolUrls {
 }
 
 impl ChannelRow {
-    /// 按协议取有效 Base URL。
+    /// 按协议取有效 Base URL（不含 /v1 拼接；openai 系请求侧用 [`ensure_v1`]）。
     pub fn base_url_for(&self, protocol: &str) -> String {
         base_url_for_protocol(
             &self.chat_base_url,
+            &self.chat_completions_url,
             &self.anthropic_base_url,
             &self.responses_base_url,
             protocol,
@@ -208,11 +226,13 @@ pub struct ChannelDetail {
 pub struct ChannelInput {
     pub name: String,
     pub provider_id: Option<String>,
-    /// chat 协议 Base URL（主地址）*
+    /// 主地址（基础域名，不带 /v1）*
     pub chat_base_url: String,
-    /// Anthropic 专用地址（可空 = 与 chat 相同）
+    /// Chat Completions 专用地址（可空 = 主地址 + /v1）
+    pub chat_completions_url: Option<String>,
+    /// Anthropic 专用地址（可空 = 主地址，请求侧不自动拼 /v1）
     pub anthropic_base_url: Option<String>,
-    /// Responses 专用地址（可空 = 与 chat 相同）
+    /// Responses 专用地址（可空 = 主地址 + /v1）
     pub responses_base_url: Option<String>,
     /// 官网链接（可选）
     pub official_url: Option<String>,
@@ -354,5 +374,61 @@ mod tests {
         let partial: PriceOffPeak = serde_json::from_str(r#"{"window":"2点～8点"}"#).unwrap();
         assert_eq!(partial.input, None);
         assert_eq!(partial.output, None);
+    }
+}
+
+#[cfg(test)]
+mod url_tests {
+    use super::*;
+
+    #[test]
+    fn ensure_v1_appends_and_skips() {
+        // 基础域名 → 补 /v1；已带 /vN → 原样；尾斜杠 → 归一
+        assert_eq!(
+            ensure_v1("https://api.example.com"),
+            "https://api.example.com/v1"
+        );
+        assert_eq!(
+            ensure_v1("https://api.example.com/"),
+            "https://api.example.com/v1"
+        );
+        assert_eq!(
+            ensure_v1("https://api.example.com/v1"),
+            "https://api.example.com/v1"
+        );
+        assert_eq!(
+            ensure_v1("https://api.example.com/v2"),
+            "https://api.example.com/v2"
+        );
+        assert_eq!(
+            ensure_v1("  https://x.cn/openai  "),
+            "https://x.cn/openai/v1"
+        );
+        assert_eq!(ensure_v1(""), "");
+        // 非版本段路径不被误判（/valid 不以 /v数字 结尾）
+        assert_eq!(ensure_v1("https://x.com/valid"), "https://x.com/valid/v1");
+    }
+
+    #[test]
+    fn protocol_override_chat_completions() {
+        // completions 专用地址优先；空回退主地址
+        assert_eq!(
+            base_url_for_protocol("https://m.com", "https://c.com", "", "", "openai_chat"),
+            "https://c.com"
+        );
+        assert_eq!(
+            base_url_for_protocol("https://m.com", "", "", "", "openai_chat"),
+            "https://m.com"
+        );
+        assert_eq!(
+            base_url_for_protocol(
+                "https://m.com",
+                "",
+                "https://a.com",
+                "",
+                "anthropic_messages"
+            ),
+            "https://a.com"
+        );
     }
 }

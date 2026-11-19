@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
+import { CircleAlert } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { listLatestModelTests, type LatestModelTestRow } from "@/lib/tauri";
@@ -59,9 +60,14 @@ export function LatestTestResult({
         {STATUS_LABELS[latest.status] ?? latest.status}
       </Badge>
       <span className="tabular-nums">{fmtTiming(latest)}</span>
+      {/* 失败摘要收进图标：悬浮 / 点击 tooltip 查看，不再撑宽表格 */}
       {!ok && latest.errorMessage ? (
-        <span className="text-destructive max-w-56 truncate" title={latest.errorMessage}>
-          {latest.errorMessage}
+        <span
+          className="text-destructive inline-flex cursor-help items-center"
+          title={latest.errorMessage}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <CircleAlert className="size-3.5" />
         </span>
       ) : null}
       {showTime ? (

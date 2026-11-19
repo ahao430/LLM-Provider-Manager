@@ -56,7 +56,10 @@ export interface ExternalLinkInput {
 export interface ChannelInput {
   name: string;
   providerId: string | null;
+  /** 主地址（基础域名，不带 /v1） */
   chatBaseUrl: string;
+  /** Chat Completions 专用地址（可空 = 主地址 + /v1） */
+  chatCompletionsUrl?: string | null;
   anthropicBaseUrl: string | null;
   responsesBaseUrl: string | null;
   officialUrl: string | null;
@@ -83,6 +86,8 @@ export interface ChannelRow {
   chatBaseUrl: string;
   anthropicBaseUrl: string;
   responsesBaseUrl: string;
+  /** Chat Completions 专用地址（空 = 主地址 + /v1） */
+  chatCompletionsUrl: string;
   effectiveUrls: ProtocolUrls;
   enabled: boolean;
   notes: string | null;

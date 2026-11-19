@@ -92,6 +92,11 @@ pub fn request_target(
             "该渠道未配置 {protocol} 的 Base URL"
         )));
     }
+    // 主地址只填基础域名的新约定：openai 系自动补 /v1（已带 /vN 的旧地址不重复拼；anthropic 例外）
+    let base = match protocol {
+        "openai_chat" | "openai_responses" => crate::channels::domain::ensure_v1(&base),
+        _ => base,
+    };
     let mut url = format!("{}{}", base.trim_end_matches('/'), path);
     if !extra_query.is_empty() {
         url.push('?');
@@ -379,6 +384,7 @@ mod tests {
                 chat_base_url: "https://api.example.com/v1".into(),
                 anthropic_base_url: Some("https://anthropic.example.com".into()),
                 responses_base_url: None,
+                chat_completions_url: None,
                 official_url: None,
                 notes: None,
                 primary_credential: None,

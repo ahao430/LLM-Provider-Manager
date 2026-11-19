@@ -34,7 +34,7 @@ pub fn list_providers(conn: &Connection) -> AppResult<Vec<ProviderRow>> {
 }
 
 const ROW_COLUMNS: &str = "c.id, c.name, c.provider_id, p.name, c.channel_type, c.base_url, \
-     c.chat_base_url, c.anthropic_base_url, c.responses_base_url, \
+     c.chat_base_url, c.anthropic_base_url, c.responses_base_url, c.chat_completions_url, \
      c.enabled, c.notes, c.created_at, c.updated_at, c.config_json, \
      c.group_id, g.name, c.dashboard_pinned";
 
@@ -42,8 +42,11 @@ fn row_from(row: &rusqlite::Row) -> rusqlite::Result<ChannelRow> {
     let chat: String = row.get(6)?;
     let anthropic: String = row.get(7)?;
     let responses: String = row.get(8)?;
+    let completions: String = row.get(9)?;
+    // 索引 9 之后整体 +1（enabled 从 10 起）
     let effective = super::domain::base_url_for_protocol(
         &chat,
+        &completions,
         &anthropic.clone(),
         &responses.clone(),
         "openai_chat",
@@ -58,28 +61,31 @@ fn row_from(row: &rusqlite::Row) -> rusqlite::Result<ChannelRow> {
         chat_base_url: chat.clone(),
         anthropic_base_url: anthropic.clone(),
         responses_base_url: responses.clone(),
+        chat_completions_url: completions.clone(),
         effective_urls: super::domain::ProtocolUrls {
             openai_chat: effective,
             anthropic_messages: super::domain::base_url_for_protocol(
                 &chat,
+                &completions,
                 &anthropic,
                 &responses,
                 "anthropic_messages",
             ),
             openai_responses: super::domain::base_url_for_protocol(
                 &chat,
+                &completions,
                 &anthropic,
                 &responses,
                 "openai_responses",
             ),
         },
-        enabled: row.get::<_, i64>(9)? != 0,
-        notes: row.get(10)?,
-        created_at: row.get(11)?,
-        updated_at: row.get(12)?,
+        enabled: row.get::<_, i64>(10)? != 0,
+        notes: row.get(11)?,
+        created_at: row.get(12)?,
+        updated_at: row.get(13)?,
         // 官网链接从 config_json 提取（kind=official 的外链）
         official_url: row
-            .get::<_, Option<String>>(13)?
+            .get::<_, Option<String>>(14)?
             .as_deref()
             .and_then(|text| serde_json::from_str::<ChannelConfig>(text).ok())
             .and_then(|config| {
@@ -92,9 +98,9 @@ fn row_from(row: &rusqlite::Row) -> rusqlite::Result<ChannelRow> {
         // 凭证状态由 service 层填充
         has_primary_credential: false,
         primary_credential_masked: None,
-        group_id: row.get(14)?,
-        group_name: row.get(15)?,
-        dashboard_pinned: row.get::<_, i64>(16)? != 0,
+        group_id: row.get(15)?,
+        group_name: row.get(16)?,
+        dashboard_pinned: row.get::<_, i64>(17)? != 0,
     })
 }
 
@@ -198,8 +204,8 @@ pub fn insert(
     conn.execute(
         "INSERT INTO channels \
          (id, provider_id, name, channel_type, base_url, chat_base_url, anthropic_base_url, \
-          responses_base_url, enabled, notes, config_json, group_id, created_at, updated_at) \
-         VALUES (?1, ?2, ?3, ?4, ?5, ?5, ?6, ?7, 1, ?8, ?9, ?10, ?11, ?11)",
+          responses_base_url, chat_completions_url, enabled, notes, config_json, group_id, created_at, updated_at) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?5, ?6, ?7, ?8, 1, ?9, ?10, ?11, ?12, ?12)",
         params![
             id,
             input.provider_id,
@@ -213,6 +219,11 @@ pub fn insert(
                 .unwrap_or(""),
             input
                 .responses_base_url
+                .as_deref()
+                .map(str::trim)
+                .unwrap_or(""),
+            input
+                .chat_completions_url
                 .as_deref()
                 .map(str::trim)
                 .unwrap_or(""),
@@ -233,8 +244,8 @@ pub fn update(
 ) -> AppResult<()> {
     conn.execute(
         "UPDATE channels SET name = ?2, provider_id = ?3, base_url = ?4, chat_base_url = ?4, \
-         anthropic_base_url = ?5, responses_base_url = ?6, notes = ?7, config_json = ?8, \
-         group_id = ?9, updated_at = ?10 WHERE id = ?1",
+         anthropic_base_url = ?5, responses_base_url = ?6, chat_completions_url = ?7, notes = ?8, \
+         config_json = ?9, group_id = ?10, updated_at = ?11 WHERE id = ?1",
         params![
             id,
             input.name.trim(),
@@ -247,6 +258,11 @@ pub fn update(
                 .unwrap_or(""),
             input
                 .responses_base_url
+                .as_deref()
+                .map(str::trim)
+                .unwrap_or(""),
+            input
+                .chat_completions_url
                 .as_deref()
                 .map(str::trim)
                 .unwrap_or(""),
@@ -288,6 +304,7 @@ mod tests {
             chat_base_url: base_url.into(),
             anthropic_base_url: None,
             responses_base_url: None,
+            chat_completions_url: None,
             official_url: None,
             notes: Some("备注".into()),
             primary_credential: None,

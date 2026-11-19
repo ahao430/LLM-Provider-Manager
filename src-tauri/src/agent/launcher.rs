@@ -267,7 +267,8 @@ pub(crate) fn build_codex_launch(
     warnings: &mut Vec<String>,
 ) -> AppResult<LaunchPlan> {
     let channel_name = &row.name;
-    let base_url = row.base_url_for("openai_chat");
+    // Codex（wire_api=chat）在 base_url 后拼 /chat/completions，约定带 /v1；主地址不带时自动补
+    let base_url = crate::channels::domain::ensure_v1(&row.base_url_for("openai_chat"));
     if base_url.is_empty() {
         return Err(AppError::Invalid(
             "该渠道未配置 Chat Base URL（Codex 需要）".into(),

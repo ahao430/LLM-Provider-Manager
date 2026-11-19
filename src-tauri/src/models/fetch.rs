@@ -29,8 +29,8 @@ pub fn prepare(conn: &Connection, channel_id: &str) -> AppResult<FetchTarget> {
     let config: ChannelConfig = channel_repo::load_config(conn, channel_id)?;
     let token = channel_service::resolve_primary_credential(channel_id);
 
-    // 模型列表走 chat Base URL（OpenAI 兼容 /models）
-    let base = row.base_url_for("openai_chat");
+    // 模型列表走 chat Base URL（OpenAI 兼容 /models）；主地址不带 /v1 时自动补
+    let base = crate::channels::domain::ensure_v1(&row.base_url_for("openai_chat"));
     if base.is_empty() {
         return Err(AppError::Invalid("该渠道未配置 Chat Base URL".into()));
     }

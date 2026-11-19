@@ -4,6 +4,17 @@
 
 遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 格式，版本策略见 [AGENTS.md](./AGENTS.md)：每次改动第三位 +1（patch），较大改动第二位 +1（minor），第一位仅在维护者要求时升级。
 
+## [0.26.0] - 2026-11-19
+
+### 新增（较大改动，第二位 +1）
+
+- **渠道主地址语义升级**（迁移 0017 `chat_completions_url`）：主地址只填**基础域名、不带 /v1**（如 `https://api.example.com`）；表单展开可编辑 **Chat Completions / Anthropic / Responses 三个专用地址**。留空时 Chat Completions 与 Responses（含模型获取、API 测试工作台、Codex 启动）自动拼 `/v1`（地址已以 /v数字 结尾的旧渠道不重复拼）；Anthropic 不自动拼（Claude Code SDK 自行拼接）。Rust 侧新增 `ensure_v1` 纯函数并配单测。
+- **应用图标修复**：macOS Dock 图标此前满幅无透明导致黑底方块观感；app-icon 重做为 macOS 风格（内容 82.4% + 22.5% 圆角 + 四周透明余白），全套 icon（icns / ico / png / iOS / Android）重新生成。
+
+### 变更
+
+- **模型列表测试结果**：失败摘要不再以截断文本直接展示（撑宽「最近测试」列），改为 ⚠ 图标 + 悬浮 tooltip 查看完整错误；点击仍跳转测试记录。
+
 ## [0.25.0] - 2026-11-19
 
 ### 新增（较大改动，第二位 +1）

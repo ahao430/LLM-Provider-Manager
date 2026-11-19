@@ -91,6 +91,7 @@ mod tests {
                 chat_base_url: "https://api.example.com".into(),
                 anthropic_base_url: None,
                 responses_base_url: None,
+                chat_completions_url: None,
                 official_url: None,
                 notes: None,
                 primary_credential: None,
