@@ -165,39 +165,19 @@ fn pick_asset_name(names: &[String], os: &str, arch: &str, version: &str) -> Opt
         if !n.contains(&version_flat) && !n.contains(version) {
             continue;
         }
+        // match guard 形式：guard 不满足时 fall through 到更低的 arm，最终 _ => 0
+        // （与 arm 内 if-else 等价，且避免新版 clippy 的 collapsible_match）
         let rank = match os {
-            "macos" => {
-                if n.ends_with(".dmg") && n.contains(arch_tok) {
-                    2
-                } else {
-                    0
-                }
-            }
-            "windows" => {
-                if n.ends_with("-setup.exe") {
-                    3
-                } else if n.ends_with(".exe") {
-                    2
-                } else if n.ends_with(".msi") {
-                    1
-                } else {
-                    0
-                }
-            }
-            "linux" => {
-                if n.ends_with(".appimage") {
-                    3
-                } else {
-                    0
-                }
-            }
+            "macos" if n.ends_with(".dmg") && n.contains(arch_tok) => 2,
+            "windows" if n.ends_with("-setup.exe") => 3,
+            "windows" if n.ends_with(".exe") => 2,
+            "windows" if n.ends_with(".msi") => 1,
+            "linux" if n.ends_with(".appimage") => 3,
             _ => 0,
         };
-        if rank > 0 {
-            let better = best.as_ref().map(|(b, _)| rank > *b).unwrap_or(true);
-            if better {
-                best = Some((rank, name.clone()));
-            }
+        let better = best.as_ref().map(|(b, _)| rank > *b).unwrap_or(true);
+        if rank > 0 && better {
+            best = Some((rank, name.clone()));
         }
     }
     best.map(|(_, n)| n)
