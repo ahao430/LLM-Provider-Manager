@@ -4,6 +4,12 @@
 
 遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 格式，版本策略见 [AGENTS.md](./AGENTS.md)：每次改动第三位 +1（patch），较大改动第二位 +1（minor），第一位仅在维护者要求时升级。
 
+## [0.23.0] - 2026-11-19
+
+### 新增（较大改动，第二位 +1）
+
+- **测试详情「对话看板」**（Overview 之后新 Tab）：以聊天气泡展示该次请求的完整交互——SYSTEM 全宽灰卡（anthropic 顶层 system / instructions 也在内）、USER 右对齐主色气泡（vision 的 content blocks 提取文本并标注「[N 张图片已省略]」）、ASSISTANT 左对齐卡片走 Markdown 渲染（复用 ResponseText 双模式）、THINKING 可折叠浅色块、TOOL 调用气泡（名称 + 参数 JSON 美化）。数据零后端改动：请求归档前端解析（openai_chat / anthropic_messages / openai_responses 三协议 + Raw JSON 容错提示），助手回复走现成 `reparse_test_response`（流式归档重放 delta）；agent_probe 记录展示 prompt → 输出单轮对话。解析失败时引导至 Raw 页。
+
 ## [0.22.0] - 2026-11-19
 
 ### 修复

@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { copyTestCurl, diagnoseRequest, type Diagnosis } from "@/lib/tauri";
 import { goBackOr } from "@/lib/sessionState";
+import { ConversationBoard } from "@/features/requests/ConversationBoard";
 import { useReparse, useTestRaw, useTestRecord, useReplayRequest } from "@/features/api-testing/api";
 
 /** 测试详情：Overview / Request Raw / Response Raw / Timeline / Processing。 */
@@ -92,6 +93,7 @@ export function RequestDetailPage() {
       <Tabs defaultValue="overview">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="conversation">对话看板</TabsTrigger>
           <TabsTrigger value="raw">Raw</TabsTrigger>
           <TabsTrigger value="processing">Processing</TabsTrigger>
           <TabsTrigger value="reparse">重新解析</TabsTrigger>
@@ -128,6 +130,10 @@ export function RequestDetailPage() {
               ) : null}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="conversation">
+          <ConversationBoard traceId={traceId} requestType={detail.requestType} />
         </TabsContent>
 
         <TabsContent value="raw">
