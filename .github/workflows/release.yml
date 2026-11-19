@@ -1,6 +1,7 @@
 name: Release
 
-# 推送 v* 标签触发三平台构建，创建草稿 Release，人工确认后发布。
+# 推送 v* 标签触发三平台构建；构建期间保持草稿，全部平台成功后由 publish job 自动发布。
+# 任一平台失败则草稿保留、不发布（避免半成品 Release 上线）。
 # 版本号来自 src-tauri/tauri.conf.json（由 pnpm version:sync 统一同步）。
 
 on:
@@ -104,3 +105,19 @@ jobs:
           asset="lcm-mcp-${{ matrix.mcp-target }}${ext}"
           cp "$src" "$asset"
           gh release upload "v${version}" "$asset" --clobber
+
+  # 全部平台构建成功后自动发布草稿（推 tag → 出包 → 自动上线，无需手动点发布）
+  publish:
+    name: Publish release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Publish draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          version=$(jq -r '.version' src-tauri/tauri.conf.json)
+          gh release edit "v${version}" --draft=false
+          echo "已发布 v${version}"
