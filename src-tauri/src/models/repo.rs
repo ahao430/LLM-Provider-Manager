@@ -471,6 +471,7 @@ mod tests {
                 official_url: None,
                 notes: None,
                 primary_credential: None,
+                group_id: None,
             },
             "{}",
         )
@@ -551,6 +552,7 @@ mod tests {
                 official_url: None,
                 notes: None,
                 primary_credential: None,
+                group_id: None,
             },
             "{}",
         )

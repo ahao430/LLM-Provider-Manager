@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -10,10 +10,11 @@ import {
   useReactTable,
   type SortingState,
 } from "@tanstack/react-table";
-import { ChevronDown, ChevronRight, Copy, ExternalLink, Pencil, Plus, RefreshCw } from "lucide-react";
+import { ChevronDown, ChevronRight, Copy, ExternalLink, FolderCog, LayoutGrid, List, Pencil, Plus, RefreshCw } from "lucide-react";
 
 import { PageHeader } from "@/components/PageHeader";
 import { Pagination } from "@/components/Pagination";
+import { ProviderIcon } from "@/components/ProviderIcon";
 import { openExternal } from "@/lib/external";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +29,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   copyChannelCredential,
   listChannelModels,
   listLatestBalances,
@@ -37,10 +45,14 @@ import {
   type ChannelRow,
   type ModelType,
 } from "@/lib/tauri";
+import { useUiStore } from "@/stores/ui";
+import { loadSessionState, saveSessionState } from "@/lib/sessionState";
 import { ChannelFormDialog } from "@/features/channels/ChannelFormDialog";
+import { ChannelCards } from "@/features/channels/ChannelCards";
+import { ManageGroupsDialog } from "@/features/channels/ManageGroupsDialog";
 import { ModelTestButton } from "@/features/models/ModelTestButton";
 import { LatestTestResult, useLatestModelTestMap } from "@/features/models/LatestTestResult";
-import { useChannels, useSetChannelEnabled } from "@/features/channels/api";
+import { useChannelGroups, useChannels, useSetChannelEnabled } from "@/features/channels/api";
 
 const columnHelper = createColumnHelper<ChannelRow>();
 
@@ -57,13 +69,35 @@ export function ChannelsPage() {
   const queryClient = useQueryClient();
   const { data: channels = [], isLoading, isError, error } = useChannels();
   const setEnabled = useSetChannelEnabled();
+  const { data: groups = [] } = useChannelGroups();
+  const channelsView = useUiStore((s) => s.channelsView);
+  const setChannelsView = useUiStore((s) => s.setChannelsView);
   const [createOpen, setCreateOpen] = useState(false);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [groupsOpen, setGroupsOpen] = useState(false);
+  // 会话级 UI 状态：进详情再返回时保留展开行 / 分页 / 筛选 / 排序
+  const savedUi = loadSessionState("lcm-ui-channels", {
+    expandedId: null as string | null,
+    page: 1,
+    pageSize: 20,
+    groupFilter: "",
+  });
+  // 分组筛选（列表视图）：空串 = 全部分组
+  const [groupFilter, setGroupFilter] = useState(savedUi.groupFilter);
+  const [expandedId, setExpandedId] = useState<string | null>(savedUi.expandedId);
   const [balanceBusy, setBalanceBusy] = useState<string | null>(null);
-  const [sorting, setSorting] = useState<SortingState>([{ id: "name", desc: false }]);
+  const [sorting, setSorting] = useState<SortingState>(
+    () => loadSessionState("lcm-ui-channels-sorting", [{ id: "name", desc: false }] as SortingState)
+  );
   // 分页：总数 ≤ 10 时 Pagination 自身不渲染
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [page, setPage] = useState(savedUi.page);
+  const [pageSize, setPageSize] = useState(savedUi.pageSize);
+
+  useEffect(() => {
+    saveSessionState("lcm-ui-channels", { expandedId, page, pageSize, groupFilter });
+  }, [expandedId, page, pageSize, groupFilter]);
+  useEffect(() => {
+    saveSessionState("lcm-ui-channels-sorting", sorting);
+  }, [sorting]);
 
   // 各渠道最近一次余额快照
   const { data: latestBalances = [] } = useQuery({
@@ -75,6 +109,12 @@ export function ChannelsPage() {
     for (const b of latestBalances) map.set(b.channelId, b);
     return map;
   }, [latestBalances]);
+
+  // 分组筛选（两个视图共用）；空串 = 全部分组
+  const visibleChannels = useMemo(
+    () => (groupFilter ? channels.filter((c) => c.groupId === groupFilter) : channels),
+    [channels, groupFilter]
+  );
 
   async function refreshBalance(id: string) {
     setBalanceBusy(id);
@@ -151,7 +191,27 @@ export function ChannelsPage() {
       }),
       columnHelper.accessor("providerName", {
         header: "服务商",
-        cell: (info) => info.getValue() ?? "—",
+        cell: (info) => {
+          const row = info.row.original;
+          // 图标按服务商 code 查表（prov_ 前缀剥离）；无品牌图标时字母回退
+          const code = row.providerId?.replace(/^prov_/, "");
+          return (
+            <span className="inline-flex items-center gap-1.5">
+              <ProviderIcon id={code} name={row.providerName ?? ""} className="size-3.5" />
+              {info.getValue() ?? "—"}
+            </span>
+          );
+        },
+      }),
+      columnHelper.accessor((row) => row.groupName ?? "", {
+        id: "group",
+        header: "分组",
+        cell: (info) =>
+          info.row.original.groupName ? (
+            <Badge variant="outline">{info.row.original.groupName}</Badge>
+          ) : (
+            <span className="text-muted-foreground text-xs">—</span>
+          ),
       }),
       columnHelper.accessor("baseUrl", {
         header: "Base URL",
@@ -240,7 +300,7 @@ export function ChannelsPage() {
   );
 
   const table = useReactTable({
-    data: channels,
+    data: visibleChannels,
     columns,
     state: { sorting },
     onSortingChange: setSorting,
@@ -258,11 +318,52 @@ export function ChannelsPage() {
     <>
       <PageHeader
         title="渠道管理"
-        description="集中管理服务商、渠道、连接配置、凭证与 Agent 启动。同一服务商可配置多个渠道实例。"
+        description="集中管理服务商、渠道、连接配置、凭证与 Agent 启动。同一服务商可点击「管理分组」归类；卡片视图按分组分区；置顶（Pin）的渠道会出现在首页仪表盘。"
         actions={
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus className="size-4" />新建渠道
-          </Button>
+          <>
+            <div className="bg-muted inline-flex rounded-lg p-1">
+              <Button
+                size="sm"
+                variant={channelsView === "list" ? "secondary" : "ghost"}
+                className="h-7 px-2"
+                title="列表视图"
+                onClick={() => setChannelsView("list")}
+              >
+                <List className="size-4" />
+              </Button>
+              <Button
+                size="sm"
+                variant={channelsView === "cards" ? "secondary" : "ghost"}
+                className="h-7 px-2"
+                title="卡片视图（按分组分区）"
+                onClick={() => setChannelsView("cards")}
+              >
+                <LayoutGrid className="size-4" />
+              </Button>
+            </div>
+            <Button variant="outline" onClick={() => setGroupsOpen(true)}>
+              <FolderCog className="size-4" />
+              管理分组
+            </Button>
+            {channelsView === "list" ? (
+              <Select value={groupFilter} onValueChange={setGroupFilter}>
+                <SelectTrigger className="h-9 w-40">
+                  <SelectValue placeholder="全部分组" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">全部分组</SelectItem>
+                  {groups.map((g) => (
+                    <SelectItem key={g.id} value={g.id}>
+                      {g.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : null}
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="size-4" />新建渠道
+            </Button>
+          </>
         }
       />
 
@@ -278,6 +379,12 @@ export function ChannelsPage() {
         <div className="text-muted-foreground rounded-xl border border-dashed p-10 text-center text-sm">
           还没有渠道。点击右上角「新建渠道」开始，或先在 PLAN.md 了解渠道模板。
         </div>
+      ) : channelsView === "cards" ? (
+        <ChannelCards
+          channels={visibleChannels}
+          groups={groups}
+          balanceMap={balanceMap}
+        />
       ) : (
         <div className="rounded-xl border">
           <Table>
@@ -333,6 +440,7 @@ export function ChannelsPage() {
         onOpenChange={setCreateOpen}
         onSaved={(id) => navigate(`/channels/${id}`)}
       />
+      <ManageGroupsDialog open={groupsOpen} onOpenChange={setGroupsOpen} />
     </>
   );
 }

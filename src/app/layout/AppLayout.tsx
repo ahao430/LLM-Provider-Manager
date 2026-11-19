@@ -1,36 +1,35 @@
+import { useEffect, useRef } from "react";
 import { Outlet, useLocation } from "react-router-dom";
-import { Badge } from "@/components/ui/badge";
 import { Sidebar } from "@/app/layout/Sidebar";
-import { findNavItem } from "@/lib/navigation";
-import { useAppInfo } from "@/hooks/use-app-info";
+import { restoreScrollPosition, saveScrollPosition } from "@/lib/sessionState";
 
 export function AppLayout() {
   const location = useLocation();
-  const current = findNavItem(location.pathname);
-  const { data: appInfo } = useAppInfo();
+  const mainRef = useRef<HTMLElement | null>(null);
+
+  // 路由切换时恢复该页上次的滚动高度（内存级，会话内有效）
+  useEffect(() => {
+    const main = mainRef.current;
+    if (!main) return;
+    const top = restoreScrollPosition(location.pathname);
+    requestAnimationFrame(() => {
+      main.scrollTop = top;
+    });
+  }, [location.pathname]);
 
   return (
     <div className="bg-background text-foreground flex h-screen overflow-hidden">
       <Sidebar />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="bg-background/95 supports-[backdrop-filter]:bg-background/75 sticky top-0 flex h-14 shrink-0 items-center justify-between gap-4 border-b px-6">
-          <div className="text-muted-foreground truncate text-sm">
-            LCM{current ? ` / ${current.label}` : ""}
-          </div>
-          <div className="flex items-center gap-2">
-            {appInfo ? (
-              <Badge variant="secondary">v{appInfo.version}</Badge>
-            ) : (
-              <Badge variant="outline">v?</Badge>
-            )}
-          </div>
-        </header>
-        <main className="flex-1 overflow-y-auto">
-          <div className="mx-auto w-full max-w-6xl space-y-6 p-6">
-            <Outlet />
-          </div>
-        </main>
-      </div>
+      {/* 顶栏已移除（v0.18.0）：内容直达顶部；版本号在侧边栏底部 */}
+      <main
+        ref={mainRef}
+        className="min-w-0 flex-1 overflow-y-auto"
+        onScroll={(e) => saveScrollPosition(location.pathname, (e.target as HTMLElement).scrollTop)}
+      >
+        <div className="mx-auto w-full max-w-6xl space-y-6 p-6">
+          <Outlet />
+        </div>
+      </main>
     </div>
   );
 }

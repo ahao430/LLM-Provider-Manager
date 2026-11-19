@@ -9,6 +9,7 @@
 //! 协议面刻意保持最小（initialize / tools/list / tools/call / ping），
 //! 手写 JSON-RPC 不引入新依赖。
 
+pub mod redact;
 pub mod tools;
 
 use std::io::{BufRead, Write};

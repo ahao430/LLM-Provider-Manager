@@ -3,7 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { ImagePlus, Send, Trash2, Upload, Wand2 } from "lucide-react";
 
+import { ElapsedTimer } from "@/components/ElapsedTimer";
 import { PageHeader } from "@/components/PageHeader";
+import { ResponseText } from "@/components/ResponseText";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,11 +26,11 @@ import {
   MODEL_TYPE_LABELS,
   sendVisionRequest,
   type ArchivedImage,
-  type ImageGenResult,
   type ModelType,
   type VisionImagePayload,
 } from "@/lib/tauri";
 import { useChannelsForTest, useModelsForTest } from "@/features/api-testing/api";
+import { useImageWorkbenchStore, type ImagePanelState } from "@/stores/imageWorkbench";
 
 /** 测试中心共享的渠道选择状态（画图 / 图像理解各路由页独立持有）。 */
 function useImageChannel() {
@@ -187,27 +189,28 @@ function ImageGenPanel({
   channelModels: { id: string; actualModelId: string; modelType: ModelType; enabled: boolean }[];
 }) {
   const navigate = useNavigate();
-  const [model, setModel] = useState("");
-  const [prompt, setPrompt] = useState("");
-  const [size, setSize] = useState("");
-  const [count, setCount] = useState("1");
-  const [responseFormat, setResponseFormat] = useState("b64_json");
-  const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<ImageGenResult | null>(null);
+  // 画图状态入 store：跨页面切换（甚至整段路由离开）不丢；invoke 回调只写 store，卸载后也能落位
+  const panel = useImageWorkbenchStore((s) => s.gen);
+  const setForm = useImageWorkbenchStore((s) => s.setForm);
+  const startRun = useImageWorkbenchStore((s) => s.startRun);
+  const finishRun = useImageWorkbenchStore((s) => s.finishRun);
+  const failRun = useImageWorkbenchStore((s) => s.failRun);
+  const busy = panel.status === "running";
+  const { model, prompt, size, count, responseFormat } = panel.form;
 
   // 模型为空时默认选中第一个已启用的图像模型（可手动改）
   useEffect(() => {
     if (model) return;
     const first = channelModels.find((m) => m.modelType === "image" && m.enabled);
-    if (first) setModel(first.actualModelId);
-  }, [channelModels, model]);
+    if (first) setForm("gen", { model: first.actualModelId });
+  }, [channelModels, model, setForm]);
 
   async function handleGenerate() {
     if (!channelId || !model.trim() || !prompt.trim()) {
       toast.error("请填写渠道、模型与 Prompt");
       return;
     }
-    setBusy(true);
+    startRun("gen");
     try {
       const res = await generateImage({
         channelId,
@@ -219,16 +222,15 @@ function ImageGenPanel({
         extraBody: null,
         customHeaders: [],
       });
-      setResult(res);
+      finishRun("gen", res);
       if (res.status === "success") {
         toast.success(`生成完成：${res.images.length} 张图片已归档`);
       } else {
         toast.error(`生成失败：${JSON.stringify(res.error)}`);
       }
     } catch (error) {
+      failRun("gen", String(error));
       toast.error(`请求失败：${error}`);
-    } finally {
-      setBusy(false);
     }
   }
 
@@ -241,23 +243,23 @@ function ImageGenPanel({
         </CardHeader>
         <CardContent className="space-y-4">
           <ChannelPicker channelId={channelId} onChannelChange={onChannelChange} channels={channels} />
-          <ModelPicker models={channelModels} value={model} onChange={setModel} disabled={!channelId} onlyType="image" />
+          <ModelPicker models={channelModels} value={model} onChange={(v) => setForm("gen", { model: v })} disabled={!channelId} onlyType="image" />
           <div className="space-y-1.5">
             <Label>Prompt *</Label>
-            <Textarea rows={4} value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="描述要生成的图片…" />
+            <Textarea rows={4} value={prompt} onChange={(e) => setForm("gen", { prompt: e.target.value })} placeholder="描述要生成的图片…" />
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1.5">
               <Label>尺寸</Label>
-              <Input value={size} onChange={(e) => setSize(e.target.value)} placeholder="1024x1024" />
+              <Input value={size} onChange={(e) => setForm("gen", { size: e.target.value })} placeholder="1024x1024" />
             </div>
             <div className="space-y-1.5">
               <Label>数量 n</Label>
-              <Input type="number" value={count} onChange={(e) => setCount(e.target.value)} />
+              <Input type="number" value={count} onChange={(e) => setForm("gen", { count: e.target.value })} />
             </div>
             <div className="space-y-1.5">
               <Label>返回格式</Label>
-              <Select value={responseFormat} onValueChange={setResponseFormat}>
+              <Select value={responseFormat} onValueChange={(v) => setForm("gen", { responseFormat: v === "url" ? "url" : "b64_json" })}>
                 <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
@@ -275,7 +277,7 @@ function ImageGenPanel({
         </CardContent>
       </Card>
 
-      <ResultCard result={result} onOpenTrace={(id) => navigate(`/requests/${id}`)} />
+      <ResultCard panel={panel} onOpenTrace={(id) => navigate(`/requests/${id}`)} />
     </div>
   );
 }
@@ -296,21 +298,24 @@ function ImageEditPanel({
   channelModels: { id: string; actualModelId: string; modelType: ModelType; enabled: boolean }[];
 }) {
   const navigate = useNavigate();
-  const [model, setModel] = useState("");
-  const [prompt, setPrompt] = useState("");
+  // 编辑面板状态入 store：跨页面切换不丢；invoke 回调只写 store，卸载后也能落位
+  const panel = useImageWorkbenchStore((s) => s.edit);
+  const setForm = useImageWorkbenchStore((s) => s.setForm);
+  const setEditFiles = useImageWorkbenchStore((s) => s.setEditFiles);
+  const startRun = useImageWorkbenchStore((s) => s.startRun);
+  const finishRun = useImageWorkbenchStore((s) => s.finishRun);
+  const failRun = useImageWorkbenchStore((s) => s.failRun);
+  const busy = panel.status === "running";
+  const { model, prompt, size } = panel.form;
+  const imagePreview = panel.imagePreview;
+  const maskPreview = panel.maskPreview;
+
   // 模型为空时默认选中第一个已启用的图像模型（可手动改）
   useEffect(() => {
     if (model) return;
     const first = channelModels.find((m) => m.modelType === "image" && m.enabled);
-    if (first) setModel(first.actualModelId);
-  }, [channelModels, model]);
-  const [size, setSize] = useState("");
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const imageBase64Ref = useRef<{ base64: string; mime: string } | null>(null);
-  const [maskPreview, setMaskPreview] = useState<string | null>(null);
-  const maskBase64Ref = useRef<{ base64: string; mime: string } | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<ImageGenResult | null>(null);
+    if (first) setForm("edit", { model: first.actualModelId });
+  }, [channelModels, model, setForm]);
 
   function loadFile(file: File, isMask: boolean) {
     if (!file.type.startsWith("image/")) {
@@ -323,23 +328,21 @@ function ImageEditPanel({
       const [meta, data] = dataUrl.split(",");
       const mime = meta.slice(meta.indexOf(":") + 1, meta.indexOf(";"));
       if (isMask) {
-        maskBase64Ref.current = { base64: data, mime };
-        setMaskPreview(dataUrl);
+        setEditFiles({ mask: { base64: data, mime }, maskPreview: dataUrl });
       } else {
-        imageBase64Ref.current = { base64: data, mime };
-        setImagePreview(dataUrl);
+        setEditFiles({ image: { base64: data, mime }, imagePreview: dataUrl });
       }
     };
     reader.readAsDataURL(file);
   }
 
   async function handleEdit() {
-    const image = imageBase64Ref.current;
+    const image = panel.imageBase64;
     if (!channelId || !model.trim() || !prompt.trim() || !image) {
       toast.error("请填写渠道、模型、Prompt 并上传原图");
       return;
     }
-    setBusy(true);
+    startRun("edit");
     try {
       const res = await editImage({
         channelId,
@@ -347,20 +350,19 @@ function ImageEditPanel({
         prompt: prompt.trim(),
         imageBase64: image.base64,
         imageMime: image.mime,
-        maskBase64: maskBase64Ref.current?.base64 ?? null,
+        maskBase64: panel.maskBase64?.base64 ?? null,
         size: size.trim() || null,
         n: 1,
       });
-      setResult(res);
+      finishRun("edit", res);
       if (res.status === "success") {
         toast.success(`编辑完成：${res.images.length} 张结果已归档`);
       } else {
         toast.error(`编辑失败：${JSON.stringify(res.error)}`);
       }
     } catch (error) {
+      failRun("edit", String(error));
       toast.error(`请求失败：${error}`);
-    } finally {
-      setBusy(false);
     }
   }
 
@@ -378,7 +380,7 @@ function ImageEditPanel({
         </CardHeader>
         <CardContent className="space-y-4">
           <ChannelPicker channelId={channelId} onChannelChange={onChannelChange} channels={channels} />
-          <ModelPicker models={channelModels} value={model} onChange={setModel} disabled={!channelId} onlyType="image" />
+          <ModelPicker models={channelModels} value={model} onChange={(v) => setForm("edit", { model: v })} disabled={!channelId} onlyType="image" />
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
@@ -389,10 +391,7 @@ function ImageEditPanel({
                   <button
                     type="button"
                     className="bg-background absolute -top-1.5 -right-1.5 rounded-full border p-0.5"
-                    onClick={() => {
-                      imageBase64Ref.current = null;
-                      setImagePreview(null);
-                    }}
+                    onClick={() => setEditFiles({ image: null, imagePreview: null })}
                   >
                     <Trash2 className="size-3" />
                   </button>
@@ -418,10 +417,7 @@ function ImageEditPanel({
                   <button
                     type="button"
                     className="bg-background absolute -top-1.5 -right-1.5 rounded-full border p-0.5"
-                    onClick={() => {
-                      maskBase64Ref.current = null;
-                      setMaskPreview(null);
-                    }}
+                    onClick={() => setEditFiles({ mask: null, maskPreview: null })}
                   >
                     <Trash2 className="size-3" />
                   </button>
@@ -443,12 +439,12 @@ function ImageEditPanel({
 
           <div className="space-y-1.5">
             <Label>编辑 Prompt *</Label>
-            <Textarea rows={3} value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="描述要做的编辑…" />
+            <Textarea rows={3} value={prompt} onChange={(e) => setForm("edit", { prompt: e.target.value })} placeholder="描述要做的编辑…" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>尺寸（可选）</Label>
-              <Input value={size} onChange={(e) => setSize(e.target.value)} placeholder="1024x1024" />
+              <Input value={size} onChange={(e) => setForm("edit", { size: e.target.value })} placeholder="1024x1024" />
             </div>
           </div>
           <Button onClick={handleEdit} disabled={busy || !channelId}>
@@ -458,7 +454,7 @@ function ImageEditPanel({
         </CardContent>
       </Card>
 
-      <ResultCard result={result} onOpenTrace={(id) => navigate(`/requests/${id}`)} />
+      <ResultCard panel={panel} onOpenTrace={(id) => navigate(`/requests/${id}`)} />
     </div>
   );
 }
@@ -468,13 +464,15 @@ function ImageEditPanel({
 // ------------------------------------------------------------------
 
 function ResultCard({
-  result,
+  panel,
   onOpenTrace,
 }: {
-  result: ImageGenResult | null;
+  panel: ImagePanelState;
   onOpenTrace: (traceId: string) => void;
 }) {
-  if (!result) {
+  const { result, status, startedAt, finishedAt } = panel;
+  const running = status === "running";
+  if (!result && !running) {
     return (
       <Card>
         <CardHeader>
@@ -482,7 +480,7 @@ function ResultCard({
         </CardHeader>
         <CardContent>
           <div className="text-muted-foreground flex min-h-48 items-center justify-center rounded-lg border border-dashed text-sm">
-            结果将在此显示并自动归档
+            {status === "error" && panel.error ? `请求失败：${panel.error}` : "结果将在此显示并自动归档"}
           </div>
         </CardContent>
       </Card>
@@ -493,26 +491,36 @@ function ResultCard({
       <CardHeader>
         <CardTitle>结果</CardTitle>
         <CardDescription className="flex items-center gap-2">
-          <Badge variant={result.status === "success" ? "default" : "destructive"}>{result.status}</Badge>
-          <button
-            type="button"
-            className="text-primary hover:underline text-xs"
-            onClick={() => onOpenTrace(result.traceId)}
-          >
-            {result.traceId.slice(0, 8)}… 记录详情 →
-          </button>
+          <Badge variant={running ? "secondary" : result!.status === "success" ? "default" : "destructive"}>
+            {running ? "进行中" : result!.status}
+          </Badge>
+          <ElapsedTimer startedAt={startedAt} running={running} finishedAt={finishedAt} />
+          {result ? (
+            <button
+              type="button"
+              className="text-primary hover:underline text-xs"
+              onClick={() => onOpenTrace(result.traceId)}
+            >
+              {result.traceId.slice(0, 8)}… 记录详情 →
+            </button>
+          ) : null}
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {result.status === "success" ? (
+        {running ? (
+          <div className="text-muted-foreground flex min-h-48 flex-col items-center justify-center gap-2 rounded-lg border border-dashed text-sm">
+            <span className="animate-pulse">生成中，结果返回后自动加载…</span>
+            <ElapsedTimer startedAt={startedAt} running={running} finishedAt={finishedAt} />
+          </div>
+        ) : result!.status === "success" ? (
           <div className="grid grid-cols-2 gap-3">
-            {result.images.map((img, i) => (
+            {result!.images.map((img, i) => (
               <ArchivedImageCard key={i} image={img} />
             ))}
           </div>
         ) : (
           <pre className="text-destructive max-h-72 overflow-auto rounded-md border p-3 text-xs">
-            {JSON.stringify(result.error, null, 2)}
+            {JSON.stringify(result!.error, null, 2)}
           </pre>
         )}
       </CardContent>
@@ -523,9 +531,11 @@ function ResultCard({
 function ArchivedImageCard({ image }: { image: ArchivedImage }) {
   const [dataUrl, setDataUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const attemptRef = useRef(false);
 
   async function load() {
     if (!image.filePath || dataUrl) return;
+    attemptRef.current = true;
     setLoading(true);
     try {
       const { readArchivedImage } = await import("@/lib/tauri");
@@ -537,18 +547,28 @@ function ArchivedImageCard({ image }: { image: ArchivedImage }) {
     }
   }
 
+  // 返回即自动加载（不再需要手动点击）；读取失败时保留手动重试入口
+  useEffect(() => {
+    if (!image.filePath || attemptRef.current) return;
+    void load();
+  }, [image.filePath]);
+
   return (
     <div className="space-y-1 rounded-lg border p-2">
       {image.filePath ? (
         dataUrl ? (
           <img src={dataUrl} alt="generated" className="w-full rounded" />
+        ) : loading ? (
+          <div className="text-muted-foreground flex h-40 w-full items-center justify-center rounded border border-dashed text-xs">
+            读取归档图片中…
+          </div>
         ) : (
           <button
             type="button"
             onClick={load}
             className="text-muted-foreground hover:text-foreground flex h-40 w-full items-center justify-center rounded border border-dashed text-xs"
           >
-            {loading ? "读取中…" : "点击加载归档图片"}
+            读取失败，点击重试
           </button>
         )
       ) : (
@@ -744,7 +764,7 @@ function VisionPanel({
           ) : result.error ? (
             <pre className="text-destructive max-h-72 overflow-auto rounded-md border p-3 text-xs">{JSON.stringify(result.error, null, 2)}</pre>
           ) : (
-            <pre className="max-h-96 overflow-auto rounded-md border p-3 text-sm whitespace-pre-wrap">{result.text || "（无文本）"}</pre>
+            <ResponseText content={result.text || ""} />
           )}
         </CardContent>
       </Card>

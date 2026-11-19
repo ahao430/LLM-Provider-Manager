@@ -42,10 +42,22 @@ export function TestingPage() {
         ))}
       </div>
 
-      {current.id === "api" ? <ApiTestingPage /> : null}
-      {current.id === "agent" ? <AgentPage /> : null}
-      {current.id === "image" ? <ImageDrawingPage /> : null}
-      {current.id === "vision" ? <ImageVisionPage /> : null}
+      {/*
+        keep-alive：四个 Tab 全部挂载，非当前 Tab 以 hidden 隐藏。
+        切 Tab 不卸载组件——画图生成中的任务、API 测试流式增量、已选图片等都保留。
+      */}
+      <div className={current.id === "api" ? "" : "hidden"}>
+        <ApiTestingPage />
+      </div>
+      <div className={current.id === "agent" ? "" : "hidden"}>
+        <AgentPage />
+      </div>
+      <div className={current.id === "image" ? "" : "hidden"}>
+        <ImageDrawingPage />
+      </div>
+      <div className={current.id === "vision" ? "" : "hidden"}>
+        <ImageVisionPage />
+      </div>
     </div>
   );
 }

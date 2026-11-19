@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { navItems } from "@/lib/navigation";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { UpdateBadge } from "@/components/UpdateBadge";
 import { useUiStore } from "@/stores/ui";
 import { cn } from "@/lib/utils";
 
@@ -75,6 +76,8 @@ export function Sidebar() {
       </nav>
 
       <div className="space-y-1 border-t p-2">
+        {/* 版本号 + 升级提示（启动检测有更新时显示升级按钮） */}
+        <UpdateBadge collapsed={collapsed} />
         <ThemeToggle collapsed={collapsed} />
         <button
           type="button"

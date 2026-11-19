@@ -14,6 +14,7 @@ const DIR_LAYOUT: &[&str] = &[
     "archives/responses",
     "archives/streams",
     "archives/images",
+    "agent",
     "backups",
     "logs",
 ];

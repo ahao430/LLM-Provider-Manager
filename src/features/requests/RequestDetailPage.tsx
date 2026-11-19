@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { copyTestCurl, diagnoseRequest, type Diagnosis } from "@/lib/tauri";
+import { goBackOr } from "@/lib/sessionState";
 import { useReparse, useTestRaw, useTestRecord, useReplayRequest } from "@/features/api-testing/api";
 
 /** 测试详情：Overview / Request Raw / Response Raw / Timeline / Processing。 */
@@ -36,7 +37,7 @@ export function RequestDetailPage() {
     return (
       <div className="space-y-4">
         <p className="text-destructive text-sm">加载失败：{String(error)}</p>
-        <Button variant="outline" onClick={() => navigate("/requests")}>
+        <Button variant="outline" onClick={() => goBackOr(navigate, "/requests")}>
           <ArrowLeft className="size-4" />返回列表
         </Button>
       </div>
@@ -81,7 +82,7 @@ export function RequestDetailPage() {
               <RefreshCw className="size-4" />
               {replay.isPending ? "重放中…" : "重放请求"}
             </Button>
-            <Button variant="outline" onClick={() => navigate("/requests")}>
+            <Button variant="outline" onClick={() => goBackOr(navigate, "/requests")}>
               <ArrowLeft className="size-4" />返回
             </Button>
           </>

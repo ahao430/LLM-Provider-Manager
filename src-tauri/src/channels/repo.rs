@@ -35,7 +35,8 @@ pub fn list_providers(conn: &Connection) -> AppResult<Vec<ProviderRow>> {
 
 const ROW_COLUMNS: &str = "c.id, c.name, c.provider_id, p.name, c.channel_type, c.base_url, \
      c.chat_base_url, c.anthropic_base_url, c.responses_base_url, \
-     c.enabled, c.notes, c.created_at, c.updated_at, c.config_json";
+     c.enabled, c.notes, c.created_at, c.updated_at, c.config_json, \
+     c.group_id, g.name, c.dashboard_pinned";
 
 fn row_from(row: &rusqlite::Row) -> rusqlite::Result<ChannelRow> {
     let chat: String = row.get(6)?;
@@ -91,12 +92,16 @@ fn row_from(row: &rusqlite::Row) -> rusqlite::Result<ChannelRow> {
         // 凭证状态由 service 层填充
         has_primary_credential: false,
         primary_credential_masked: None,
+        group_id: row.get(14)?,
+        group_name: row.get(15)?,
+        dashboard_pinned: row.get::<_, i64>(16)? != 0,
     })
 }
 
 pub fn list_rows(conn: &Connection) -> AppResult<Vec<ChannelRow>> {
     let sql = format!(
         "SELECT {ROW_COLUMNS} FROM channels c LEFT JOIN providers p ON c.provider_id = p.id \
+         LEFT JOIN channel_groups g ON c.group_id = g.id \
          ORDER BY c.created_at DESC, c.id"
     );
     let mut stmt = conn.prepare(&sql)?;
@@ -110,10 +115,62 @@ pub fn list_rows(conn: &Connection) -> AppResult<Vec<ChannelRow>> {
 pub fn find_row(conn: &Connection, id: &str) -> AppResult<Option<ChannelRow>> {
     let sql = format!(
         "SELECT {ROW_COLUMNS} FROM channels c LEFT JOIN providers p ON c.provider_id = p.id \
+         LEFT JOIN channel_groups g ON c.group_id = g.id \
          WHERE c.id = ?1"
     );
     let mut stmt = conn.prepare(&sql)?;
     Ok(stmt.query_row(params![id], row_from).optional()?)
+}
+
+/// 分组列表（按创建顺序）。
+pub fn list_groups(conn: &Connection) -> AppResult<Vec<super::domain::ChannelGroupRow>> {
+    let mut stmt =
+        conn.prepare("SELECT id, name, created_at FROM channel_groups ORDER BY created_at, id")?;
+    let rows = stmt
+        .query_map([], |row| {
+            Ok(super::domain::ChannelGroupRow {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                created_at: row.get(2)?,
+            })
+        })?
+        .filter_map(|r| r.ok())
+        .collect();
+    Ok(rows)
+}
+
+pub fn insert_group(conn: &Connection, id: &str, name: &str) -> AppResult<()> {
+    conn.execute(
+        "INSERT INTO channel_groups (id, name, created_at) VALUES (?1, ?2, ?3)",
+        params![id, name, now_rfc3339()],
+    )?;
+    Ok(())
+}
+
+pub fn rename_group(conn: &Connection, id: &str, name: &str) -> AppResult<()> {
+    conn.execute(
+        "UPDATE channel_groups SET name = ?2 WHERE id = ?1",
+        params![id, name],
+    )?;
+    Ok(())
+}
+
+/// 删除分组：渠道回到未分组（group_id 置空）。
+pub fn delete_group(conn: &Connection, id: &str) -> AppResult<()> {
+    conn.execute(
+        "UPDATE channels SET group_id = NULL WHERE group_id = ?1",
+        params![id],
+    )?;
+    conn.execute("DELETE FROM channel_groups WHERE id = ?1", params![id])?;
+    Ok(())
+}
+
+pub fn set_dashboard_pinned(conn: &Connection, id: &str, pinned: bool) -> AppResult<()> {
+    conn.execute(
+        "UPDATE channels SET dashboard_pinned = ?2, updated_at = ?3 WHERE id = ?1",
+        params![id, pinned as i64, now_rfc3339()],
+    )?;
+    Ok(())
 }
 
 pub fn load_config(conn: &Connection, id: &str) -> AppResult<ChannelConfig> {
@@ -141,8 +198,8 @@ pub fn insert(
     conn.execute(
         "INSERT INTO channels \
          (id, provider_id, name, channel_type, base_url, chat_base_url, anthropic_base_url, \
-          responses_base_url, enabled, notes, config_json, created_at, updated_at) \
-         VALUES (?1, ?2, ?3, ?4, ?5, ?5, ?6, ?7, 1, ?8, ?9, ?10, ?10)",
+          responses_base_url, enabled, notes, config_json, group_id, created_at, updated_at) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?5, ?6, ?7, 1, ?8, ?9, ?10, ?11, ?11)",
         params![
             id,
             input.provider_id,
@@ -161,6 +218,7 @@ pub fn insert(
                 .unwrap_or(""),
             trimmed_or_none(&input.notes),
             config_json,
+            input.group_id,
             now
         ],
     )?;
@@ -176,7 +234,7 @@ pub fn update(
     conn.execute(
         "UPDATE channels SET name = ?2, provider_id = ?3, base_url = ?4, chat_base_url = ?4, \
          anthropic_base_url = ?5, responses_base_url = ?6, notes = ?7, config_json = ?8, \
-         updated_at = ?9 WHERE id = ?1",
+         group_id = ?9, updated_at = ?10 WHERE id = ?1",
         params![
             id,
             input.name.trim(),
@@ -194,6 +252,7 @@ pub fn update(
                 .unwrap_or(""),
             trimmed_or_none(&input.notes),
             config_json,
+            input.group_id,
             now_rfc3339()
         ],
     )?;
@@ -232,6 +291,7 @@ mod tests {
             official_url: None,
             notes: Some("备注".into()),
             primary_credential: None,
+            group_id: None,
         }
     }
 
@@ -293,5 +353,36 @@ mod tests {
         let providers = list_providers(&conn).unwrap();
         assert!(providers.len() >= 5, "应至少内置 5 个服务商");
         assert!(providers.iter().any(|p| p.code == "bailian"));
+    }
+
+    #[test]
+    fn channel_group_crud_and_pinning() {
+        let conn = Connection::open_in_memory().unwrap();
+        migrations::run(&conn).unwrap();
+
+        // 建分组 + 建渠道（归属分组）
+        insert_group(&conn, "g-1", "上游中转站").unwrap();
+        let mut input = channel_input("中转渠道", "https://relay.example.com/v1", None);
+        input.group_id = Some("g-1".into());
+        insert(&conn, "ch-g", &input, "{}").unwrap();
+
+        // 列表行带分组名
+        let row = find_row(&conn, "ch-g").unwrap().unwrap();
+        assert_eq!(row.group_id.as_deref(), Some("g-1"));
+        assert_eq!(row.group_name.as_deref(), Some("上游中转站"));
+        assert!(!row.dashboard_pinned);
+
+        // 置顶 + 取消置顶
+        set_dashboard_pinned(&conn, "ch-g", true).unwrap();
+        let row = find_row(&conn, "ch-g").unwrap().unwrap();
+        assert!(row.dashboard_pinned);
+        set_dashboard_pinned(&conn, "ch-g", false).unwrap();
+
+        // 删除分组 → 渠道回到未分组
+        delete_group(&conn, "g-1").unwrap();
+        let row = find_row(&conn, "ch-g").unwrap().unwrap();
+        assert_eq!(row.group_id, None);
+        assert_eq!(row.group_name, None);
+        assert!(list_groups(&conn).unwrap().is_empty());
     }
 }

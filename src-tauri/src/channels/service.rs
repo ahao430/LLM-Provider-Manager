@@ -6,10 +6,12 @@ use crate::credentials::{self, CredentialKind};
 use crate::error::{AppError, AppResult};
 use crate::util::is_http_url;
 
-use super::domain::{ChannelConfig, ChannelDetail, ChannelInput, ChannelRow, ExternalLink};
+use super::domain::{
+    ChannelConfig, ChannelDetail, ChannelGroupRow, ChannelInput, ChannelRow, ExternalLink,
+};
 use super::repo;
 
-fn validate(input: &ChannelInput) -> AppResult<()> {
+fn validate(conn: &Connection, input: &ChannelInput) -> AppResult<()> {
     if input.name.trim().is_empty() {
         return Err(AppError::Invalid("渠道名称不能为空".into()));
     }
@@ -40,7 +42,62 @@ fn validate(input: &ChannelInput) -> AppResult<()> {
             return Err(AppError::Invalid("官网链接必须以 http(s):// 开头".into()));
         }
     }
+    // 分组存在性校验（空串视为未分组）
+    if let Some(gid) = input.group_id.as_deref().filter(|s| !s.is_empty()) {
+        if !repo::list_groups(conn)?.iter().any(|g| g.id == gid) {
+            return Err(AppError::Invalid("所选分组不存在".into()));
+        }
+    }
     Ok(())
+}
+
+/// 分组名规范化：去首尾空白；空名报错。
+fn normalize_group_name(name: &str) -> AppResult<String> {
+    let trimmed = name.trim().to_owned();
+    if trimmed.is_empty() {
+        return Err(AppError::Invalid("分组名不能为空".into()));
+    }
+    Ok(trimmed)
+}
+
+/// 创建分组（重名报错）。
+pub fn create_group(conn: &Connection, name: &str) -> AppResult<ChannelGroupRow> {
+    let name = normalize_group_name(name)?;
+    if repo::list_groups(conn)?.iter().any(|g| g.name == name) {
+        return Err(AppError::Invalid(format!("分组「{name}」已存在")));
+    }
+    let id = uuid::Uuid::new_v4().to_string();
+    repo::insert_group(conn, &id, &name)?;
+    repo::list_groups(conn)?
+        .into_iter()
+        .find(|g| g.id == id)
+        .ok_or_else(|| AppError::Invalid("分组创建失败".into()))
+}
+
+/// 重命名分组（重名校验排除自身）。
+pub fn rename_group(conn: &Connection, id: &str, name: &str) -> AppResult<ChannelGroupRow> {
+    let name = normalize_group_name(name)?;
+    if repo::list_groups(conn)?
+        .iter()
+        .any(|g| g.name == name && g.id != id)
+    {
+        return Err(AppError::Invalid(format!("分组「{name}」已存在")));
+    }
+    repo::rename_group(conn, id, &name)?;
+    repo::list_groups(conn)?
+        .into_iter()
+        .find(|g| g.id == id)
+        .ok_or_else(|| AppError::Invalid("分组不存在".into()))
+}
+
+/// 删除分组：渠道回到未分组。
+pub fn delete_group(conn: &Connection, id: &str) -> AppResult<()> {
+    repo::delete_group(conn, id)
+}
+
+/// 置顶 / 取消置顶（首页仪表盘渠道卡片）。
+pub fn set_dashboard_pinned(conn: &Connection, id: &str, pinned: bool) -> AppResult<()> {
+    repo::set_dashboard_pinned(conn, id, pinned)
 }
 
 /// 官网链接写入 config（单个输入框，kind = official）。
@@ -90,7 +147,10 @@ pub fn get(conn: &Connection, id: &str) -> AppResult<ChannelDetail> {
 
 /// 创建渠道。
 pub fn create(conn: &Connection, input: ChannelInput) -> AppResult<ChannelRow> {
-    validate(&input)?;
+    validate(conn, &input)?;
+    let mut input = input;
+    // 空串分组视为未分组
+    input.group_id = input.group_id.take_if(|s| !s.trim().is_empty());
 
     let id = uuid::Uuid::new_v4().to_string();
     let config = config_with_official_url(&ChannelConfig::default(), input.official_url.as_deref());
@@ -105,7 +165,10 @@ pub fn create(conn: &Connection, input: ChannelInput) -> AppResult<ChannelRow> {
 
 /// 更新渠道。
 pub fn update(conn: &Connection, id: &str, input: ChannelInput) -> AppResult<ChannelRow> {
-    validate(&input)?;
+    validate(conn, &input)?;
+    let mut input = input;
+    // 空串分组视为未分组
+    input.group_id = input.group_id.take_if(|s| !s.trim().is_empty());
     let old_config = repo::load_config(conn, id)?;
     let new_config = config_with_official_url(&old_config, input.official_url.as_deref());
 

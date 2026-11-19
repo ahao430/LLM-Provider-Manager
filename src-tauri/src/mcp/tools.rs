@@ -7,12 +7,58 @@ use rusqlite::{params, Connection, OptionalExtension};
 use serde_json::{json, Value};
 use std::path::PathBuf;
 
+use super::redact::redact_text;
 use crate::billing::repo as billing_repo;
 use crate::channels::repo as channel_repo;
 use crate::market;
 use crate::models::repo as model_repo;
 use crate::requests::repo as request_repo;
+use crate::workbenches::api_testing::builder::mask_header_value;
 use crate::workbenches::api_testing::engine::read_raw;
+
+/// 对 Value 对象中的自由文本字段做统一脱敏（字符串字段与字符串数组字段均处理）。
+fn redact_text_fields(mut v: Value, fields: &[&str]) -> Value {
+    if let Value::Object(ref mut map) = v {
+        for f in fields {
+            match map.get_mut(*f) {
+                Some(Value::String(s)) => {
+                    let redacted = redact_text(s);
+                    map.insert((*f).to_string(), Value::String(redacted));
+                }
+                Some(Value::Array(items)) => {
+                    let redacted: Vec<Value> = items
+                        .iter()
+                        .map(|item| match item {
+                            Value::String(s) => Value::String(redact_text(s)),
+                            other => other.clone(),
+                        })
+                        .collect();
+                    map.insert((*f).to_string(), Value::Array(redacted));
+                }
+                _ => {}
+            }
+        }
+    }
+    v
+}
+
+/// Raw 归档文本读取后二次脱敏：headers 再按名掩码（历史归档的旧宽口径兜底），
+/// 其余自由文本过令牌样式脱敏。
+fn scrub_archive_text(text: &str) -> String {
+    match serde_json::from_str::<Value>(text) {
+        Ok(mut v) => {
+            if let Some(Value::Object(headers)) = v.get_mut("headers") {
+                for (name, val) in headers.iter_mut() {
+                    if let Value::String(s) = val {
+                        *val = Value::String(mask_header_value(name, s));
+                    }
+                }
+            }
+            redact_text(&v.to_string())
+        }
+        Err(_) => redact_text(text),
+    }
+}
 
 /// 工具上下文（数据目录，用于读归档）。
 pub struct ToolContext {
@@ -189,9 +235,10 @@ fn list_channels(conn: &Connection) -> Result<Value, String> {
             "id": row.id,
             "name": row.name,
             "providerName": row.provider_name,
+            "groupName": row.group_name,
             "baseUrl": row.base_url,
             "enabled": row.enabled,
-            "notes": row.notes,
+            "notes": row.notes.as_deref().map(redact_text),
             "updatedAt": row.updated_at,
             "latestBalance": balance,
         }));
@@ -279,7 +326,12 @@ fn search_request_records(conn: &Connection, args: &Value) -> Result<Value, Stri
         })
         .filter(|r| status.as_ref().map(|s| *s == r.status).unwrap_or(true))
         .take(limit as usize)
-        .map(|r| serde_json::to_value(&r).unwrap_or(Value::Null))
+        .map(|r| {
+            redact_text_fields(
+                serde_json::to_value(&r).unwrap_or(Value::Null),
+                &["errorMessage"],
+            )
+        })
         .collect();
     Ok(json!({ "records": items, "total": items.len() }))
 }
@@ -289,9 +341,18 @@ fn get_request_record(conn: &Connection, args: &Value) -> Result<Value, String> 
     let trace_id = arg_str(args, "traceId").ok_or_else(|| "缺少 traceId".to_string())?;
     let record = request_repo::get(conn, &trace_id).map_err(|e| e.to_string())?;
     let events = request_repo::list_events(conn, &trace_id).map_err(|e| e.to_string())?;
+    let event_values: Vec<Value> = events
+        .iter()
+        .map(|e| {
+            redact_text_fields(
+                serde_json::to_value(e).unwrap_or(Value::Null),
+                &["description", "metadataJson"],
+            )
+        })
+        .collect();
     Ok(json!({
-        "record": serde_json::to_value(&record).unwrap_or(Value::Null),
-        "processingEvents": serde_json::to_value(&events).unwrap_or(Value::Null),
+        "record": redact_text_fields(serde_json::to_value(&record).unwrap_or(Value::Null), &["errorMessage"]),
+        "processingEvents": event_values,
     }))
 }
 
@@ -303,19 +364,25 @@ fn get_request_error(conn: &Connection, args: &Value) -> Result<Value, String> {
         .unwrap_or_default()
         .into_iter()
         .filter(|e| e.status == "failed")
-        .map(|e| serde_json::to_value(&e).unwrap_or(Value::Null))
+        .map(|e| {
+            redact_text_fields(
+                serde_json::to_value(&e).unwrap_or(Value::Null),
+                &["description", "metadataJson"],
+            )
+        })
         .collect();
     Ok(json!({
         "traceId": record.trace_id,
         "status": record.status,
         "errorCode": record.error_code,
-        "errorMessage": record.error_message,
+        "errorMessage": record.error_message.as_deref().map(redact_text),
         "httpStatus": record.http_status,
         "failedEvents": failed_events,
     }))
 }
 
 /// Raw 归档原文（Header 已脱敏；显式调用视为用户授权）。
+/// 输出前做二次脱敏：headers 再按名掩码（历史归档兜底）+ 令牌样式统一掩码。
 fn get_request_raw(conn: &Connection, ctx: &ToolContext, args: &Value) -> Result<Value, String> {
     let trace_id = arg_str(args, "traceId").ok_or_else(|| "缺少 traceId".to_string())?;
     let kind =
@@ -333,7 +400,7 @@ fn get_request_raw(conn: &Connection, ctx: &ToolContext, args: &Value) -> Result
         other => return Err(format!("未知 kind: {other}")),
     };
     let text = read_raw(&ctx.data_dir, &rel).map_err(|e| e.to_string())?;
-    Ok(json!({ "traceId": trace_id, "kind": kind, "content": text }))
+    Ok(json!({ "traceId": trace_id, "kind": kind, "content": scrub_archive_text(&text) }))
 }
 
 /// 每渠道最近余额快照。
@@ -366,13 +433,19 @@ fn list_balances(conn: &Connection) -> Result<Value, String> {
 fn list_funds(conn: &Connection, args: &Value) -> Result<Value, String> {
     let limit = arg_limit(args, 20, 100);
     let channel = arg_str(args, "channelId");
-    let bills =
-        billing_repo::list_bills(conn, channel.as_deref(), limit).map_err(|e| e.to_string())?;
-    let recharges =
-        billing_repo::list_recharges(conn, channel.as_deref(), limit).map_err(|e| e.to_string())?;
+    let bills: Vec<Value> = billing_repo::list_bills(conn, channel.as_deref(), limit)
+        .map_err(|e| e.to_string())?
+        .into_iter()
+        .map(|b| redact_text_fields(serde_json::to_value(&b).unwrap_or(Value::Null), &["notes"]))
+        .collect();
+    let recharges: Vec<Value> = billing_repo::list_recharges(conn, channel.as_deref(), limit)
+        .map_err(|e| e.to_string())?
+        .into_iter()
+        .map(|r| redact_text_fields(serde_json::to_value(&r).unwrap_or(Value::Null), &["notes"]))
+        .collect();
     Ok(json!({
-        "bills": serde_json::to_value(&bills).unwrap_or(Value::Null),
-        "recharges": serde_json::to_value(&recharges).unwrap_or(Value::Null),
+        "bills": bills,
+        "recharges": recharges,
     }))
 }
 
@@ -419,7 +492,11 @@ fn diagnose_request_error(conn: &Connection, args: &Value) -> Result<Value, Stri
     let trace_id = arg_str(args, "traceId").ok_or_else(|| "缺少 traceId".to_string())?;
     let diagnosis =
         crate::diagnostics::engine::diagnose(conn, &trace_id).map_err(|e| e.to_string())?;
-    serde_json::to_value(&diagnosis).map_err(|e| format!("诊断序列化失败: {e}"))
+    let value = serde_json::to_value(&diagnosis).map_err(|e| format!("诊断序列化失败: {e}"))?;
+    Ok(redact_text_fields(
+        value,
+        &["evidence", "advice", "failedEvents"],
+    ))
 }
 
 /// 错误知识库检索。
@@ -450,16 +527,25 @@ fn get_error_chain(conn: &Connection, args: &Value) -> Result<Value, String> {
     let trace_id = arg_str(args, "traceId").ok_or_else(|| "缺少 traceId".to_string())?;
     let record = request_repo::get(conn, &trace_id).map_err(|e| e.to_string())?;
     let events = request_repo::list_events(conn, &trace_id).map_err(|e| e.to_string())?;
+    let event_values: Vec<Value> = events
+        .iter()
+        .map(|e| {
+            redact_text_fields(
+                serde_json::to_value(e).unwrap_or(Value::Null),
+                &["description", "metadataJson"],
+            )
+        })
+        .collect();
     Ok(json!({
         "traceId": record.trace_id,
         "status": record.status,
         "protocol": record.protocol,
         "errorCode": record.error_code,
-        "errorMessage": record.error_message,
+        "errorMessage": record.error_message.as_deref().map(redact_text),
         "httpStatus": record.http_status,
         "requestRef": record.request_ref,
         "responseRef": record.response_ref,
-        "events": serde_json::to_value(&events).unwrap_or(Value::Null),
+        "events": event_values,
     }))
 }
 
@@ -484,6 +570,7 @@ mod tests {
                 official_url: None,
                 notes: None,
                 primary_credential: None,
+                group_id: None,
             },
             "{}",
         )
@@ -497,12 +584,21 @@ mod tests {
         let ctx = ToolContext {
             data_dir: std::env::temp_dir(),
         };
+        // notes 里埋一个 sk- 令牌，验证输出被脱敏（白名单之外自由文本的兜底）
+        conn.execute(
+            "UPDATE channels SET notes = '密钥 sk-tok12345678secret 请勿泄露' WHERE id = 'ch-1'",
+            [],
+        )
+        .unwrap();
         let text = call_tool(&conn, &ctx, "list_channels", &json!({})).unwrap();
         assert!(text.contains("测试渠道"));
         // 凭证红线：任何凭证字段都不出现在输出里
         assert!(!text.contains("credential"));
         assert!(!text.contains("apiKey"));
         assert!(!text.contains("token"));
+        // 令牌样式兜底脱敏
+        assert!(text.contains("sk-***（已脱敏）"));
+        assert!(!text.contains("sk-tok12345678secret"));
     }
 
     #[test]

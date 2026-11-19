@@ -2,8 +2,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   addModelPrice,
   createChannel,
+  createChannelGroup,
   createGlobalModel,
   deleteChannel,
+  deleteChannelGroup,
   deleteChannelModel,
   deleteGlobalModel,
   deleteModelPrice,
@@ -16,10 +18,13 @@ import {
   listAgentCompat,
   listAgentLaunches,
   listChannels,
+  listChannelGroups,
   listChannelModels,
   listGlobalModels,
   listModelPrices,
   listProviders,
+  renameChannelGroup,
+  setChannelDashboardPinned,
   setChannelEnabled,
   updateChannel,
   upsertAgentCompat,
@@ -36,6 +41,57 @@ export const channelKeys = {
   detail: (id: string) => ["channel", id] as const,
   compat: (id: string) => ["channel", id, "compat"] as const,
 };
+
+export const groupKeys = {
+  all: ["channel-groups"] as const,
+};
+
+// ------------------------------------------------------------------
+// 分组与仪表盘置顶（v0.17.0）
+// ------------------------------------------------------------------
+
+export function useChannelGroups() {
+  return useQuery({ queryKey: groupKeys.all, queryFn: listChannelGroups });
+}
+
+export function useCreateChannelGroup() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (name: string) => createChannelGroup(name),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: groupKeys.all }),
+  });
+}
+
+export function useRenameChannelGroup() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) => renameChannelGroup(id, name),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: groupKeys.all });
+      void queryClient.invalidateQueries({ queryKey: channelKeys.all });
+    },
+  });
+}
+
+export function useDeleteChannelGroup() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteChannelGroup(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: groupKeys.all });
+      void queryClient.invalidateQueries({ queryKey: channelKeys.all });
+    },
+  });
+}
+
+export function useSetChannelPinned() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, pinned }: { id: string; pinned: boolean }) =>
+      setChannelDashboardPinned(id, pinned),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: channelKeys.all }),
+  });
+}
 
 export const launchKeys = {
   all: ["agent-launches"] as const,

@@ -1,7 +1,12 @@
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { PinOff } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { listLatestBalances } from "@/lib/tauri";
+import { useChannels, useSetChannelPinned } from "@/features/channels/api";
 import { useDashboardStats } from "@/features/api-testing/api";
 
 /** 仪表盘：渠道/模型/请求整体情况。充值与供应商账单分开统计。 */
@@ -53,6 +58,9 @@ export function DashboardPage() {
         />
       </div>
 
+      {/* 置顶渠道卡片：渠道管理卡片视图 Pin 的渠道常驻展示；无置顶时整段隐藏 */}
+      <PinnedChannelsSection />
+
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <MoneyCard
           title="累计充值"
@@ -78,6 +86,69 @@ export function DashboardPage() {
         />
       </div>
     </>
+  );
+}
+
+/** 置顶渠道卡片（dashboard_pinned=1 的渠道），点击进详情，可直接取消置顶。 */
+function PinnedChannelsSection() {
+  const navigate = useNavigate();
+  const { data: channels = [] } = useChannels();
+  const setPinned = useSetChannelPinned();
+  const { data: latestBalances = [] } = useQuery({
+    queryKey: ["latest-balances"],
+    queryFn: listLatestBalances,
+  });
+  const pinned = channels.filter((c) => c.dashboardPinned);
+  if (pinned.length === 0) return null;
+
+  return (
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {pinned.map((c) => {
+        const balance = latestBalances.find((b) => b.channelId === c.id);
+        return (
+          <Card
+            key={c.id}
+            className="cursor-pointer transition-shadow hover:shadow-md"
+            onClick={() => navigate(`/channels/${c.id}`)}
+          >
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center justify-between text-sm font-medium">
+                <span className="truncate">{c.name}</span>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="size-6"
+                  title="取消置顶"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setPinned.mutate({ id: c.id, pinned: false });
+                  }}
+                >
+                  <PinOff className="size-3.5" />
+                </Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-1.5 text-xs">
+              <div className="flex flex-wrap items-center gap-1.5">
+                {c.providerName ? <Badge variant="secondary">{c.providerName}</Badge> : null}
+                <Badge variant={c.enabled ? "default" : "secondary"}>{c.enabled ? "启用" : "停用"}</Badge>
+                <Badge variant={c.hasPrimaryCredential ? "outline" : "destructive"}>
+                  {c.hasPrimaryCredential ? "已配置凭证" : "未配置凭证"}
+                </Badge>
+              </div>
+              <p className="text-muted-foreground font-mono truncate">{c.chatBaseUrl}</p>
+              {balance ? (
+                <span className="tabular-nums">
+                  余额 {balance.currency} {balance.balance.toFixed(2)}
+                </span>
+              ) : (
+                <span className="text-muted-foreground">无余额记录</span>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })}
+    </div>
   );
 }
 

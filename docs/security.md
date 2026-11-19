@@ -60,10 +60,13 @@ Raw 请求可能包含认证 Header：界面展示与导出时执行脱敏策略
 
 | 项 | 状态 | 计划 |
 |---|---|---|
-| 凭证存储 | ✅ v0.12.0 起为独立凭证文件（0600 + 原子写入 + 掩码 + 受控查看；Keychain 一次性迁移） | 持续保持 |
+| 凭证存储 | ✅ v0.12.0 起为独立凭证文件（0600 + 原子写入 + 掩码 + 受控查看；Keychain 一次性迁移） | 涵盖 |
 | CSP | ✅ Phase 7 已收紧（self + data/blob 资源 + ipc；`ws://localhost:5173` 仅为开发 HMR 例外） | 随功能演进复查 |
 | Tauri capabilities | ✅ 最小权限 `core:default` + `dialog:default` | 持续保持 |
-| 加密备份 | ✅ Phase 7（.lcmbackup：AES-256-GCM + PBKDF2 200k 轮；凭证独立加密段） | 持续保持 |
+| 加密备份 | ✅ Phase 7（.lcmbackup：AES-256-GCM + PBKDF2 计费凭证独立段） | 持续保持 |
 | TLS 验证 | ✅ 默认启用（rustls），仅用户显式关闭时放宽 | 持续保持 |
 | 跨域认证 Header | Phase 3 工作台按渠道固定渠道地址发起请求，不做跨域重定向跟随 | 保持现状 |
 | 图片 URL 下载 / SSRF | 生成结果 url 形态不自动下载；一致性检查可发现孤儿文件 | Phase 8 完善下载防护 |
+| 归档 Header 掩码 | ✅ v0.18.0 加宽：header 名含 authorization / auth / token / key / secret 子串即掩码 | 持续保持 |
+| MCP 输出脱敏 | ✅ v0.18.0 白名单序列化之外，notes / 错误消息 / 事件 / Raw 原文输出前统一做令牌样式二次脱敏（sk- / LTAI / AKLT / Bearer / 敏感 query 参数）；历史归档读取时 headers 实时再掩码 | 持续保持 |
+| 应用内更新 | ✅ v0.18.0 安装包下载到数据目录 updates/ 并由用户确认后运行安装器；不做静默自动更新 | 自动更新需签名基础设施后再评估 |

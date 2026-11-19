@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Search } from "lucide-react";
 
 import { PageHeader } from "@/components/PageHeader";
+import { loadSessionState, saveSessionState } from "@/lib/sessionState";
 import { Pagination } from "@/components/Pagination";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -67,12 +68,23 @@ export function ModelsPage() {
   // (channelId, model) → 最近一次测试（测试按钮完成后自动失效刷新）
   const latestMap = useLatestModelTestMap();
 
-  const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState<"all" | ModelType>("all");
+  // 会话级 UI 状态：进测试记录再返回时保留搜索 / 筛选 / 分页
+  const savedUi = loadSessionState("lcm-ui-models", {
+    search: "",
+    typeFilter: "all" as "all" | ModelType,
+    page: 1,
+    pageSize: 20,
+  });
+  const [search, setSearch] = useState(savedUi.search);
+  const [typeFilter, setTypeFilter] = useState<"all" | ModelType>(savedUi.typeFilter);
   const [detail, setDetail] = useState<ModelGroup | null>(null);
   // 分页：筛选变化重置回第一页；总数 ≤ 10 时 Pagination 自身不渲染
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [page, setPage] = useState(savedUi.page);
+  const [pageSize, setPageSize] = useState(savedUi.pageSize);
+
+  useEffect(() => {
+    saveSessionState("lcm-ui-models", { search, typeFilter, page, pageSize });
+  }, [search, typeFilter, page, pageSize]);
 
   // 按 actualModelId（大小写不敏感）聚合
   const groups = useMemo(() => {

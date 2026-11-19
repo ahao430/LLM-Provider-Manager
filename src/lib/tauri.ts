@@ -62,6 +62,8 @@ export interface ChannelInput {
   officialUrl: string | null;
   notes: string | null;
   primaryCredential: string | null;
+  /** 归属分组 id（可空 = 未分组；空串按未分组处理） */
+  groupId: string | null;
 }
 
 export interface ProtocolUrls {
@@ -90,6 +92,17 @@ export interface ChannelRow {
   officialUrl: string | null;
   hasPrimaryCredential: boolean;
   primaryCredentialMasked: string | null;
+  /** 归属分组（可空 = 未分组） */
+  groupId: string | null;
+  groupName: string | null;
+  /** 置顶到首页仪表盘 */
+  dashboardPinned: boolean;
+}
+
+export interface ChannelGroupRow {
+  id: string;
+  name: string;
+  createdAt: string;
 }
 
 export interface BalanceQuery {
@@ -139,6 +152,30 @@ export function deleteChannel(id: string): Promise<void> {
 
 export function setChannelEnabled(id: string, enabled: boolean): Promise<void> {
   return invoke<void>("set_channel_enabled", { id, enabled });
+}
+
+// ------------------------------------------------------------------
+// 渠道分组与仪表盘置顶（v0.17.0）
+// ------------------------------------------------------------------
+
+export function listChannelGroups(): Promise<ChannelGroupRow[]> {
+  return invoke<ChannelGroupRow[]>("list_channel_groups");
+}
+
+export function createChannelGroup(name: string): Promise<ChannelGroupRow> {
+  return invoke<ChannelGroupRow>("create_channel_group", { name });
+}
+
+export function renameChannelGroup(id: string, name: string): Promise<ChannelGroupRow> {
+  return invoke<ChannelGroupRow>("rename_channel_group", { id, name });
+}
+
+export function deleteChannelGroup(id: string): Promise<void> {
+  return invoke<void>("delete_channel_group", { id });
+}
+
+export function setChannelDashboardPinned(id: string, pinned: boolean): Promise<void> {
+  return invoke<void>("set_channel_dashboard_pinned", { id, pinned });
 }
 
 // ------------------------------------------------------------------
@@ -1190,6 +1227,20 @@ export interface UpdateCheck {
 
 export function checkForUpdates(): Promise<UpdateCheck> {
   return invoke<UpdateCheck>("check_for_updates");
+}
+
+/** 应用内下载的安装包（data_dir/updates 下）。 */
+export interface DownloadedUpdate {
+  filePath: string;
+  fileName: string;
+}
+
+export function downloadUpdate(): Promise<DownloadedUpdate> {
+  return invoke<DownloadedUpdate>("download_update");
+}
+
+export function installUpdate(filePath: string): Promise<void> {
+  return invoke<void>("install_update", { filePath });
 }
 
 // ------------------------------------------------------------------

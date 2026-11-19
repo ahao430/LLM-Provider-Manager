@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageHeader } from "@/components/PageHeader";
+import { loadSessionState, saveSessionState } from "@/lib/sessionState";
 import { Pagination } from "@/components/Pagination";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -30,8 +31,13 @@ export function RequestsPage() {
   const navigate = useNavigate();
   // 后端单次上限 1000：本地分页足够（更早记录可清理或备份）
   const { data: records = [], isLoading, isError, error } = useTestRecords(1000);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  // 会话级分页状态：进详情再返回时保留页码
+  const savedUi = loadSessionState("lcm-ui-requests", { page: 1, pageSize: 20 });
+  const [page, setPage] = useState(savedUi.page);
+  const [pageSize, setPageSize] = useState(savedUi.pageSize);
+  useEffect(() => {
+    saveSessionState("lcm-ui-requests", { page, pageSize });
+  }, [page, pageSize]);
   const pageCount = Math.max(Math.ceil(records.length / pageSize), 1);
   const safePage = Math.min(page, pageCount);
   const pageRecords = records.slice((safePage - 1) * pageSize, safePage * pageSize);

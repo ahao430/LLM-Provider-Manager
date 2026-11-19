@@ -1,9 +1,11 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Send, Settings2 } from "lucide-react";
 
 import { PageHeader } from "@/components/PageHeader";
+import { ResponseText } from "@/components/ResponseText";
+import { loadSessionState, saveSessionState } from "@/lib/sessionState";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,14 +34,31 @@ export function ApiTestingPage() {
   const { data: channels = [] } = useChannelsForTest();
   const enabledChannels = channels.filter((c) => c.enabled);
 
-  const [channelId, setChannelId] = useState("");
-  const [modelId, setModelId] = useState("");
+  // 会话级表单快照：进测试记录再返回时恢复（结果/流式状态不恢复，属临时态）
+  const savedUi = loadSessionState("lcm-ui-api-test", {
+    channelId: "",
+    modelId: "",
+    model: "",
+    protocol: "openai_chat" as Protocol,
+    message: "",
+    system: "",
+    stream: true,
+    temperature: "",
+    topP: "",
+    maxTokens: "",
+    stop: "",
+    rawJsonMode: false,
+    rawJson: "",
+  });
+
+  const [channelId, setChannelId] = useState(savedUi.channelId);
+  const [modelId, setModelId] = useState(savedUi.modelId);
   const { data: channelModels = [] } = useModelsForTest(channelId);
   const selectedModel = channelModels.find((m) => m.id === modelId);
 
   // 模型 ID 自动填入（从渠道模型选择后）
-  const [model, setModel] = useState("");
-  const [protocol, setProtocol] = useState<Protocol>("openai_chat");
+  const [model, setModel] = useState(savedUi.model);
+  const [protocol, setProtocol] = useState<Protocol>(savedUi.protocol);
 
   function pickModel(id: string) {
     setModelId(id);
@@ -50,22 +69,30 @@ export function ApiTestingPage() {
     }
   }
 
-  const [message, setMessage] = useState("");
-  const [system, setSystem] = useState("");
+  const [message, setMessage] = useState(savedUi.message);
+  const [system, setSystem] = useState(savedUi.system);
   // 默认勾选流式（用户要求）：流式才能测出真实首字时间
-  const [stream, setStream] = useState(true);
+  const [stream, setStream] = useState(savedUi.stream);
   const [showParams, setShowParams] = useState(false);
-  const [temperature, setTemperature] = useState("");
-  const [topP, setTopP] = useState("");
-  const [maxTokens, setMaxTokens] = useState("");
-  const [stop, setStop] = useState("");
-  const [rawJsonMode, setRawJsonMode] = useState(false);
-  const [rawJson, setRawJson] = useState("");
+  const [temperature, setTemperature] = useState(savedUi.temperature);
+  const [topP, setTopP] = useState(savedUi.topP);
+  const [maxTokens, setMaxTokens] = useState(savedUi.maxTokens);
+  const [stop, setStop] = useState(savedUi.stop);
+  const [rawJsonMode, setRawJsonMode] = useState(savedUi.rawJsonMode);
+  const [rawJson, setRawJson] = useState(savedUi.rawJson);
 
   const [liveDelta, setLiveDelta] = useState("");
   const [liveRaw, setLiveRaw] = useState<string[]>([]);
   const [result, setResult] = useState<TestRunResult | null>(null);
   const resultRef = useRef<TestRunResult | null>(null);
+
+  // 表单快照写入（结果与流式增量不持久化）
+  useEffect(() => {
+    saveSessionState("lcm-ui-api-test", {
+      channelId, modelId, model, protocol, message, system, stream,
+      temperature, topP, maxTokens, stop, rawJsonMode, rawJson,
+    });
+  }, [channelId, modelId, model, protocol, message, system, stream, temperature, topP, maxTokens, stop, rawJsonMode, rawJson]);
 
   const sendMutation = useSendTest(channelId, (event: ApiTestStreamEvent) => {
     if (event.type === "delta") {
@@ -358,7 +385,7 @@ function ResultPanel({
         {preview.text ? (
           <div>
             <div className="text-muted-foreground mb-1 text-xs font-medium">文本</div>
-            <pre className="max-h-72 overflow-auto rounded-md border p-3 text-sm whitespace-pre-wrap">{preview.text}</pre>
+            <ResponseText content={preview.text} maxH="max-h-72" />
           </div>
         ) : null}
         {preview.toolCalls.length > 0 ? (

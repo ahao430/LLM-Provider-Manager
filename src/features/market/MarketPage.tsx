@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { CloudDownload, ExternalLink, Search, Store } from "lucide-react";
+import { CloudDownload, ExternalLink, Search } from "lucide-react";
+
+import { ProviderIcon } from "@/components/ProviderIcon";
 
 import { PageHeader } from "@/components/PageHeader";
 import { Pagination } from "@/components/Pagination";
@@ -135,7 +137,10 @@ export function MarketPage() {
             <SelectItem value="all">全部厂商</SelectItem>
             {providers.map((p) => (
               <SelectItem key={p.id} value={p.id}>
-                {p.name}
+                <span className="flex items-center gap-1.5">
+                  <ProviderIcon id={p.id} name={p.name} className="size-3.5" />
+                  {p.name}
+                </span>
               </SelectItem>
             ))}
           </SelectContent>
@@ -238,7 +243,7 @@ function MarketModelRow({
           title="打开官方价格页"
           onClick={() => void openExternal(provider.pricingUrl)}
         >
-          <Store className="size-3.5" />
+          <ProviderIcon id={provider.id} name={provider.name} className="size-3.5" />
           {provider.name}
           <ExternalLink className="size-3" />
         </button>

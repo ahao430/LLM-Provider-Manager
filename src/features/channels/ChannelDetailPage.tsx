@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import { PageHeader } from "@/components/PageHeader";
+import { goBackOr } from "@/lib/sessionState";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -80,7 +81,7 @@ export function ChannelDetailPage() {
     return (
       <div className="space-y-4">
         <p className="text-destructive text-sm">渠道加载失败：{String(error)}</p>
-        <Button variant="outline" onClick={() => navigate("/channels")}>
+        <Button variant="outline" onClick={() => goBackOr(navigate, "/channels")}>
           <ArrowLeft className="size-4" />返回列表
         </Button>
       </div>
@@ -118,7 +119,7 @@ export function ChannelDetailPage() {
                 }
               />
             </div>
-            <Button variant="outline" onClick={() => navigate("/channels")}>
+            <Button variant="outline" onClick={() => goBackOr(navigate, "/channels")}>
               <ArrowLeft className="size-4" />返回
             </Button>
             <Button variant="outline" onClick={() => setEditOpen(true)}>

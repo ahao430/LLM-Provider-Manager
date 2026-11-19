@@ -6,6 +6,7 @@ import {
   Archive,
   CheckCircle2,
   Database,
+  Loader2,
   RefreshCw,
   ShieldCheck,
   Sparkles,
@@ -36,12 +37,14 @@ import {
   checkForUpdates,
   cleanupOldData,
   createBackup,
+  downloadUpdate,
+  installUpdate,
   restoreBackup,
   type ConsistencyReport,
   type UpdateCheck,
 } from "@/lib/tauri";
 
-/** 设置：常规（应用/主题/数据库）/ 数据（备份恢复·一致性·清理）/ 更新（检测新版本）。 */
+/** 设置：常规（外观）/ 数据库 / MCP 接入 / 数据（备份·一致性·清理）/ 关于（应用信息 + 更新）。 */
 export function SettingsPage() {
   const { data: appInfo, isLoading: infoLoading, isError: infoError } = useAppInfo();
   const { data: stats, isLoading: statsLoading } = useDatabaseStats();
@@ -50,13 +53,15 @@ export function SettingsPage() {
 
   return (
     <>
-      <PageHeader title="设置" description="应用信息、数据维护与更新检测。" />
+      <PageHeader title="设置" description="外观、数据库、MCP 接入、数据维护与更新。" />
 
       <Tabs defaultValue="general">
         <TabsList>
           <TabsTrigger value="general">常规</TabsTrigger>
+          <TabsTrigger value="database">数据库</TabsTrigger>
+          <TabsTrigger value="mcp">MCP 接入</TabsTrigger>
           <TabsTrigger value="data">数据</TabsTrigger>
-          <TabsTrigger value="update">更新</TabsTrigger>
+          <TabsTrigger value="about">关于</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general" className="space-y-6">
@@ -81,30 +86,9 @@ export function SettingsPage() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>应用信息</CardTitle>
-              <CardDescription>来自 Rust 后端（Tauri command: get_app_info）。</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {infoLoading ? (
-                <div className="space-y-2">
-                  <SkeletonLine className="w-64" />
-                  <SkeletonLine className="w-96" />
-                </div>
-              ) : infoError || !appInfo ? (
-                <p className="text-destructive text-sm">无法读取应用信息（请确认以 Tauri 方式运行：pnpm tauri dev）。</p>
-              ) : (
-                <dl className="grid grid-cols-1 gap-x-8 gap-y-2 text-sm sm:grid-cols-[max-content_1fr]">
-                  <InfoRow label="应用名称" value={appInfo.name} />
-                  <InfoRow label="版本" value={`v${appInfo.version}`} />
-                  <InfoRow label="数据目录" value={appInfo.dataDir} mono />
-                </dl>
-              )}
-            </CardContent>
-          </Card>
-
+        <TabsContent value="database" className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>数据库状态</CardTitle>
@@ -135,7 +119,9 @@ export function SettingsPage() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
 
+        <TabsContent value="mcp" className="space-y-6">
           <McpCard dataDir={appInfo?.dataDir ?? ""} />
         </TabsContent>
 
@@ -145,7 +131,30 @@ export function SettingsPage() {
           <CleanupCard />
         </TabsContent>
 
-        <TabsContent value="update">
+        <TabsContent value="about" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>应用信息</CardTitle>
+              <CardDescription>来自 Rust 后端（Tauri command: get_app_info）。</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {infoLoading ? (
+                <div className="space-y-2">
+                  <SkeletonLine className="w-64" />
+                  <SkeletonLine className="w-96" />
+                </div>
+              ) : infoError || !appInfo ? (
+                <p className="text-destructive text-sm">无法读取应用信息（请确认以 Tauri 方式运行：pnpm tauri dev）。</p>
+              ) : (
+                <dl className="grid grid-cols-1 gap-x-8 gap-y-2 text-sm sm:grid-cols-[max-content_1fr]">
+                  <InfoRow label="应用名称" value={appInfo.name} />
+                  <InfoRow label="版本" value={`v${appInfo.version}`} />
+                  <InfoRow label="数据目录" value={appInfo.dataDir} mono />
+                </dl>
+              )}
+            </CardContent>
+          </Card>
+
           <UpdateCard />
         </TabsContent>
       </Tabs>
@@ -160,6 +169,7 @@ export function SettingsPage() {
 function UpdateCard() {
   const { data: appInfo } = useAppInfo();
   const [busy, setBusy] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [result, setResult] = useState<UpdateCheck | null>(null);
 
   async function check() {
@@ -170,6 +180,28 @@ function UpdateCard() {
       toast.error(`检测失败：${error}`);
     } finally {
       setBusy(false);
+    }
+  }
+
+  /** 应用内下载安装包 → 确认后运行安装器（覆盖安装），与侧边栏升级按钮同一流程。 */
+  async function downloadAndInstall() {
+    setDownloading(true);
+    try {
+      toast.info("开始下载安装包…（保存到数据目录 updates/）");
+      const res = await downloadUpdate();
+      const ok = window.confirm(
+        `安装包 ${res.fileName} 已下载完成。\n立即运行安装器覆盖安装？（应用将退出，安装后重新打开）`
+      );
+      if (!ok) {
+        toast.info(`已保存到 ${res.filePath}，可稍后手动运行安装`);
+        return;
+      }
+      await installUpdate(res.filePath);
+      toast.success("安装器已启动，按引导完成覆盖安装即可");
+    } catch (error) {
+      toast.error(`更新失败：${error}`);
+    } finally {
+      setDownloading(false);
     }
   }
 
@@ -222,11 +254,23 @@ function UpdateCard() {
                   {result.notes.length > 600 ? "\n…" : ""}
                 </pre>
               ) : null}
-              {result.releaseUrl ? (
-                <Button size="sm" onClick={() => void openExternal(result.releaseUrl!)}>
-                  打开下载页
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" onClick={downloadAndInstall} disabled={downloading}>
+                  {downloading ? (
+                    <>
+                      <Loader2 className="size-3.5 animate-spin" />
+                      下载中…
+                    </>
+                  ) : (
+                    "下载并安装"
+                  )}
                 </Button>
-              ) : null}
+                {result.releaseUrl ? (
+                  <Button size="sm" variant="outline" onClick={() => void openExternal(result.releaseUrl!)}>
+                    打开下载页
+                  </Button>
+                ) : null}
+              </div>
             </div>
           ) : (
             <p className="flex items-center gap-2 text-sm">

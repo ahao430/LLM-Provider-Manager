@@ -6,6 +6,8 @@ import { FolderOpen, Loader2, Rocket, Terminal } from "lucide-react";
 import { open as pickDirectory } from "@tauri-apps/plugin-dialog";
 
 import { PageHeader } from "@/components/PageHeader";
+import { ResponseText } from "@/components/ResponseText";
+import { loadSessionState, saveSessionState } from "@/lib/sessionState";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,16 +47,27 @@ export function AgentPage() {
   const { data: channels = [] } = useChannelsForTest();
   const enabledChannels = channels.filter((c) => c.enabled);
 
-  const [agentType, setAgentType] = useState<AgentType>("codex_cli");
-  const [channelId, setChannelId] = useState("");
-  const [model, setModel] = useState("");
+  // 会话级表单快照：进测试记录再返回时恢复（outcome 临时态不恢复）
+  const savedUi = loadSessionState("lcm-ui-agent-probe", {
+    agentType: "codex_cli" as AgentType,
+    channelId: "",
+    model: "",
+    prompt: "",
+  });
+  const [agentType, setAgentType] = useState<AgentType>(savedUi.agentType);
+  const [channelId, setChannelId] = useState(savedUi.channelId);
+  const [model, setModel] = useState(savedUi.model);
   const [workingDirectory, setWorkingDirectory] = useState(
     () => localStorage.getItem(LS_WORKING_DIR) ?? ""
   );
   const [binaryPath, setBinaryPath] = useState(
     () => localStorage.getItem(LS_BINARY("codex_cli")) ?? ""
   );
-  const [prompt, setPrompt] = useState("");
+  const [prompt, setPrompt] = useState(savedUi.prompt);
+
+  useEffect(() => {
+    saveSessionState("lcm-ui-agent-probe", { agentType, channelId, model, prompt });
+  }, [agentType, channelId, model, prompt]);
   const [outcome, setOutcome] = useState<AgentProbeOutcome | null>(null);
   const { data: models = [] } = useModelsForTest(channelId);
   const { data: launches = [] } = useAgentLaunches(20);
@@ -99,8 +112,8 @@ export function AgentPage() {
   }, [pending]);
 
   async function handleRun() {
-    if (!channelId || !workingDirectory.trim() || !prompt.trim()) {
-      toast.error("请填写渠道、工作目录与 Prompt");
+    if (!channelId || !prompt.trim()) {
+      toast.error("请填写渠道与 Prompt（工作目录留空 = 默认数据目录 agent 子目录）");
       return;
     }
     if (runningRef.current) return;
@@ -215,12 +228,12 @@ export function AgentPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label>工作目录 *</Label>
+              <Label>工作目录（留空 = 默认数据目录 agent 子目录）</Label>
               <div className="flex gap-2">
                 <Input
                   value={workingDirectory}
                   onChange={(e) => persistWorkingDir(e.target.value)}
-                  placeholder="Agent 运行的项目目录"
+                  placeholder="默认：<数据目录>/agent"
                   className="flex-1"
                 />
                 <Button type="button" variant="outline" onClick={pickDir}>
@@ -252,7 +265,7 @@ export function AgentPage() {
 
             <Button
               onClick={handleRun}
-              disabled={pending || !channelId || !workingDirectory.trim() || !prompt.trim()}
+              disabled={pending || !channelId || !prompt.trim()}
             >
               {pending ? (
                 <>
@@ -333,9 +346,7 @@ function ProbeResultCard({
           ) : null}
         </CardHeader>
       <CardContent className="space-y-3">
-        <pre className="max-h-80 overflow-auto rounded-md border p-3 text-xs whitespace-pre-wrap">
-          {outcome.result || "（无输出）"}
-        </pre>
+        <ResponseText content={outcome.result || ""} maxH="max-h-80" textCls="text-xs" />
         <div className="text-muted-foreground flex flex-wrap gap-x-4 gap-y-1 text-xs">
           {outcome.costUsd != null ? (
             <span>成本 ${outcome.costUsd.toFixed(4)}</span>

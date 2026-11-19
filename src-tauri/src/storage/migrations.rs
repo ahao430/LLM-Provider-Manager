@@ -51,6 +51,10 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "0011_error_knowledge",
         include_str!("../../migrations/0011_error_knowledge.sql"),
     ),
+    (
+        "0012_channel_groups",
+        include_str!("../../migrations/0012_channel_groups.sql"),
+    ),
 ];
 
 pub fn run(conn: &Connection) -> AppResult<()> {

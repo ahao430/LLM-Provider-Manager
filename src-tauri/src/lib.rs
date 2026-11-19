@@ -49,8 +49,9 @@ use crate::commands::billing::{
     update_bill, update_recharge,
 };
 use crate::commands::channels::{
-    create_channel, delete_channel, get_channel, list_channels, list_providers, provider_templates,
-    set_channel_enabled, update_channel,
+    create_channel, create_channel_group, delete_channel, delete_channel_group, get_channel,
+    list_channel_groups, list_channels, list_providers, provider_templates, rename_channel_group,
+    set_channel_dashboard_pinned, set_channel_enabled, update_channel,
 };
 use crate::commands::credentials::{
     clear_channel_credential, copy_channel_credential, reveal_channel_credential,
@@ -70,7 +71,7 @@ use crate::commands::models::{
     list_all_channel_models, list_channel_models, list_global_models, list_model_prices,
     rename_global_model, upsert_channel_model,
 };
-use crate::commands::update::check_for_updates;
+use crate::commands::update::{check_for_updates, download_update, install_update};
 use crate::commands::workbench::replay_test_request;
 use crate::commands::workbench::{
     copy_test_curl, get_test_raw, get_test_record, list_latest_model_tests, list_test_records,
@@ -113,6 +114,11 @@ pub fn run() {
             update_channel,
             delete_channel,
             set_channel_enabled,
+            list_channel_groups,
+            create_channel_group,
+            rename_channel_group,
+            delete_channel_group,
+            set_channel_dashboard_pinned,
             set_channel_credential,
             reveal_channel_credential,
             copy_channel_credential,
@@ -178,6 +184,8 @@ pub fn run() {
             fetch_market_prices,
             list_channel_price_annotations,
             check_for_updates,
+            download_update,
+            install_update,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

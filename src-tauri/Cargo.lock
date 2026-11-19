@@ -2321,7 +2321,7 @@ dependencies = [
 
 [[package]]
 name = "lcm"
-version = "0.16.1"
+version = "0.18.0"
 dependencies = [
  "aes-gcm",
  "base64 0.22.1",

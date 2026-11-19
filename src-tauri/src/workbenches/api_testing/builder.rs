@@ -133,11 +133,13 @@ pub fn request_target(
 }
 
 /// 生成 Raw 归档里的脱敏 Header。
+/// v0.18.0 加宽：header 名（小写化）含 authorization / auth / token / key / secret
+/// 任一子串即掩码（覆盖 x-api-key、api-key、x-goog-api-key、x-auth-token 等自定义名）。
 pub fn mask_header_value(name: &str, value: &str) -> String {
-    let sensitive = matches!(
-        name.to_ascii_lowercase().as_str(),
-        "authorization" | "x-api-key" | "proxy-authorization"
-    );
+    let lower = name.to_ascii_lowercase();
+    let sensitive = ["authorization", "auth", "token", "key", "secret"]
+        .iter()
+        .any(|kw| lower.contains(kw));
     if sensitive {
         format!("{}…（已脱敏）", value.chars().take(6).collect::<String>())
     } else {
@@ -346,6 +348,25 @@ mod tests {
     use crate::channels::domain::ChannelInput;
     use crate::storage::migrations;
 
+    #[test]
+    fn header_masking_covers_custom_names() {
+        // 精确名单之外的变体也必须被掩（凭证安全红线）
+        for name in [
+            "Authorization",
+            "x-api-key",
+            "api-key",
+            "X-Goog-Api-Key",
+            "X-Auth-Token",
+            "X-Secret-Id",
+            "OpenAI-Organization-Key",
+        ] {
+            let masked = mask_header_value(name, "sk-super-secret-value-123");
+            assert!(masked.contains("已脱敏"), "header {name} 应被掩码");
+        }
+        // 无敏感词的普通 header 不掩
+        assert_eq!(mask_header_value("X-Request-Id", "abc123"), "abc123");
+    }
+
     fn setup() -> Connection {
         let conn = Connection::open_in_memory().unwrap();
         migrations::run(&conn).unwrap();
@@ -361,6 +382,7 @@ mod tests {
                 official_url: None,
                 notes: None,
                 primary_credential: None,
+                group_id: None,
             },
             "{}",
         )

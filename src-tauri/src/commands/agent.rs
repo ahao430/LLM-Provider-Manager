@@ -59,8 +59,15 @@ pub fn list_agent_launches(
 #[tauri::command]
 pub async fn run_agent_probe(
     state: State<'_, AppState>,
-    req: ProbeRequest,
+    mut req: ProbeRequest,
 ) -> AppResult<ProbeOutcome> {
+    // 工作目录留空 = 默认数据目录的 agent 子目录（v0.18.0）
+    if req.working_directory.trim().is_empty() {
+        let default_dir = state.data_dir.join("agent");
+        std::fs::create_dir_all(&default_dir)
+            .map_err(|e| crate::error::AppError::Invalid(format!("创建默认工作目录失败: {e}")))?;
+        req.working_directory = default_dir.to_string_lossy().into_owned();
+    }
     let prepared = {
         let conn = lock_db(&state)?;
         probe::prepare(&conn, &state.data_dir, &req)?

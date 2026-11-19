@@ -32,8 +32,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { ProviderIcon } from "@/components/ProviderIcon";
 import type { ChannelDetail, ChannelInput } from "@/lib/tauri";
 import {
+  useChannelGroups,
   useCreateChannel,
   useProviderTemplates,
   useProviders,
@@ -58,6 +60,7 @@ const channelFormSchema = z.object({
     .refine((v) => v.trim() === "" || /^https?:\/\//.test(v.trim()), "必须以 http(s):// 开头"),
   notes: z.string(),
   primaryCredential: z.string(),
+  groupId: z.string(),
 });
 
 type ChannelFormValues = z.infer<typeof channelFormSchema>;
@@ -71,6 +74,7 @@ const emptyValues: ChannelFormValues = {
   officialUrl: "",
   notes: "",
   primaryCredential: "",
+  groupId: "",
 };
 
 function valuesFromDetail(detail: ChannelDetail): ChannelFormValues {
@@ -83,6 +87,7 @@ function valuesFromDetail(detail: ChannelDetail): ChannelFormValues {
     officialUrl: detail.externalLinks.find((l) => l.kind === "official")?.url ?? "",
     notes: detail.notes ?? "",
     primaryCredential: "",
+    groupId: detail.groupId ?? "",
   };
 }
 
@@ -96,6 +101,7 @@ function toChannelInput(values: ChannelFormValues): ChannelInput {
     officialUrl: values.officialUrl.trim() || null,
     notes: values.notes.trim() || null,
     primaryCredential: values.primaryCredential.trim() ? values.primaryCredential.trim() : null,
+    groupId: values.groupId || null,
   };
 }
 
@@ -110,6 +116,7 @@ export function ChannelFormDialog({ open, onOpenChange, channel, onSaved }: Chan
   const isEdit = channel != null;
   const { data: providers = [] } = useProviders();
   const { data: templates = [] } = useProviderTemplates();
+  const { data: groups = [] } = useChannelGroups();
   const createMutation = useCreateChannel();
   const updateMutation = useUpdateChannel(channel?.id ?? "");
   const [showExtraUrls, setShowExtraUrls] = useState(false);
@@ -201,7 +208,10 @@ export function ChannelFormDialog({ open, onOpenChange, channel, onSaved }: Chan
                       <SelectContent>
                         {providers.map((p) => (
                           <SelectItem key={p.id} value={p.id}>
-                            {p.name}
+                            <span className="flex items-center gap-1.5">
+                              <ProviderIcon id={p.code} name={p.name} className="size-3.5" />
+                              {p.name}
+                            </span>
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -211,6 +221,36 @@ export function ChannelFormDialog({ open, onOpenChange, channel, onSaved }: Chan
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="groupId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>分组（可选）</FormLabel>
+                  <Select
+                    value={field.value}
+                    onValueChange={(v) => form.setValue("groupId", v === "__ungrouped__" ? "" : v)}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="未分组" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {/* Select 的空值语义用哨兵值表达（未分组） */}
+                      <SelectItem value="__ungrouped__">未分组</SelectItem>
+                      {groups.map((g) => (
+                        <SelectItem key={g.id} value={g.id}>
+                          {g.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>上游渠道 / 中转站 / 自建聚合等自定义分组，可在列表页「管理分组」维护。</FormDescription>
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={form.control}

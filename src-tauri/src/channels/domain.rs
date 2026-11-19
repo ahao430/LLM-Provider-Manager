@@ -152,6 +152,21 @@ pub struct ChannelRow {
     pub has_primary_credential: bool,
     /// 主凭证掩码（如 sk-************）
     pub primary_credential_masked: Option<String>,
+    /// 归属分组（可空 = 未分组）
+    pub group_id: Option<String>,
+    /// 分组名（JOIN channel_groups；未分组为 None）
+    pub group_name: Option<String>,
+    /// 置顶到首页仪表盘
+    pub dashboard_pinned: bool,
+}
+
+/// 渠道分组行。
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChannelGroupRow {
+    pub id: String,
+    pub name: String,
+    pub created_at: String,
 }
 
 #[derive(Debug, Clone, Serialize, Default)]
@@ -203,6 +218,8 @@ pub struct ChannelInput {
     pub official_url: Option<String>,
     pub notes: Option<String>,
     pub primary_credential: Option<String>,
+    /// 归属分组 id（可空 = 未分组；表单每次保存都会显式发送当前值）
+    pub group_id: Option<String>,
 }
 
 /// 渠道模型类型输入。
