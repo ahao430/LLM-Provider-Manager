@@ -477,6 +477,8 @@ fn search_market_prices(conn: &Connection, args: &Value) -> Result<Value, String
                     "cachedInputPer1m": m.cached_input_per_1m,
                     "outputPer1m": m.output_per_1m,
                     "currency": m.currency,
+                    // 低谷分时段价（有则给出，与主价同币种）
+                    "offPeak": m.off_peak,
                 }));
             }
             if items.len() >= limit as usize {

@@ -10,6 +10,9 @@ export type ResponseRenderMode = "markdown" | "text";
 /** 渠道管理页视图。 */
 export type ChannelsView = "list" | "cards";
 
+/** 市场信息价格显示币种：native=各厂商原生币种；USD/CNY=按汇率折算。 */
+export type MarketCurrency = "native" | "USD" | "CNY";
+
 interface UiState {
   sidebarCollapsed: boolean;
   toggleSidebar: () => void;
@@ -23,6 +26,9 @@ interface UiState {
   /** 渠道管理列表 / 卡片双视图。 */
   channelsView: ChannelsView;
   setChannelsView: (view: ChannelsView) => void;
+  /** 市场信息价格显示币种（默认各厂商原生币种）。 */
+  marketCurrency: MarketCurrency;
+  setMarketCurrency: (mode: MarketCurrency) => void;
 }
 
 /** 全局 UI 状态（侧边栏折叠、主题；localStorage 持久化）。 */
@@ -42,6 +48,8 @@ export const useUiStore = create<UiState>()(
       setResponseRenderMode: (mode) => set({ responseRenderMode: mode }),
       channelsView: "list",
       setChannelsView: (view) => set({ channelsView: view }),
+      marketCurrency: "native",
+      setMarketCurrency: (mode) => set({ marketCurrency: mode }),
     }),
     {
       name: "lcm-ui",
@@ -50,6 +58,7 @@ export const useUiStore = create<UiState>()(
         theme: state.theme,
         responseRenderMode: state.responseRenderMode,
         channelsView: state.channelsView,
+        marketCurrency: state.marketCurrency,
       }),
     }
   )

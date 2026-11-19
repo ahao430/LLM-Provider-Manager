@@ -319,6 +319,11 @@ export function runAgentProbe(req: AgentProbeRequest): Promise<AgentProbeOutcome
   return invoke<AgentProbeOutcome>("run_agent_probe", { req });
 }
 
+/**
+ * 复制 Claude Code 终端启动命令（渠道 env 注入转单行 shell 命令，仅进剪贴板）。
+ * Codex 不支持：依赖 CODEX_HOME 配置目录，无法单行命令表达。
+ */
+
 // ------------------------------------------------------------------
 // 模型与价格（Phase 2）
 // ------------------------------------------------------------------
@@ -1247,6 +1252,14 @@ export function installUpdate(filePath: string): Promise<void> {
 // 市场信息（内置价格快照 + 渠道标注价对比）
 // ------------------------------------------------------------------
 
+/** 低谷（分时段）折扣价，与主价同币种。 */
+export interface MarketOffPeak {
+  window: string;
+  inputPer1m: number | null;
+  cachedInputPer1m: number | null;
+  outputPer1m: number | null;
+}
+
 export interface MarketModel {
   model: string;
   modelType: ModelType;
@@ -1255,6 +1268,8 @@ export interface MarketModel {
   outputPer1m: number | null;
   currency: string;
   note: string | null;
+  /** 低谷时段价（deepseek / 智谱 / 硅基流动等分时段计费）；无则 null */
+  offPeak: MarketOffPeak | null;
 }
 
 export interface MarketProvider {
@@ -1279,9 +1294,19 @@ export function listMarketPrices(): Promise<MarketSnapshot> {
   return invoke<MarketSnapshot>("list_market_prices");
 }
 
-/** 抓取最新市场价格（models.dev），写入缓存并返回新快照。 */
+/** 抓取最新市场价格（models.dev，顺带更新汇率），写入缓存并返回新快照。 */
 export function fetchMarketPrices(): Promise<MarketSnapshot> {
   return invoke<MarketSnapshot>("fetch_market_prices");
+}
+
+/** USD → CNY 汇率（市场页币种切换折算；从未获取过为 null，前端兜底 7.20）。 */
+export interface MarketFx {
+  rate: number | null;
+  fetchedAt: string | null;
+}
+
+export function getMarketFx(): Promise<MarketFx> {
+  return invoke<MarketFx>("get_market_fx");
 }
 
 /** 渠道模型标注价（已标注的行），与市场快照并排比较。 */

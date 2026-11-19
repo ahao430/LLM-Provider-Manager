@@ -61,6 +61,53 @@ pub async fn fetch_snapshot() -> AppResult<MarketSnapshot> {
     map_snapshot(&root)
 }
 
+/// 抓取 USD → CNY 汇率（市场页币种切换折算用）。
+/// frankfurter（欧央行数据，免密钥）优先，失败回退 open.er-api.com；再失败返回 None（保留旧值）。
+pub async fn fetch_usd_cny_rate() -> Option<f64> {
+    let client = reqwest::Client::builder()
+        .user_agent(concat!("LCM/", env!("CARGO_PKG_VERSION")))
+        .timeout(Duration::from_secs(15))
+        .build()
+        .ok()?;
+    // 主源：frankfurter
+    if let Ok(resp) = client
+        .get("https://api.frankfurter.app/latest?from=USD&to=CNY")
+        .send()
+        .await
+    {
+        if resp.status().is_success() {
+            if let Ok(v) = resp.json::<Value>().await {
+                if let Some(rate) = v
+                    .pointer("/rates/CNY")
+                    .and_then(Value::as_f64)
+                    .filter(|r| *r > 0.0)
+                {
+                    return Some(rate);
+                }
+            }
+        }
+    }
+    // 回退源：open.er-api.com
+    if let Ok(resp) = client
+        .get("https://open.er-api.com/v6/latest/USD")
+        .send()
+        .await
+    {
+        if resp.status().is_success() {
+            if let Ok(v) = resp.json::<Value>().await {
+                if let Some(rate) = v
+                    .pointer("/rates/CNY")
+                    .and_then(Value::as_f64)
+                    .filter(|r| *r > 0.0)
+                {
+                    return Some(rate);
+                }
+            }
+        }
+    }
+    None
+}
+
 /// 把 models.dev 结构映射为 MarketSnapshot（纯函数，便于离线测试）。
 pub fn map_snapshot(root: &Value) -> AppResult<MarketSnapshot> {
     let obj = root
@@ -92,6 +139,8 @@ pub fn map_snapshot(root: &Value) -> AppResult<MarketSnapshot> {
                     output_per_1m: output,
                     currency: "USD".into(),
                     note: None,
+                    // models.dev 无分时段数据；国内厂商低谷价由 data_cn.json 叠加层提供
+                    off_peak: None,
                 });
             }
         }

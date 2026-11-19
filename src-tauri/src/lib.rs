@@ -63,7 +63,7 @@ use crate::commands::image::{
     edit_image, generate_image, read_archived_image, send_vision_request,
 };
 use crate::commands::market::{
-    fetch_market_prices, list_channel_price_annotations, list_market_prices,
+    fetch_market_prices, get_market_fx, list_channel_price_annotations, list_market_prices,
 };
 use crate::commands::models::{
     add_model_price, create_global_model, delete_channel_model, delete_global_model,
@@ -182,6 +182,7 @@ pub fn run() {
             copy_test_curl,
             list_market_prices,
             fetch_market_prices,
+            get_market_fx,
             list_channel_price_annotations,
             check_for_updates,
             download_update,

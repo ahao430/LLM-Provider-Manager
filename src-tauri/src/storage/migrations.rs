@@ -55,6 +55,10 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "0012_channel_groups",
         include_str!("../../migrations/0012_channel_groups.sql"),
     ),
+    (
+        "0013_market_fx",
+        include_str!("../../migrations/0013_market_fx.sql"),
+    ),
 ];
 
 pub fn run(conn: &Connection) -> AppResult<()> {

@@ -240,7 +240,9 @@ Preview 不得覆盖 Raw。
 
 - **内置快照**随应用打包（`src-tauri/src/market/data.json`），可用 `pnpm market:refresh` 脚本从 models.dev 重新生成；
 - 页面「**抓取数据**」按钮实时拉取 [models.dev/api.json](https://models.dev/api.json)（机器可读、官方第一方厂商、统一 USD/百万 token），存入 `market_cache` 表，展示优先用抓取缓存；
-- 不爬 HTML 价格页（JS 渲染、结构频繁变动）；models.dev 收录 300+ 供应商，取白名单 16 家官方厂商，聚合中转不收录。
+- **国内价快照层**（`src-tauri/src/market/data_cn.json`）在读取时叠加：国内厂商以官网人民币价替换 USD 折算值（DeepSeek / 百炼 / Kimi / 火山方舟 / MiniMax 国内 / 硅基流动由 `pnpm market:cn-refresh` 官网抓取维护，解析失败保留旧值或按汇率折算兜底并在 note 标注）；智谱、MiniMax 双定价拆「海外 / 国内」两条，另有千问平台、硅基流动独立条目；
+- **低谷分时段价**：`MarketModel.offPeak`（时段窗口 + 低谷三项价），DeepSeek / 硅基流动已含数据，表格主价下方小字展示；
+- **币种切换**：默认（各厂商原生币种）/ 美元 / 人民币；折算用实时汇率（frankfurter → open.er-api.com 回退，「抓取数据」顺带更新 `market_fx`，兜底 7.20），折算值带 ≈ 与汇率来源标注（估算必须标注红线）。
 
 ### 测试中心
 

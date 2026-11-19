@@ -56,10 +56,9 @@ export function DashboardPage() {
           note={`成功 ${stats.requests.success} · 失败 ${stats.requests.failed} · 成功率 ${successRate}%`}
           onClick={() => navigate("/requests")}
         />
+        {/* 置顶渠道卡片：与统计卡同一网格流式排布（前面有空位就接排，不强制换行） */}
+        <PinnedChannelCards />
       </div>
-
-      {/* 置顶渠道卡片：渠道管理卡片视图 Pin 的渠道常驻展示；无置顶时整段隐藏 */}
-      <PinnedChannelsSection />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <MoneyCard
@@ -90,7 +89,8 @@ export function DashboardPage() {
 }
 
 /** 置顶渠道卡片（dashboard_pinned=1 的渠道），点击进详情，可直接取消置顶。 */
-function PinnedChannelsSection() {
+/** 置顶渠道卡片（dashboard_pinned=1 的渠道），作为 Fragment 直接排进统计卡同一网格；无置顶返回 null。 */
+function PinnedChannelCards() {
   const navigate = useNavigate();
   const { data: channels = [] } = useChannels();
   const setPinned = useSetChannelPinned();
@@ -102,7 +102,7 @@ function PinnedChannelsSection() {
   if (pinned.length === 0) return null;
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <>
       {pinned.map((c) => {
         const balance = latestBalances.find((b) => b.channelId === c.id);
         return (
@@ -148,7 +148,7 @@ function PinnedChannelsSection() {
           </Card>
         );
       })}
-    </div>
+    </>
   );
 }
 

@@ -27,8 +27,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { openExternal } from "@/lib/external";
+import { useUiStore, type MarketCurrency } from "@/stores/ui";
 import {
   fetchMarketPrices,
+  getMarketFx,
   listMarketPrices,
   MODEL_TYPE_LABELS,
   type MarketModel,
@@ -45,7 +47,16 @@ const TYPE_VARIANT: Record<ModelType, "default" | "secondary" | "outline" | "des
 
 const CURRENCY_SYMBOL: Record<string, string> = { CNY: "¥", USD: "$", EUR: "€" };
 
-/** 市场信息：各厂商模型价格快照 + 渠道标注价并排比较（均为参考展示，不算费用）。 */
+/** 兜底汇率：从未成功获取实时汇率时使用（页脚标注）。 */
+const FALLBACK_FX = 7.2;
+
+const CURRENCY_MODES: { value: MarketCurrency; label: string }[] = [
+  { value: "native", label: "默认" },
+  { value: "USD", label: "$ 美元" },
+  { value: "CNY", label: "¥ 人民币" },
+];
+
+/** 市场信息：各厂商模型价格快照（国内厂商 CNY 官价 + 低谷分时段价 + 币种切换折算）。 */
 export function MarketPage() {
   const queryClient = useQueryClient();
   const { data: snapshot, isLoading } = useQuery({
@@ -53,6 +64,13 @@ export function MarketPage() {
     queryFn: listMarketPrices,
     staleTime: Infinity,
   });
+  const { data: fx } = useQuery({
+    queryKey: ["market-fx"],
+    queryFn: getMarketFx,
+    staleTime: 5 * 60 * 1000,
+  });
+  const currencyMode = useUiStore((s) => s.marketCurrency);
+  const setCurrencyMode = useUiStore((s) => s.setMarketCurrency);
 
   const [providerId, setProviderId] = useState("all");
   const [search, setSearch] = useState("");
@@ -60,11 +78,19 @@ export function MarketPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
 
-  // 「抓取数据」：实时拉取 models.dev → 写入缓存 → 刷新展示
+  // 实际折算汇率：优先实时值；从未获取过用兜底值（脚注标注来源）
+  const liveRate = fx?.rate ?? null;
+  const rate = liveRate ?? FALLBACK_FX;
+  const rateLabel = liveRate
+    ? `按汇率 ${liveRate} 折算（frankfurter · ${fmtTime(fx?.fetchedAt ?? null)}）`
+    : `默认汇率 ${FALLBACK_FX}（未获取到实时汇率）`;
+
+  // 「抓取数据」：实时拉取 models.dev（顺带更新汇率）→ 写入缓存 → 刷新展示
   const fetchMutation = useMutation({
     mutationFn: fetchMarketPrices,
     onSuccess: (fresh) => {
       void queryClient.invalidateQueries({ queryKey: ["market-prices"] });
+      void queryClient.invalidateQueries({ queryKey: ["market-fx"] });
       const count = fresh.providers.reduce((n, p) => n + p.models.length, 0);
       toast.success(`已抓取最新数据：${fresh.providers.length} 家厂商 / ${count} 个模型`);
     },
@@ -99,10 +125,11 @@ export function MarketPage() {
 
   const modelCount = filtered.reduce((n, e) => n + e.models.length, 0);
 
+  // source 形如 "bundled + cn/2026-11" 或 "models.dev + cn/2026-11"（国内价叠加层标注）
+  const baseSource = snapshot?.source.split(" + cn/")[0] ?? "";
+  const cnDate = snapshot?.source.match(/\+ cn\/([\d-]+)/)?.[1];
   const sourceLabel = snapshot
-    ? snapshot.source === "models.dev"
-      ? `已抓取（models.dev · ${fmtTime(snapshot.fetchedAt)}）`
-      : `内置快照（${snapshot.snapshotDate}）`
+    ? `${baseSource === "models.dev" ? `已抓取（models.dev · ${fmtTime(snapshot.fetchedAt)}）` : `内置快照（${snapshot.snapshotDate}）`}${cnDate ? ` · 国内价 ${cnDate}` : ""}`
     : "";
 
   return (
@@ -111,7 +138,7 @@ export function MarketPage() {
         title="市场信息"
         description={
           snapshot
-            ? `各厂商模型价格快照 · ${sourceLabel} · USD/百万 token。仅供参考，不算费用。`
+            ? `各厂商模型价格快照 · ${sourceLabel} · 每百万 token，币种见列。仅供参考，不算费用。`
             : "各厂商模型价格参考"
         }
         actions={
@@ -157,6 +184,20 @@ export function MarketPage() {
             className="h-8 w-56 pl-8 text-sm"
           />
         </div>
+        {/* 币种切换：默认=各厂商原生币种；USD/CNY=按汇率折算（≈ 标注） */}
+        <div className="bg-muted inline-flex rounded-lg p-0.5">
+          {CURRENCY_MODES.map((m) => (
+            <Button
+              key={m.value}
+              size="sm"
+              variant={currencyMode === m.value ? "secondary" : "ghost"}
+              className="h-7 px-2 text-xs"
+              onClick={() => setCurrencyMode(m.value)}
+            >
+              {m.label}
+            </Button>
+          ))}
+        </div>
         <span className="text-muted-foreground text-xs">
           {providers.length} 家厂商 · {modelCount} 个模型
         </span>
@@ -190,6 +231,8 @@ export function MarketPage() {
                     key={`${provider.id}:${model.model}`}
                     provider={provider}
                     model={model}
+                    displayCurrency={currencyMode}
+                    fxRate={rate}
                   />
                 ))
               )}
@@ -213,8 +256,9 @@ export function MarketPage() {
       )}
 
       <p className="text-muted-foreground text-xs">
-        「抓取数据」从 models.dev 拉取官方厂商价格（统一折算 USD）并保存在本地；内置快照随版本发布，可能滞后，点击「抓取数据」即可更新。中转 /
-        聚合渠道（NewAPI、SiliconFlow 等）价格各异，以渠道页为准。
+        国际厂商价格来自 models.dev（USD）；国内厂商为官网抓取的人民币价（低谷分时段价见行内小字），由
+        `pnpm market:cn-refresh` 维护快照，以各官方价格页为准。中转 / 聚合渠道（NewAPI
+        等）价格各异，以渠道页为准。折算视图：{rateLabel}。
       </p>
     </>
   );
@@ -227,14 +271,38 @@ function fmtTime(iso: string | null): string {
 function MarketModelRow({
   provider,
   model,
+  displayCurrency,
+  fxRate,
 }: {
   provider: MarketProvider;
   model: MarketModel;
+  displayCurrency: MarketCurrency;
+  fxRate: number;
 }) {
+  // native = 各厂商原生币种；否则折算到目标币种（≈ 标注，脚注说明汇率）
+  const conv = (value: number | null): { text: string; approx: boolean } => {
+    if (displayCurrency === "native" || value === null) {
+      return { text: fmtPrice(value, model.currency), approx: false };
+    }
+    if (model.currency === displayCurrency) {
+      return { text: fmtPrice(value, model.currency), approx: false };
+    }
+    const converted = model.currency === "USD" ? value * fxRate : value / fxRate;
+    return { text: fmtPrice(Number(converted.toFixed(4)), displayCurrency), approx: true };
+  };
+  const input = conv(model.inputPer1m);
+  const cached = conv(model.cachedInputPer1m);
+  const output = conv(model.outputPer1m);
+  // 低谷价始终与主价同币种展示（折算视图下同步折算）
+  const off = model.offPeak;
+
   return (
     <TableRow>
       <TableCell className="align-top">
         <code className="text-xs font-medium">{model.model}</code>
+        {model.note ? (
+          <p className="text-muted-foreground mt-0.5 max-w-64 text-[10px]">{model.note}</p>
+        ) : null}
       </TableCell>
       <TableCell className="align-top">
         <button
@@ -254,20 +322,38 @@ function MarketModelRow({
         </Badge>
       </TableCell>
       <TableCell className="text-right align-top tabular-nums">
-        {fmtPrice(model.inputPer1m, model.currency)}
+        <PriceCell approx={input.approx} text={input.text} />
+        {off ? <PriceSubLine label="低谷" value={conv(off.inputPer1m).text} window={off.window} /> : null}
       </TableCell>
       <TableCell className="text-muted-foreground text-right align-top tabular-nums">
-        {fmtPrice(model.cachedInputPer1m, model.currency, true)}
+        <PriceCell approx={cached.approx} text={cached.text} />
+        {off ? <PriceSubLine label="低谷" value={conv(off.cachedInputPer1m).text} window={off.window} /> : null}
       </TableCell>
       <TableCell className="text-right align-top tabular-nums">
-        {fmtPrice(model.outputPer1m, model.currency)}
+        <PriceCell approx={output.approx} text={output.text} />
+        {off ? <PriceSubLine label="低谷" value={conv(off.outputPer1m).text} window={off.window} /> : null}
       </TableCell>
     </TableRow>
   );
 }
 
-function fmtPrice(value: number | null, currency: string, muted = false): string {
-  if (value === null) return muted ? "" : "—";
+/** 主价（折算值加 ≈ 前缀）。 */
+function PriceCell({ text, approx }: { text: string; approx: boolean }) {
+  return approx ? <span>≈ {text}</span> : <span>{text}</span>;
+}
+
+/** 低谷分时段价：主价下方小字（window 全文放悬浮提示；无价不渲染）。 */
+function PriceSubLine({ label, value, window }: { label: string; value: string; window: string }) {
+  if (!value || value === "—" || value === "免费") return null;
+  return (
+    <p className="text-muted-foreground text-[10px] whitespace-nowrap" title={window}>
+      {label} {value}
+    </p>
+  );
+}
+
+function fmtPrice(value: number | null, currency: string): string {
+  if (value === null) return "—";
   if (value === 0) return "免费";
   const symbol = CURRENCY_SYMBOL[currency] ?? "";
   return `${symbol}${Number(value.toFixed(4))}`;

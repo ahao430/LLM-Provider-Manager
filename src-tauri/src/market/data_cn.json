@@ -1,0 +1,1135 @@
+{
+  "snapshotDate": "2026-11",
+  "renames": {
+    "zhipuai": "智谱 Z.ai（海外）",
+    "minimax": "MiniMax（海外）"
+  },
+  "replacements": {
+    "deepseek": {
+      "id": "deepseek",
+      "name": "DeepSeek",
+      "region": "cn",
+      "pricingUrl": "https://api-docs.deepseek.com/zh-cn/quick_start/pricing/",
+      "models": [
+        {
+          "model": "deepseek-flash",
+          "modelType": "multimodal",
+          "inputPer1m": 2,
+          "cachedInputPer1m": 0.04,
+          "outputPer1m": 8,
+          "currency": "CNY",
+          "note": null,
+          "offPeak": {
+            "window": "非高峰时段（工作日北京时间周一至周五（不含中国法定节假日）9:00 - 12:00、14:00 - 18:00为高峰；其余含周末/法定节假日为空闲，半价）",
+            "inputPer1m": 1,
+            "cachedInputPer1m": 0.02,
+            "outputPer1m": 4
+          }
+        },
+        {
+          "model": "deepseek-v4-flash",
+          "modelType": "multimodal",
+          "inputPer1m": 2,
+          "cachedInputPer1m": 0.04,
+          "outputPer1m": 8,
+          "currency": "CNY",
+          "note": "旧模型名，由 Flash 提供服务并按 Flash 价计费",
+          "offPeak": {
+            "window": "非高峰时段（工作日北京时间周一至周五（不含中国法定节假日）9:00 - 12:00、14:00 - 18:00为高峰；其余含周末/法定节假日为空闲，半价）",
+            "inputPer1m": 1,
+            "cachedInputPer1m": 0.02,
+            "outputPer1m": 4
+          }
+        },
+        {
+          "model": "deepseek-v4-flash-vision-exp",
+          "modelType": "multimodal",
+          "inputPer1m": 2,
+          "cachedInputPer1m": 0.04,
+          "outputPer1m": 8,
+          "currency": "CNY",
+          "note": "旧模型名，由 Flash 提供服务并按 Flash 价计费",
+          "offPeak": {
+            "window": "非高峰时段（工作日北京时间周一至周五（不含中国法定节假日）9:00 - 12:00、14:00 - 18:00为高峰；其余含周末/法定节假日为空闲，半价）",
+            "inputPer1m": 1,
+            "cachedInputPer1m": 0.02,
+            "outputPer1m": 4
+          }
+        },
+        {
+          "model": "deepseek-v4-pro",
+          "modelType": "decision",
+          "inputPer1m": 9,
+          "cachedInputPer1m": 0.3,
+          "outputPer1m": 27,
+          "currency": "CNY",
+          "note": null,
+          "offPeak": {
+            "window": "非高峰时段（工作日北京时间周一至周五（不含中国法定节假日）9:00 - 12:00、14:00 - 18:00为高峰；其余含周末/法定节假日为空闲，半价）",
+            "inputPer1m": 4.5,
+            "cachedInputPer1m": 0.15,
+            "outputPer1m": 13.5
+          }
+        }
+      ]
+    },
+    "alibaba": {
+      "id": "alibaba",
+      "name": "阿里云百炼（通义千问）",
+      "region": "cn",
+      "pricingUrl": "https://docs.bailian.console.aliyun.com/zh/model-studio/model-pricing",
+      "models": [
+        {
+          "model": "qwen4-max",
+          "modelType": "text",
+          "inputPer1m": 10,
+          "cachedInputPer1m": null,
+          "outputPer1m": 30,
+          "currency": "CNY",
+          "note": "缓存命中另有折扣价，详见官方页"
+        },
+        {
+          "model": "qwen3.8-max",
+          "modelType": "multimodal",
+          "inputPer1m": 12,
+          "cachedInputPer1m": null,
+          "outputPer1m": 36,
+          "currency": "CNY",
+          "note": "缓存命中另有折扣价，详见官方页"
+        },
+        {
+          "model": "qwen3.8-max-0902",
+          "modelType": "text",
+          "inputPer1m": 12,
+          "cachedInputPer1m": null,
+          "outputPer1m": 36,
+          "currency": "CNY",
+          "note": "缓存命中另有折扣价，详见官方页"
+        },
+        {
+          "model": "qwen3.7-max-2026-05-20",
+          "modelType": "text",
+          "inputPer1m": 12,
+          "cachedInputPer1m": null,
+          "outputPer1m": 36,
+          "currency": "CNY",
+          "note": "缓存命中另有折扣价，详见官方页"
+        },
+        {
+          "model": "qwen3.7-max-2026-06-08",
+          "modelType": "text",
+          "inputPer1m": 12,
+          "cachedInputPer1m": null,
+          "outputPer1m": 36,
+          "currency": "CNY",
+          "note": "缓存命中另有折扣价，详见官方页"
+        },
+        {
+          "model": "qwen3.7-max-2026-05-17",
+          "modelType": "text",
+          "inputPer1m": 12,
+          "cachedInputPer1m": null,
+          "outputPer1m": 36,
+          "currency": "CNY",
+          "note": "缓存命中另有折扣价，详见官方页"
+        },
+        {
+          "model": "qwen3.7-max",
+          "modelType": "decision",
+          "inputPer1m": 18.736,
+          "cachedInputPer1m": null,
+          "outputPer1m": 56.207,
+          "currency": "CNY",
+          "note": "缓存命中另有折扣价，详见官方页"
+        },
+        {
+          "model": "qwen3.8-flash",
+          "modelType": "multimodal",
+          "inputPer1m": 0.8,
+          "cachedInputPer1m": null,
+          "outputPer1m": 2.7,
+          "currency": "CNY",
+          "note": "缓存命中另有折扣价，详见官方页"
+        },
+        {
+          "model": "qwen3.5-flash-2026-02-23",
+          "modelType": "text",
+          "inputPer1m": 0.734,
+          "cachedInputPer1m": null,
+          "outputPer1m": 2.936,
+          "currency": "CNY",
+          "note": "缓存命中另有折扣价，详见官方页"
+        },
+        {
+          "model": "qwen3.8-2.4t-a95b",
+          "modelType": "text",
+          "inputPer1m": 12,
+          "cachedInputPer1m": null,
+          "outputPer1m": 36,
+          "currency": "CNY",
+          "note": "缓存命中另有折扣价，详见官方页"
+        },
+        {
+          "model": "qwen3.8-27b",
+          "modelType": "text",
+          "inputPer1m": 3,
+          "cachedInputPer1m": null,
+          "outputPer1m": 12,
+          "currency": "CNY",
+          "note": "缓存命中另有折扣价，详见官方页"
+        }
+      ]
+    },
+    "moonshotai": {
+      "id": "moonshotai",
+      "name": "月之暗面（Kimi）",
+      "region": "cn",
+      "pricingUrl": "https://platform.kimi.com/docs/pricing/chat",
+      "models": [
+        {
+          "model": "kimi-k3.1-pro",
+          "modelType": "multimodal",
+          "inputPer1m": 13,
+          "cachedInputPer1m": 1.3,
+          "outputPer1m": 68,
+          "currency": "CNY",
+          "note": null
+        },
+        {
+          "model": "kimi-k3.1-pro-highspeed",
+          "modelType": "multimodal",
+          "inputPer1m": 26,
+          "cachedInputPer1m": 1.3,
+          "outputPer1m": 136,
+          "currency": "CNY",
+          "note": null
+        },
+        {
+          "model": "kimi-k3",
+          "modelType": "multimodal",
+          "inputPer1m": 20,
+          "cachedInputPer1m": 2,
+          "outputPer1m": 100,
+          "currency": "CNY",
+          "note": null
+        }
+      ]
+    },
+    "volcengine": {
+      "id": "volcengine",
+      "name": "火山方舟（豆包）",
+      "region": "cn",
+      "pricingUrl": "https://docs.volcengine.com/docs/ark/model-pricing?lang=zh",
+      "models": [
+        {
+          "model": "doubao-seed-evolving",
+          "modelType": "multimodal",
+          "inputPer1m": 6,
+          "cachedInputPer1m": 1.2,
+          "outputPer1m": 0,
+          "currency": "CNY",
+          "note": "首个输入长度分段价格；另有空闲时段折扣，详见官方页"
+        },
+        {
+          "model": "doubao-seed-2.1-pro",
+          "modelType": "multimodal",
+          "inputPer1m": 6,
+          "cachedInputPer1m": 1.2,
+          "outputPer1m": 0,
+          "currency": "CNY",
+          "note": "首个输入长度分段价格；另有空闲时段折扣，详见官方页"
+        },
+        {
+          "model": "doubao-seed-2.1-turbo",
+          "modelType": "multimodal",
+          "inputPer1m": 3,
+          "cachedInputPer1m": 0.6,
+          "outputPer1m": 0,
+          "currency": "CNY",
+          "note": "首个输入长度分段价格；另有空闲时段折扣，详见官方页"
+        },
+        {
+          "model": "doubao-seed-2.0-pro",
+          "modelType": "multimodal",
+          "inputPer1m": 3.2,
+          "cachedInputPer1m": 0.6,
+          "outputPer1m": 4,
+          "currency": "CNY",
+          "note": "首个输入长度分段价格；另有空闲时段折扣，详见官方页"
+        },
+        {
+          "model": "doubao-seed-2.0-code",
+          "modelType": "multimodal",
+          "inputPer1m": 3.2,
+          "cachedInputPer1m": 0.6,
+          "outputPer1m": 4,
+          "currency": "CNY",
+          "note": "首个输入长度分段价格；另有空闲时段折扣，详见官方页"
+        },
+        {
+          "model": "doubao-seed-character",
+          "modelType": "multimodal",
+          "inputPer1m": 0.8,
+          "cachedInputPer1m": 0.1,
+          "outputPer1m": 6,
+          "currency": "CNY",
+          "note": "首个输入长度分段价格；另有空闲时段折扣，详见官方页"
+        }
+      ]
+    },
+    "stepfun": {
+      "id": "stepfun",
+      "name": "阶跃星辰",
+      "region": "cn",
+      "pricingUrl": "https://platform.stepfun.com/docs/pricing",
+      "models": [
+        {
+          "model": "step-3.5-flash",
+          "modelType": "decision",
+          "inputPer1m": 0.6975,
+          "cachedInputPer1m": 0.1395,
+          "outputPer1m": 2.0924,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "step-3.5-flash-2603",
+          "modelType": "decision",
+          "inputPer1m": 0.6975,
+          "cachedInputPer1m": 0.1395,
+          "outputPer1m": 2.0924,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "step-3.7-flash",
+          "modelType": "multimodal",
+          "inputPer1m": 1.3451,
+          "cachedInputPer1m": 0.269,
+          "outputPer1m": 8.0708,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "step-5-preview",
+          "modelType": "multimodal",
+          "inputPer1m": 6.9748,
+          "cachedInputPer1m": 0.6975,
+          "outputPer1m": 19.9279,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        }
+      ]
+    },
+    "xiaomi": {
+      "id": "xiaomi",
+      "name": "小米",
+      "region": "cn",
+      "pricingUrl": "https://developers.xiaoimi.com",
+      "models": [
+        {
+          "model": "mimo-v2.5",
+          "modelType": "multimodal",
+          "inputPer1m": 0.9334,
+          "cachedInputPer1m": 0.0187,
+          "outputPer1m": 1.8668,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "mimo-v2.5-pro",
+          "modelType": "decision",
+          "inputPer1m": 2.9002,
+          "cachedInputPer1m": 0.024,
+          "outputPer1m": 5.8005,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "mimo-v2.5-pro-ultraspeed",
+          "modelType": "decision",
+          "inputPer1m": 8.7007,
+          "cachedInputPer1m": 0.072,
+          "outputPer1m": 17.4014,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "mimo-v2.6-flash",
+          "modelType": "multimodal",
+          "inputPer1m": 0.9334,
+          "cachedInputPer1m": 0.0187,
+          "outputPer1m": 1.8668,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "mimo-v2.6-pro",
+          "modelType": "multimodal",
+          "inputPer1m": 2.9002,
+          "cachedInputPer1m": 0.024,
+          "outputPer1m": 5.8005,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "mimo-v2.6-pro-ultraspeed",
+          "modelType": "multimodal",
+          "inputPer1m": 29.0023,
+          "cachedInputPer1m": 0.24,
+          "outputPer1m": 58.0046,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        }
+      ]
+    }
+  },
+  "additions": [
+    {
+      "id": "minimax_cn",
+      "name": "MiniMax（国内）",
+      "region": "cn",
+      "pricingUrl": "https://platform.minimax.cn/docs/pricing/overview",
+      "models": [
+        {
+          "model": "minimax-m3.1-flash",
+          "modelType": "text",
+          "inputPer1m": 1,
+          "cachedInputPer1m": 0.1,
+          "outputPer1m": 4,
+          "currency": "CNY",
+          "note": null
+        },
+        {
+          "model": "minimax-m3",
+          "modelType": "text",
+          "inputPer1m": 8.4,
+          "cachedInputPer1m": 0.42,
+          "outputPer1m": 0.84,
+          "currency": "CNY",
+          "note": "永久五折后价格（标准价 ¥4.20/¥2.10/¥16.80）；>512k 输入另有阶梯价"
+        }
+      ]
+    },
+    {
+      "id": "zhipuai_cn",
+      "name": "智谱 AI（国内）",
+      "region": "cn",
+      "pricingUrl": "https://docs.bigmodel.cn/cn/guide/start/pricing",
+      "models": [
+        {
+          "model": "glm-4.5",
+          "modelType": "decision",
+          "inputPer1m": 4.0003,
+          "cachedInputPer1m": 0.7334,
+          "outputPer1m": 14.6678,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "glm-4.5-air",
+          "modelType": "decision",
+          "inputPer1m": 0.7969,
+          "cachedInputPer1m": 0.1593,
+          "outputPer1m": 5.9763,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "glm-4.5-flash",
+          "modelType": "decision",
+          "inputPer1m": 0,
+          "cachedInputPer1m": null,
+          "outputPer1m": 0,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "glm-4.5v",
+          "modelType": "multimodal",
+          "inputPer1m": 1.9921,
+          "cachedInputPer1m": 0.3984,
+          "outputPer1m": 5.9763,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "glm-4.6",
+          "modelType": "decision",
+          "inputPer1m": 4.0003,
+          "cachedInputPer1m": 0.7334,
+          "outputPer1m": 14.6678,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "glm-4.6v",
+          "modelType": "multimodal",
+          "inputPer1m": 0.9961,
+          "cachedInputPer1m": 0.1992,
+          "outputPer1m": 2.9882,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "glm-4.6v-flash",
+          "modelType": "multimodal",
+          "inputPer1m": 0,
+          "cachedInputPer1m": null,
+          "outputPer1m": 0,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "glm-4.7",
+          "modelType": "decision",
+          "inputPer1m": 2.9882,
+          "cachedInputPer1m": 0.5976,
+          "outputPer1m": 13.9446,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "glm-4.7-flash",
+          "modelType": "decision",
+          "inputPer1m": 0,
+          "cachedInputPer1m": null,
+          "outputPer1m": 0,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "glm-4.7-flashx",
+          "modelType": "decision",
+          "inputPer1m": 0.498,
+          "cachedInputPer1m": 0.0996,
+          "outputPer1m": 2.9882,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "glm-5",
+          "modelType": "decision",
+          "inputPer1m": 3.9842,
+          "cachedInputPer1m": 0.9961,
+          "outputPer1m": 17.9288,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "glm-5.1",
+          "modelType": "decision",
+          "inputPer1m": 5.9763,
+          "cachedInputPer1m": 1.2948,
+          "outputPer1m": 23.9051,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "glm-5.2",
+          "modelType": "decision",
+          "inputPer1m": 7.9684,
+          "cachedInputPer1m": 1.9921,
+          "outputPer1m": 27.8893,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "glm-5.3",
+          "modelType": "decision",
+          "inputPer1m": 7.9684,
+          "cachedInputPer1m": 1.9921,
+          "outputPer1m": 27.8893,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "glm-5.3-flash",
+          "modelType": "multimodal",
+          "inputPer1m": 0.7969,
+          "cachedInputPer1m": 0.2291,
+          "outputPer1m": 2.789,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "glm-5.3-flashx",
+          "modelType": "multimodal",
+          "inputPer1m": 1.9921,
+          "cachedInputPer1m": 0.5678,
+          "outputPer1m": 6.9724,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "glm-5v-turbo",
+          "modelType": "multimodal",
+          "inputPer1m": 4.9803,
+          "cachedInputPer1m": 1.1952,
+          "outputPer1m": 21.913,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        }
+      ]
+    },
+    {
+      "id": "qianwen",
+      "name": "通义千问（千问平台）",
+      "region": "cn",
+      "pricingUrl": "https://platform.qianwenai.com/pricing/api",
+      "models": [
+        {
+          "model": "qwen-flash",
+          "modelType": "decision",
+          "inputPer1m": 0.3334,
+          "cachedInputPer1m": 0.0667,
+          "outputPer1m": 2.6669,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "qwen-max",
+          "modelType": "text",
+          "inputPer1m": 10.6675,
+          "cachedInputPer1m": null,
+          "outputPer1m": 42.6701,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "qwen-mt-plus",
+          "modelType": "text",
+          "inputPer1m": 16.4013,
+          "cachedInputPer1m": null,
+          "outputPer1m": 49.1373,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "qwen-mt-turbo",
+          "modelType": "text",
+          "inputPer1m": 1.0668,
+          "cachedInputPer1m": null,
+          "outputPer1m": 3.2669,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "qwen-omni-turbo",
+          "modelType": "multimodal",
+          "inputPer1m": 0.4667,
+          "cachedInputPer1m": null,
+          "outputPer1m": 1.8001,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "qwen-omni-turbo-realtime",
+          "modelType": "multimodal",
+          "inputPer1m": 1.8001,
+          "cachedInputPer1m": null,
+          "outputPer1m": 7.1339,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "qwen-plus",
+          "modelType": "decision",
+          "inputPer1m": 2.6669,
+          "cachedInputPer1m": 0.5334,
+          "outputPer1m": 8.0006,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "qwen-plus-character-ja",
+          "modelType": "text",
+          "inputPer1m": 3.3336,
+          "cachedInputPer1m": null,
+          "outputPer1m": 9.3341,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "qwen-turbo",
+          "modelType": "decision",
+          "inputPer1m": 0.3334,
+          "cachedInputPer1m": null,
+          "outputPer1m": 1.3334,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "qwen-vl-max",
+          "modelType": "multimodal",
+          "inputPer1m": 5.3338,
+          "cachedInputPer1m": null,
+          "outputPer1m": 21.335,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "qwen-vl-ocr",
+          "modelType": "multimodal",
+          "inputPer1m": 0.4667,
+          "cachedInputPer1m": null,
+          "outputPer1m": 1.0668,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "qwen-vl-plus",
+          "modelType": "multimodal",
+          "inputPer1m": 1.4001,
+          "cachedInputPer1m": null,
+          "outputPer1m": 4.2003,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "qwen2-5-omni-7b",
+          "modelType": "multimodal",
+          "inputPer1m": 0.6667,
+          "cachedInputPer1m": null,
+          "outputPer1m": 2.6669,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "qwen3-14b",
+          "modelType": "decision",
+          "inputPer1m": 2.3335,
+          "cachedInputPer1m": null,
+          "outputPer1m": 9.3341,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "qwen3-235b-a22b",
+          "modelType": "decision",
+          "inputPer1m": 4.667,
+          "cachedInputPer1m": null,
+          "outputPer1m": 18.6682,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "qwen3-32b",
+          "modelType": "decision",
+          "inputPer1m": 4.667,
+          "cachedInputPer1m": null,
+          "outputPer1m": 18.6682,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "qwen3-8b",
+          "modelType": "decision",
+          "inputPer1m": 1.2001,
+          "cachedInputPer1m": null,
+          "outputPer1m": 4.667,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "qwen3-coder-30b-a3b-instruct",
+          "modelType": "text",
+          "inputPer1m": 3.0002,
+          "cachedInputPer1m": null,
+          "outputPer1m": 15.0012,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "qwen3-coder-480b-a35b-instruct",
+          "modelType": "text",
+          "inputPer1m": 10.0008,
+          "cachedInputPer1m": null,
+          "outputPer1m": 50.004,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "qwen3-coder-flash",
+          "modelType": "text",
+          "inputPer1m": 2.0002,
+          "cachedInputPer1m": 0.4,
+          "outputPer1m": 10.0008,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "qwen3-coder-plus",
+          "modelType": "text",
+          "inputPer1m": 6.6672,
+          "cachedInputPer1m": null,
+          "outputPer1m": 33.336,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "qwen3-livetranslate-flash-realtime",
+          "modelType": "multimodal",
+          "inputPer1m": 66.672,
+          "cachedInputPer1m": null,
+          "outputPer1m": 66.672,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "qwen3-max",
+          "modelType": "text",
+          "inputPer1m": 8.0006,
+          "cachedInputPer1m": null,
+          "outputPer1m": 40.0032,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "qwen3-next-80b-a3b-instruct",
+          "modelType": "text",
+          "inputPer1m": 3.3336,
+          "cachedInputPer1m": null,
+          "outputPer1m": 13.3344,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "qwen3-next-80b-a3b-thinking",
+          "modelType": "decision",
+          "inputPer1m": 3.3336,
+          "cachedInputPer1m": null,
+          "outputPer1m": 40.0032,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "qwen3-omni-flash",
+          "modelType": "multimodal",
+          "inputPer1m": 2.8669,
+          "cachedInputPer1m": null,
+          "outputPer1m": 11.0676,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "qwen3-omni-flash-realtime",
+          "modelType": "multimodal",
+          "inputPer1m": 3.4669,
+          "cachedInputPer1m": null,
+          "outputPer1m": 13.2677,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "qwen3-vl-235b-a22b",
+          "modelType": "multimodal",
+          "inputPer1m": 4.667,
+          "cachedInputPer1m": null,
+          "outputPer1m": 18.6682,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "qwen3-vl-30b-a3b",
+          "modelType": "multimodal",
+          "inputPer1m": 1.3334,
+          "cachedInputPer1m": null,
+          "outputPer1m": 5.3338,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "qwen3-vl-plus",
+          "modelType": "multimodal",
+          "inputPer1m": 1.3334,
+          "cachedInputPer1m": 0.2667,
+          "outputPer1m": 10.6675,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "qwen3.5-122b-a10b",
+          "modelType": "multimodal",
+          "inputPer1m": 2.6669,
+          "cachedInputPer1m": null,
+          "outputPer1m": 21.335,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "qwen3.5-27b",
+          "modelType": "multimodal",
+          "inputPer1m": 2.0002,
+          "cachedInputPer1m": null,
+          "outputPer1m": 16.0013,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "qwen3.5-35b-a3b",
+          "modelType": "multimodal",
+          "inputPer1m": 1.6668,
+          "cachedInputPer1m": null,
+          "outputPer1m": 13.3344,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "qwen3.5-397b-a17b",
+          "modelType": "multimodal",
+          "inputPer1m": 4.0003,
+          "cachedInputPer1m": null,
+          "outputPer1m": 24.0019,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "qwen3.5-flash",
+          "modelType": "multimodal",
+          "inputPer1m": 0.6667,
+          "cachedInputPer1m": 0.0667,
+          "outputPer1m": 2.6669,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "qwen3.5-plus",
+          "modelType": "multimodal",
+          "inputPer1m": 2.6669,
+          "cachedInputPer1m": null,
+          "outputPer1m": 16.0013,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "qwen3.6-27b",
+          "modelType": "multimodal",
+          "inputPer1m": 4.0003,
+          "cachedInputPer1m": null,
+          "outputPer1m": 24.0019,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "qwen3.6-35b-a3b",
+          "modelType": "multimodal",
+          "inputPer1m": 2.5002,
+          "cachedInputPer1m": null,
+          "outputPer1m": 15.0012,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "qwen3.6-flash",
+          "modelType": "multimodal",
+          "inputPer1m": 1.6668,
+          "cachedInputPer1m": 0.1667,
+          "outputPer1m": 10.0008,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "qwen3.6-max-preview",
+          "modelType": "decision",
+          "inputPer1m": 8.6674,
+          "cachedInputPer1m": 0.8667,
+          "outputPer1m": 52.0042,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "qwen3.6-plus",
+          "modelType": "multimodal",
+          "inputPer1m": 3.3336,
+          "cachedInputPer1m": 0.3334,
+          "outputPer1m": 20.0016,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "qwen3.7-flash",
+          "modelType": "multimodal",
+          "inputPer1m": 0.2,
+          "cachedInputPer1m": 0.04,
+          "outputPer1m": 0.8667,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "qwen3.7-max",
+          "modelType": "decision",
+          "inputPer1m": 16.668,
+          "cachedInputPer1m": 3.3336,
+          "outputPer1m": 50.004,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "qwen3.7-plus",
+          "modelType": "multimodal",
+          "inputPer1m": 2.6669,
+          "cachedInputPer1m": 0.5334,
+          "outputPer1m": 10.6675,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "qwen3.8-flash",
+          "modelType": "multimodal",
+          "inputPer1m": 1.0001,
+          "cachedInputPer1m": 0.1067,
+          "outputPer1m": 3.1336,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "qwen3.8-max",
+          "modelType": "multimodal",
+          "inputPer1m": 13.3344,
+          "cachedInputPer1m": 1.6668,
+          "outputPer1m": 40.0032,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        },
+        {
+          "model": "qwen3.8-omni-flash",
+          "modelType": "multimodal",
+          "inputPer1m": 1.0001,
+          "cachedInputPer1m": 0.1067,
+          "outputPer1m": 3.1336,
+          "currency": "CNY",
+          "note": "折算价（models.dev USD × 6.6672），以官方价格页为准"
+        }
+      ]
+    },
+    {
+      "id": "siliconflow",
+      "name": "硅基流动（聚合中转）",
+      "region": "cn",
+      "pricingUrl": "https://www.siliconflow.cn/pricing",
+      "models": [
+        {
+          "model": "deepseek-ai/DeepSeek-V4.1-Flash",
+          "modelType": "text",
+          "inputPer1m": 2,
+          "cachedInputPer1m": 0.04,
+          "outputPer1m": 8,
+          "currency": "CNY",
+          "note": null,
+          "offPeak": {
+            "window": "低谷时段 2点～8点（高峰 0点～2点 / 8点～24点）",
+            "inputPer1m": 1,
+            "cachedInputPer1m": 0.02,
+            "outputPer1m": 4
+          }
+        },
+        {
+          "model": "deepseek-ai/DeepSeek-V4-Flash",
+          "modelType": "text",
+          "inputPer1m": 1.5,
+          "cachedInputPer1m": 0.15,
+          "outputPer1m": 4.5,
+          "currency": "CNY",
+          "note": null,
+          "offPeak": {
+            "window": "低谷时段 2点～8点（高峰 0点～2点 / 8点～24点）",
+            "inputPer1m": 3,
+            "cachedInputPer1m": 0.3,
+            "outputPer1m": 9
+          }
+        },
+        {
+          "model": "deepseek-ai/DeepSeek-V4-Pro",
+          "modelType": "text",
+          "inputPer1m": 12,
+          "cachedInputPer1m": 1,
+          "outputPer1m": 24,
+          "currency": "CNY",
+          "note": null
+        },
+        {
+          "model": "deepseek-ai/DeepSeek-V3.2",
+          "modelType": "text",
+          "inputPer1m": 4,
+          "cachedInputPer1m": 0.4,
+          "outputPer1m": 6,
+          "currency": "CNY",
+          "note": null
+        },
+        {
+          "model": "deepseek-ai/DeepSeek-V3.1-Terminus",
+          "modelType": "text",
+          "inputPer1m": 4,
+          "cachedInputPer1m": 0.4,
+          "outputPer1m": 12,
+          "currency": "CNY",
+          "note": null
+        },
+        {
+          "model": "zai-org/GLM-5.3-Flash",
+          "modelType": "text",
+          "inputPer1m": 0.8,
+          "cachedInputPer1m": 0.23,
+          "outputPer1m": 2.8,
+          "currency": "CNY",
+          "note": null
+        },
+        {
+          "model": "zai-org/GLM-5.3",
+          "modelType": "text",
+          "inputPer1m": 8,
+          "cachedInputPer1m": 2,
+          "outputPer1m": 28,
+          "currency": "CNY",
+          "note": null
+        },
+        {
+          "model": "zai-org/GLM-5.2",
+          "modelType": "text",
+          "inputPer1m": 8,
+          "cachedInputPer1m": 2,
+          "outputPer1m": 28,
+          "currency": "CNY",
+          "note": null
+        },
+        {
+          "model": "tencent/Hy4-preview",
+          "modelType": "text",
+          "inputPer1m": 6,
+          "cachedInputPer1m": 0.3,
+          "outputPer1m": 18,
+          "currency": "CNY",
+          "note": null
+        },
+        {
+          "model": "meituan-longcat/LongCat-2.0",
+          "modelType": "text",
+          "inputPer1m": 5,
+          "cachedInputPer1m": 0.1,
+          "outputPer1m": 20,
+          "currency": "CNY",
+          "note": null
+        },
+        {
+          "model": "moonshotai/Kimi-K2.7-Code",
+          "modelType": "text",
+          "inputPer1m": 6.5,
+          "cachedInputPer1m": 1.3,
+          "outputPer1m": 27,
+          "currency": "CNY",
+          "note": null
+        },
+        {
+          "model": "moonshotai/Kimi-K2.6",
+          "modelType": "text",
+          "inputPer1m": 6.5,
+          "cachedInputPer1m": 1.1,
+          "outputPer1m": 27,
+          "currency": "CNY",
+          "note": null
+        }
+      ]
+    }
+  ]
+}

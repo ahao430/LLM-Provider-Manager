@@ -55,6 +55,20 @@ pub struct MarketModel {
     /// USD / CNY
     pub currency: String,
     pub note: Option<String>,
+    /// 低谷时段折扣价（deepseek / 智谱等分时段计费）；旧快照无此字段
+    #[serde(default)]
+    pub off_peak: Option<OffPeakPrice>,
+}
+
+/// 低谷（分时段）价格：window 描述时段（如「00:30–08:30 UTC+8」），
+/// 三项价格与主价同币种；None = 该项不分时段。
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OffPeakPrice {
+    pub window: String,
+    pub input_per_1m: Option<f64>,
+    pub cached_input_per_1m: Option<f64>,
+    pub output_per_1m: Option<f64>,
 }
 
 /// 内置快照（编译期打包，进程内只解析一次）。
@@ -62,8 +76,54 @@ static SNAPSHOT: LazyLock<MarketSnapshot> = LazyLock::new(|| {
     serde_json::from_str(include_str!("data.json")).expect("内置市场数据 data.json 解析失败")
 });
 
+/// 国内价快照叠加层（data_cn.json，人工维护 + `pnpm market:cn-refresh` 官网抓取辅助刷新）。
+/// models.dev 只有折算 USD；国内厂商官方以 CNY 计价（部分还有低谷分时段价），
+/// 本层在读取时叠加：renames 改海外版名、replacements 整体替换为 CNY 版、additions 补国内条。
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CnOverlay {
+    snapshot_date: String,
+    #[serde(default)]
+    renames: std::collections::HashMap<String, String>,
+    #[serde(default)]
+    replacements: std::collections::HashMap<String, MarketProvider>,
+    #[serde(default)]
+    additions: Vec<MarketProvider>,
+}
+
+static CN_OVERLAY: LazyLock<CnOverlay> = LazyLock::new(|| {
+    serde_json::from_str(include_str!("data_cn.json")).expect("国内价快照 data_cn.json 解析失败")
+});
+
 pub fn snapshot() -> &'static MarketSnapshot {
     &SNAPSHOT
+}
+
+/// 把国内价叠加层合并进基础快照（纯函数）：
+/// renames → replacements（按 id 替换）→ additions（`*_cn` 双定价条插到对应海外版之后）。
+fn merge_cn_snapshot(mut base: MarketSnapshot) -> MarketSnapshot {
+    let overlay = &*CN_OVERLAY;
+    for p in base.providers.iter_mut() {
+        if let Some(name) = overlay.renames.get(&p.id) {
+            p.name = name.clone();
+        }
+        if let Some(repl) = overlay.replacements.get(&p.id) {
+            *p = repl.clone();
+        }
+    }
+    for add in &overlay.additions {
+        // 双定价国内条紧挨海外版（id 去掉 _cn 后缀即锚点）
+        let anchor = add.id.strip_suffix("_cn").unwrap_or(&add.id);
+        let pos = base
+            .providers
+            .iter()
+            .position(|p| p.id == anchor)
+            .map(|i| i + 1)
+            .unwrap_or(base.providers.len());
+        base.providers.insert(pos, add.clone());
+    }
+    base.source = format!("{} + cn/{}", base.source, overlay.snapshot_date);
+    base
 }
 
 // ------------------------------------------------------------------
@@ -101,12 +161,13 @@ pub fn save_cached_snapshot(conn: &Connection, snapshot: &MarketSnapshot) -> App
     Ok(())
 }
 
-/// 当前展示的快照：优先抓取缓存，其次内置。
+/// 当前展示的快照：优先抓取缓存，其次内置；统一叠加国内价快照层。
 pub fn current_snapshot(conn: &Connection) -> AppResult<MarketSnapshot> {
-    if let Some(cached) = load_cached_snapshot(conn)? {
-        return Ok(cached);
-    }
-    Ok(snapshot().clone())
+    let base = match load_cached_snapshot(conn)? {
+        Some(cached) => cached,
+        None => snapshot().clone(),
+    };
+    Ok(merge_cn_snapshot(base))
 }
 
 /// 渠道模型标注价（只返回已标注的行），供市场页并排比较。
@@ -152,6 +213,46 @@ pub fn list_channel_price_annotations(conn: &Connection) -> AppResult<Vec<Channe
     Ok(rows)
 }
 
+// ------------------------------------------------------------------
+// 汇率缓存（market_fx 单行表；只做展示折算，绝不相加金额）
+// ------------------------------------------------------------------
+
+/// USD → CNY 汇率（抓取数据时顺带更新；从未成功过为 None，前端兜底 7.20）。
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MarketFx {
+    pub rate: Option<f64>,
+    pub fetched_at: Option<String>,
+}
+
+pub fn load_fx(conn: &Connection) -> AppResult<MarketFx> {
+    let row = conn
+        .query_row(
+            "SELECT rate, fetched_at FROM market_fx WHERE id = 1",
+            [],
+            |r| {
+                Ok(MarketFx {
+                    rate: r.get(0)?,
+                    fetched_at: r.get(1)?,
+                })
+            },
+        )
+        .optional()?;
+    Ok(row.unwrap_or(MarketFx {
+        rate: None,
+        fetched_at: None,
+    }))
+}
+
+pub fn save_fx(conn: &Connection, rate: f64) -> AppResult<()> {
+    conn.execute(
+        "INSERT INTO market_fx (id, rate, fetched_at) VALUES (1, ?1, ?2) \
+         ON CONFLICT(id) DO UPDATE SET rate = ?1, fetched_at = ?2",
+        params![rate, crate::util::now_rfc3339()],
+    )?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -181,22 +282,86 @@ mod tests {
     }
 
     #[test]
+    fn cn_overlay_replaces_adds_and_renames() {
+        let merged = merge_cn_snapshot(snapshot().clone());
+        // source 标注叠加层
+        assert!(merged.source.contains("+ cn/"), "source={}", merged.source);
+
+        let find = |id: &str| merged.providers.iter().position(|p| p.id == id);
+
+        // deepseek 被替换为 CNY 版（models.dev 原始为 USD）
+        let ds = &merged.providers[find("deepseek").expect("deepseek 应存在")];
+        assert!(
+            ds.models.iter().all(|m| m.currency == "CNY"),
+            "应为 CNY 计价"
+        );
+        assert!(ds.models.iter().any(|m| m.off_peak.is_some()), "应有低谷价");
+
+        // 双定价：zhipuai 改名海外 + zhipuai_cn 紧随其后；minimax 同理
+        let zi = find("zhipuai").expect("zhipuai 海外版应保留");
+        assert!(merged.providers[zi].name.contains("海外"));
+        assert_eq!(find("zhipuai_cn"), Some(zi + 1), "国内条应紧随海外版");
+        let mi = find("minimax").expect("minimax 海外版应保留");
+        assert!(merged.providers[mi].name.contains("海外"));
+        assert_eq!(find("minimax_cn"), Some(mi + 1));
+
+        // 全球厂商不受影响
+        assert!(find("openai").is_some());
+    }
+
+    #[test]
+    fn off_peak_field_is_backward_compatible() {
+        // 旧缓存快照没有 offPeak 字段，serde(default) 应照常解析
+        let old = r#"{"model":"m","modelType":"text","inputPer1m":1.0,
+            "cachedInputPer1m":null,"outputPer1m":2.0,"currency":"USD","note":null}"#;
+        let m: MarketModel = serde_json::from_str(old).expect("旧快照应可解析");
+        assert!(m.off_peak.is_none());
+        // 带低谷价的新格式
+        let new = r#"{"model":"m","modelType":"text","inputPer1m":2.0,
+            "cachedInputPer1m":0.04,"outputPer1m":8.0,"currency":"CNY","note":null,
+            "offPeak":{"window":"工作日高峰外","inputPer1m":1.0,
+            "cachedInputPer1m":0.02,"outputPer1m":4.0}}"#;
+        let m: MarketModel = serde_json::from_str(new).unwrap();
+        let op = m.off_peak.expect("应有低谷价");
+        assert_eq!(op.input_per_1m, Some(1.0));
+    }
+
+    #[test]
+    fn fx_roundtrip() {
+        let conn = Connection::open_in_memory().unwrap();
+        crate::storage::migrations::run(&conn).unwrap();
+        assert!(load_fx(&conn).unwrap().rate.is_none());
+        save_fx(&conn, 7.23).unwrap();
+        let fx = load_fx(&conn).unwrap();
+        assert_eq!(fx.rate, Some(7.23));
+        assert!(fx.fetched_at.is_some());
+    }
+
+    #[test]
     fn market_cache_roundtrip_and_priority() {
         let conn = Connection::open_in_memory().unwrap();
         crate::storage::migrations::run(&conn).unwrap();
 
-        // 无缓存 → 内置快照
+        // 无缓存 → 内置快照（叠加国内层后 source 带标注）
         assert!(load_cached_snapshot(&conn).unwrap().is_none());
         let current = current_snapshot(&conn).unwrap();
-        assert_eq!(current.source, "bundled");
+        assert!(
+            current.source.starts_with("bundled"),
+            "source={}",
+            current.source
+        );
 
-        // 覆盖保存后 → 缓存优先
+        // 覆盖保存后 → 缓存优先（同样叠加国内层）
         let mut fetched = snapshot().clone();
         fetched.source = "models.dev".into();
         fetched.fetched_at = Some("2026-11-18T00:00:00Z".into());
         save_cached_snapshot(&conn, &fetched).unwrap();
         let cached = current_snapshot(&conn).unwrap();
-        assert_eq!(cached.source, "models.dev");
+        assert!(
+            cached.source.starts_with("models.dev"),
+            "source={}",
+            cached.source
+        );
         assert_eq!(cached.fetched_at.as_deref(), Some("2026-11-18T00:00:00Z"));
 
         // 再覆盖一次仍为单行
