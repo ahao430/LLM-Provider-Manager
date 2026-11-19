@@ -101,6 +101,28 @@
   .btn.primary { background: var(--gradient); color: #fff; box-shadow: 0 8px 24px color-mix(in srgb, var(--accent) 35%, transparent); }
   .btn.ghost { border: 1px solid var(--border); color: var(--text); background: var(--card); }
   section { padding: 64px 0; }
+  .shots { display: grid; gap: 14px; grid-template-columns: 1fr 1fr; }
+  .shots .shot {
+    display: block; border: 1px solid var(--border); border-radius: 14px;
+    overflow: hidden; background: var(--card);
+    transition: border-color 0.2s ease, transform 0.2s ease;
+    text-decoration: none;
+  }
+  .shots .shot:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); transform: translateY(-2px); }
+  .shots img { display: block; width: 100%; height: auto; }
+  .shots .shot figcaption {
+    padding: 10px 14px; font-size: 13px; color: var(--muted);
+    border-top: 1px solid var(--border);
+  }
+  .shot-hero {
+    margin-bottom: 14px; border: 1px solid var(--border); border-radius: 16px;
+    overflow: hidden; background: var(--card);
+  }
+  .shot-hero img { display: block; width: 100%; height: auto; }
+  .shot-hero figcaption {
+    padding: 12px 16px; font-size: 13px; color: var(--muted); border-top: 1px solid var(--border);
+  }
+  @media (max-width: 640px) { .shots { grid-template-columns: 1fr; } }
   .sec-head { text-align: center; margin-bottom: 44px; }
   .sec-head h2 { font-size: 28px; font-weight: 700; margin-bottom: 10px; }
   .sec-head p { color: var(--muted); }
@@ -143,6 +165,7 @@
   <div class="wrap nav">
     <div class="logo">LCM<span class="dot">.</span></div>
     <div class="links">
+      <a href="#screenshots">预览</a>
       <a href="#features">功能</a>
       <a href="#principles">设计原则</a>
       <a href="https://github.com/ahao430/LLM-Provider-Manager/blob/main/README.md">文档</a>
@@ -166,6 +189,39 @@
     <div class="actions">
       <a class="btn primary" href="https://github.com/ahao430/LLM-Provider-Manager/releases/latest" target="_blank" rel="noreferrer">⬇ 下载最新版</a>
       <a class="btn ghost" href="https://github.com/ahao430/LLM-Provider-Manager" target="_blank" rel="noreferrer">GitHub 仓库</a>
+    </div>
+  </section>
+
+  <section id="screenshots" class="wrap">
+    <div class="sec-head">
+      <h2>应用预览</h2>
+      <p>市场数据为真实抓取快照；页面数据为演示数据</p>
+    </div>
+    <figure class="shot-hero">
+      <img src="screenshots/market.png" alt="市场信息：各厂商模型价格快照与自有渠道标注价比价" loading="lazy" />
+      <figcaption>市场信息 — 20 家厂商 · 310 个模型的真实价格快照，快捷筛选 / 币种切换 / 与自有渠道标注价并排比价</figcaption>
+    </figure>
+    <div class="shots">
+      <figure class="shot">
+        <img src="screenshots/channels.png" alt="渠道管理：分组卡片视图与余额" loading="lazy" />
+        <figcaption>渠道管理 — 按分组分区，凭证状态 / 余额快照 / 仪表盘置顶，一键查询余额</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="screenshots/models.png" alt="模型列表：全渠道模型聚合" loading="lazy" />
+        <figcaption>模型列表 — 同名模型跨渠道聚合，标注价范围与快速测试一目了然</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="screenshots/testing.png" alt="API 测试工作台" loading="lazy" />
+        <figcaption>API 测试工作台 — 三种协议格式、流式输出，Raw 与 Preview 分离归档</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="screenshots/requests.png" alt="测试记录：类型列与筛选" loading="lazy" />
+        <figcaption>测试记录 — Trace 全链路、类型徽章与筛选、TTFB / Token / 费用估算</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="screenshots/dashboard.png" alt="仪表盘" loading="lazy" />
+        <figcaption>仪表盘 — 渠道 / 模型 / 请求总览，置顶渠道卡片可就地查询余额</figcaption>
+      </figure>
     </div>
   </section>
 
