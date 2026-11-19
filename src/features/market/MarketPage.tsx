@@ -46,7 +46,8 @@ const TYPE_VARIANT: Record<ModelType, "default" | "secondary" | "outline" | "des
   multimodal: "default",
   image: "secondary",
   text: "outline",
-  decision: "destructive",
+  reasoning: "secondary",
+  decision: "default",
 };
 
 const CURRENCY_SYMBOL: Record<string, string> = { CNY: "¥", USD: "$", EUR: "€" };
@@ -186,7 +187,7 @@ export function MarketPage() {
   const baseSource = snapshot?.source.split(" + cn/")[0] ?? "";
   const cnDate = snapshot?.source.match(/\+ cn\/([\d-]+)/)?.[1];
   const sourceLabel = snapshot
-    ? `${baseSource === "models.dev" ? `已抓取 models.dev · ${fmtTime(snapshot.fetchedAt)}` : `内置快照 ${snapshot.snapshotDate}`}${cnDate ? ` · 国内价 ${cnDate}` : ""}`
+    ? `${baseSource === "models.dev" ? "已抓取 models.dev" : `内置快照 ${snapshot.snapshotDate}`}${cnDate ? ` · 国内价 ${cnDate}` : ""}`
     : "";
 
   const QUICK_MODELS = ["glm", "gpt", "deepseek", "claude", "gemini", "kimi", "qwen", "minimax"];

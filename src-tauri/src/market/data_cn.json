@@ -58,7 +58,7 @@
         },
         {
           "model": "deepseek-v4-pro",
-          "modelType": "decision",
+          "modelType": "reasoning",
           "inputPer1m": 9,
           "cachedInputPer1m": 0.3,
           "outputPer1m": 27,

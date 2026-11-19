@@ -61,7 +61,8 @@ const TYPE_VARIANT: Record<ModelType, "default" | "secondary" | "outline" | "des
   multimodal: "default",
   image: "secondary",
   text: "outline",
-  decision: "destructive",
+  reasoning: "secondary",
+  decision: "default",
 };
 
 /** 渠道列表：凭证复制 / 余额展示与查询 / 展开模型逐个测试 / 编辑进详情。 */

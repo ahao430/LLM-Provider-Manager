@@ -180,9 +180,11 @@ fn num(cost: Option<&Value>, key: &str) -> Option<f64> {
 }
 
 /// 模型类型：输出含 image → 图像；输入含 image → 多模态；
-/// 纯推理系列（o1/o3/o4/o5、R 系等）→ 决策；否则文本。
+/// System 1 决策架构（Jev 类单次前向输出候选概率的模型）→ 决策；
+/// 纯推理系列（o1/o3/o4/o5、DeepSeek R 系、qwq 等，生成思考链的文本推理模型）→ 推理；
+/// 否则文本。
 /// 注意：models.dev 的 reasoning=true 对 glm/qwen3/MiniMax 等混合思考模型普遍为 true，
-/// 不能作为「决策模型」依据（决策 = 纯推理/系统一类型，如 o 系），故按模型名识别。
+/// 不能作为任何分类依据，故按模型名识别。
 fn classify(mv: &Value, model_id: &str) -> String {
     let outputs_image = mv
         .get("modalities")
@@ -198,14 +200,40 @@ fn classify(mv: &Value, model_id: &str) -> String {
         "image".into()
     } else if inputs_image {
         "multimodal".into()
-    } else if is_pure_reasoning(model_id) {
+    } else if is_system1_decision(model_id) {
         "decision".into()
+    } else if is_pure_reasoning(model_id) {
+        "reasoning".into()
     } else {
         "text".into()
     }
 }
 
-/// 纯推理（决策）系列判定：OpenAI o1/o3/o4/o5 系、DeepSeek R 系、qwq 等纯推理模型名。
+/// System 1 决策模型判定：Jev 类架构（一次前向直接输出候选概率，不生成推理文本）。
+/// 名单来自 2026-11 公开研究综述与已发布项目（Jev / Chinese-Jev / LingDT-Decision /
+/// NeoHorse-Jev / FastJEV / Prism / Bongard / Verdict / SanSi / StartLux 等）。
+/// 普通 reasoning 模型（o 系、R1 等）不是决策模型——它们生成思考链，属「推理」。
+pub(crate) fn is_system1_decision(model_id: &str) -> bool {
+    const NEEDLES: &[&str] = &[
+        "jev",
+        "prism",
+        "bongard",
+        "verdict",
+        "intern-decision",
+        "metaencoder",
+        "sansi",
+        "startlux",
+        "fundm",
+        "lavoir",
+        "lingdt",
+        "neohorse",
+    ];
+    let n = model_id.to_lowercase();
+    NEEDLES.iter().any(|k| n.contains(k))
+}
+
+/// 纯推理（生成思考链的文本推理模型）系列判定：OpenAI o1/o3/o4/o5 系、
+/// DeepSeek R 系、qwq 等纯推理模型名。
 fn is_pure_reasoning(model_id: &str) -> bool {
     let n = model_id.to_lowercase();
     let stripped = n.strip_prefix("openai/").unwrap_or(&n);
@@ -289,7 +317,10 @@ mod tests {
         assert_eq!(gpt.currency, "USD");
 
         let o = &openai.models[1];
-        assert_eq!(o.model_type, "decision", "纯推理 o 系应归为决策");
+        assert_eq!(
+            o.model_type, "reasoning",
+            "纯推理 o 系是推理模型而非决策模型"
+        );
 
         // glm 系是混合思考模型（reasoning=true 但非纯推理系列），应归文本而非决策
         let glm = &snap.providers[1].models[0];

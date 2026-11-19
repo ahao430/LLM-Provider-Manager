@@ -49,7 +49,8 @@ const TYPE_VARIANT: Record<ModelType, "default" | "secondary" | "outline" | "des
   multimodal: "default",
   image: "secondary",
   text: "outline",
-  decision: "destructive",
+  reasoning: "secondary",
+  decision: "default",
 };
 
 /** 同名模型聚合组（多渠道合并为一行）。 */

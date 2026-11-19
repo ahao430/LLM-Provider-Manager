@@ -102,12 +102,14 @@ const TYPE_VARIANT: Record<ModelType, "default" | "secondary" | "outline" | "des
   multimodal: "default",
   image: "secondary",
   text: "outline",
-  decision: "destructive",
+  reasoning: "secondary",
+  decision: "default",
 };
 const TYPE_LABEL: Record<ModelType, string> = {
   multimodal: "多模态",
   image: "图像",
   text: "文本",
+  reasoning: "推理",
   decision: "决策",
 };
 

@@ -4,6 +4,14 @@
 
 遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 格式，版本策略见 [AGENTS.md](./AGENTS.md)：每次改动第三位 +1（patch），较大改动第二位 +1（minor），第一位仅在维护者要求时升级。
 
+## [0.30.4] - 2026-11-19
+
+### 修复
+
+- **检查更新 toast 位置异常**（WKWebView 特定环境下 toast 出现在视口底部并撑出页面滚动条）：Sonner Toaster 改为 `createPortal` 直接挂到 `document.body` 根部（隔离任何 transform / 滚动容器祖先对 `position: fixed` 的影响），并加全局 CSS 定位保险（`[data-sonner-toaster]` 强制 fixed + 限高，toast 限宽）。本地 Chrome 与 Tauri 环境实测 toast 均为顶部居中悬浮、不影响页面高度。
+- **决策模型口径修正**：v0.30.3 前的分类把「纯推理模型」（OpenAI o 系、DeepSeek R 系、qwq 等，生成思考链）误标为「决策」。按 System 1 定义修正：**决策（decision）仅指 Jev 类单次前向输出候选概率的决策架构**（Jev / Chinese-Jev / LingDT / NeoHorse / Prism / Verdict 等名单匹配）；o 系 / R 系 / qwq 归入新类型**「推理」（reasoning）**，其余不变。旧抓取缓存在读取时自动纠正（decision 且不在 System 1 名单 → reasoning），内置快照数据同步修正（o3-mini、qwq-plus 等 3 条）。前端类型徽章补「推理」。
+- **市场信息顶部文案**：「已抓取 models.dev」后不再重复显示抓取时间（右侧「抓取数据」按钮下方已有）。
+
 ## [0.30.3] - 2026-11-19
 
 ### 新增

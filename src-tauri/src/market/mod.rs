@@ -132,6 +132,9 @@ fn merge_cn_snapshot(mut base: MarketSnapshot) -> MarketSnapshot {
 // ------------------------------------------------------------------
 
 /// 读取已抓取的快照；从未抓取返回 None（调用方回退内置快照）。
+/// 读取时对旧版快照做类型纠正：v0.30.3 前的 classify 把「纯推理模型」（o 系 /
+/// DeepSeek R 系 / qwq 等）误标为 decision（决策），现口径 decision 仅指 System 1
+/// 决策架构（Jev 类），纯推理模型归 reasoning（推理）。缓存只追加不覆盖，故在读取时纠正。
 pub fn load_cached_snapshot(conn: &Connection) -> AppResult<Option<MarketSnapshot>> {
     let json: Option<String> = conn
         .query_row(
@@ -141,9 +144,19 @@ pub fn load_cached_snapshot(conn: &Connection) -> AppResult<Option<MarketSnapsho
         )
         .optional()?;
     json.as_deref()
-        .map(serde_json::from_str)
+        .map(|s| {
+            let mut snap: MarketSnapshot = serde_json::from_str(s)
+                .map_err(|e| AppError::Invalid(format!("市场快照缓存解析失败: {e}")))?;
+            for p in &mut snap.providers {
+                for m in &mut p.models {
+                    if m.model_type == "decision" && !fetch::is_system1_decision(&m.model) {
+                        m.model_type = "reasoning".into();
+                    }
+                }
+            }
+            Ok(snap)
+        })
         .transpose()
-        .map_err(|e| AppError::Invalid(format!("市场快照缓存解析失败: {e}")))
 }
 
 /// 覆盖保存抓取的快照（单行）。
@@ -293,7 +306,8 @@ mod tests {
             );
             for m in &p.models {
                 assert!(
-                    ["multimodal", "image", "text", "decision"].contains(&m.model_type.as_str()),
+                    ["multimodal", "image", "text", "reasoning", "decision"]
+                        .contains(&m.model_type.as_str()),
                     "{} 类型非法",
                     m.model
                 );

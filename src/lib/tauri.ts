@@ -401,12 +401,13 @@ export interface GlobalModelRow {
   channelModelCount: number;
 }
 
-export type ModelType = "multimodal" | "image" | "text" | "decision";
+export type ModelType = "multimodal" | "image" | "text" | "reasoning" | "decision";
 
 export const MODEL_TYPE_LABELS: Record<ModelType, string> = {
   multimodal: "多模态",
   image: "图像",
   text: "文本",
+  reasoning: "推理",
   decision: "决策",
 };
 

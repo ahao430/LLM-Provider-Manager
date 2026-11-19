@@ -125,3 +125,14 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* 全局通知（Sonner）定位保险：toast 必须悬浮在视口上，不得参与文档流
+   （否则会在视口底部渲染、撑出页面滚动条，见 v0.30.4 修复）。 */
+[data-sonner-toaster] {
+  position: fixed !important;
+  max-height: 100vh;
+  overflow: visible;
+}
+[data-sonner-toaster] li[data-sonner-toast] {
+  max-width: 100vw;
+}

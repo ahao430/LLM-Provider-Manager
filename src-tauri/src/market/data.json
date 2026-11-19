@@ -416,7 +416,7 @@
         },
         {
           "model": "o3-mini",
-          "modelType": "decision",
+          "modelType": "reasoning",
           "inputPer1m": 1.1,
           "cachedInputPer1m": 0.55,
           "outputPer1m": 4.4,
@@ -2135,7 +2135,7 @@
         },
         {
           "model": "qwq-plus",
-          "modelType": "decision",
+          "modelType": "reasoning",
           "inputPer1m": 0.8,
           "cachedInputPer1m": null,
           "outputPer1m": 2.4,
