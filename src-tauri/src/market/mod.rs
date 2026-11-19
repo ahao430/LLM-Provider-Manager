@@ -127,6 +127,20 @@ fn merge_cn_snapshot(mut base: MarketSnapshot) -> MarketSnapshot {
     base
 }
 
+/// 国内厂商官网价明细：叠加层覆盖 / 新增的每家厂商（名称 / 官网价页 / 条目数），
+/// 供设置页「国内官网价」分区逐家展示（设置页不再只显示一行汇总）。
+pub fn cn_vendors() -> Vec<(String, String, usize)> {
+    let overlay = &*CN_OVERLAY;
+    let mut out: Vec<(String, String, usize)> = overlay
+        .replacements
+        .values()
+        .chain(overlay.additions.iter())
+        .map(|p| (p.name.clone(), p.pricing_url.clone(), p.models.len()))
+        .collect();
+    out.sort_by(|a, b| a.0.cmp(&b.0));
+    out
+}
+
 // ------------------------------------------------------------------
 // 抓取缓存（market_cache 单行表）
 // ------------------------------------------------------------------

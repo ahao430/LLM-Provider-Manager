@@ -249,6 +249,15 @@ Preview 不得覆盖 Raw。
 - **常用模型快捷筛选**（glm / gpt / deepseek / claude / gemini / kimi / qwen / minimax）与价格排序（输入 / 输出，键 = max(单一, 低谷, 阶梯最高档) 折算 CNY，方向可切「低 → 高 / 高 → 低」，无价垫底）；顶部标注抓取时间与数据来源链接；
 - **币种切换**：默认（各厂商原生币种）/ 美元 / 人民币；折算用实时汇率（frankfurter → open.er-api.com 回退，「抓取数据」顺带更新 `market_fx`，兜底 7.20），折算值带 ≈ 与汇率来源标注（估算必须标注红线）。
 
+
+### 数据源体系（v0.31.0）
+
+- **内置汇总源**：models.dev（国际价，市场页「抓取数据」统一刷新）、**apiprice.app**（开放数据 `prices.json`，CC BY 4.0 署名「apiprice.app」；官方 / 国内官方 CNY / OpenRouter 三通道，带缓存与低谷分时段价；设置页独立开关与抓取，缓存走 market_source_cache）。
+- **国内叠加层**：data_cn.json 人工维护 + `pnpm market:cn-refresh` 辅助刷新；设置页逐家展示官网链接。
+- **自定义源**：NewAPI 类站点模型广场（/api/pricing 倍率折算）。
+- **多源取值原则**：各源独立成组、行级标注来源与渠道，**不做黑盒合并 / 平均**——比价让用户直接看各源数字（LCM 不估算原则的延伸）。
+- 调研结论（2026-11）：ai-price-compare.konata9.cc、gpuprice.cn、qust.ltd、aimap.page 均无开放数据端点或明确许可，暂不接入；OpenRouter models 端点可作为后续候选（多家比价站的实际上游）。
+
 ### 测试中心
 
 测试功能收敛为一个菜单，含四个子页（路由化，支持前进后退）：

@@ -1,6 +1,7 @@
 //! 市场信息命令。
 
 use rusqlite::Connection;
+use serde::Serialize;
 use tauri::State;
 
 use crate::error::{AppError, AppResult};
@@ -91,13 +92,22 @@ pub fn toggle_market_source(
     sources::set_source_enabled(&conn, &source_id, enabled)
 }
 
-/// 抓取 NewAPI 类源：/api/pricing → 换算快照写缓存，顺带抓 favicon（尽力而为）。
+/// 抓取市场数据源：NewAPI 类走 /api/pricing，builtin_apiprice 走开放数据端点；
+/// 其余内置源（models.dev / 国内叠加层）由市场页「抓取数据」按钮统一处理。
 /// 异步 HTTP 不持锁；favicon 失败不影响价格抓取。
 #[tauri::command]
 pub async fn fetch_market_source(
     state: State<'_, AppState>,
     source_id: String,
 ) -> AppResult<MarketSnapshot> {
+    // 内置汇总源 apiprice：单独分派（端点固定，无 favicon 概念）
+    if source_id == "builtin_apiprice" {
+        let snapshot = sources::fetch_apiprice(&source_id, "apiprice.app").await?;
+        let conn = db(&state)?;
+        sources::save_source_cache(&conn, &source_id, &snapshot)?;
+        return Ok(snapshot);
+    }
+
     // 锁内先读源配置（base_url / 名称），锁外做 HTTP
     let (name, page_url) = {
         let conn = db(&state)?;
@@ -125,4 +135,26 @@ pub async fn fetch_market_source(
         sources::save_source_icon(&conn, &source_id, &data)?;
     }
     Ok(snapshot)
+}
+
+/// 国内厂商官网价明细（data_cn 叠加层每家厂商的官网链接与条目数），
+/// 供设置页「国内官网价」分区逐家展示。
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CnVendorRow {
+    pub name: String,
+    pub pricing_url: String,
+    pub model_count: usize,
+}
+
+#[tauri::command]
+pub fn list_cn_vendors() -> Vec<CnVendorRow> {
+    crate::market::cn_vendors()
+        .into_iter()
+        .map(|(name, url, count)| CnVendorRow {
+            name,
+            pricing_url: url,
+            model_count: count,
+        })
+        .collect()
 }

@@ -234,10 +234,12 @@ pub fn save_source_cache(
 
 /// 读取全部「启用且有缓存」的源的 providers（合并进市场快照展示）。
 pub fn load_enabled_source_providers(conn: &Connection) -> AppResult<Vec<MarketProvider>> {
+    // builtin_apiprice 是「可独立抓取 / 开关」的内置汇总源（走 source 缓存机制），
+    // 其余 builtin（models.dev / 国内叠加层）由「抓取数据」按钮统一走 market_cache
     let mut stmt = conn.prepare(
         "SELECT c.snapshot_json FROM market_source_cache c \
          JOIN market_sources s ON s.id = c.source_id \
-         WHERE s.enabled = 1 AND s.builtin = 0",
+         WHERE s.enabled = 1 AND (s.builtin = 0 OR s.id = 'builtin_apiprice')",
     )?;
     let jsons: Vec<String> = stmt
         .query_map([], |row| row.get(0))?
@@ -483,6 +485,191 @@ fn round4(v: f64) -> f64 {
 }
 
 // ------------------------------------------------------------------
+// apiprice.app 汇总源（开放数据，CC BY 4.0）
+// ------------------------------------------------------------------
+
+/// apiprice 数据端点（license CC BY 4.0；cite_as 要求署名「apiprice.app (as of 日期)」）。
+pub const APIPRICE_ENDPOINT: &str = "https://apiprice.app/data/prices.json";
+
+/// apiprice provider code → 展示名（与内置快照命名习惯对齐；未知 code 原样展示）。
+fn apiprice_provider_name(code: &str) -> String {
+    match code {
+        "openai" => "OpenAI",
+        "anthropic" => "Anthropic",
+        "google" => "Google Gemini",
+        "qwen" => "阿里云百炼（通义千问）",
+        "deepseek" => "DeepSeek",
+        "zhipu" => "智谱 AI",
+        "moonshot" => "月之暗面 Kimi",
+        "bytedance" => "火山方舟（豆包）",
+        "baidu" => "百度千帆（文心）",
+        "tencent" => "腾讯混元",
+        "minimax" => "MiniMax",
+        "stepfun" => "阶跃星辰",
+        "xiaomi" => "小米 MiMo",
+        "mistral" => "Mistral",
+        "xai" => "xAI",
+        "nvidia" => "NVIDIA",
+        other => other,
+    }
+    .to_string()
+}
+
+/// apiprice 单条价格记录（仅取所需字段；schema_version 变化时缺失字段容忍为 None）。
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "snake_case")]
+struct ApipriceEntry {
+    model_id: String,
+    #[serde(default)]
+    provider: String,
+    #[serde(default)]
+    channel: String,
+    #[serde(default)]
+    currency: String,
+    #[serde(default)]
+    input_per_1m: Option<f64>,
+    #[serde(default)]
+    output_per_1m: Option<f64>,
+    #[serde(default)]
+    cached_per_1m: Option<f64>,
+    #[serde(default)]
+    off_peak_input_per_1m: Option<f64>,
+    #[serde(default)]
+    off_peak_output_per_1m: Option<f64>,
+    #[serde(default)]
+    off_peak_hours: Option<String>,
+    #[serde(default)]
+    tier_notes: Option<String>,
+    #[serde(default)]
+    retired: bool,
+}
+
+/// apiprice 顶层 JSON（license / 汇率 / prices 数组）。
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "snake_case")]
+struct ApipriceDoc {
+    #[serde(default)]
+    prices: Vec<ApipriceEntry>,
+    #[serde(default)]
+    cite_as: Option<String>,
+    #[serde(default)]
+    generated_at: Option<String>,
+}
+
+/// 抓取 apiprice.app 开放数据并映射为快照（每厂商一个 provider，
+/// 同厂商多通道条目并列成行，note 标注渠道与署名）。
+pub async fn fetch_apiprice(source_id: &str, _source_name: &str) -> AppResult<MarketSnapshot> {
+    let client = http_client()?;
+    let resp = client
+        .get(APIPRICE_ENDPOINT)
+        .send()
+        .await
+        .map_err(|e| AppError::Invalid(format!("抓取 {APIPRICE_ENDPOINT} 失败: {e}")))?;
+    if !resp.status().is_success() {
+        return Err(AppError::Invalid(format!(
+            "抓取失败：{APIPRICE_ENDPOINT} 返回 HTTP {}",
+            resp.status()
+        )));
+    }
+    let doc: ApipriceDoc = resp
+        .json()
+        .await
+        .map_err(|e| AppError::Invalid(format!("apiprice 数据解析失败: {e}")))?;
+    map_apiprice(&doc, source_id)
+}
+
+/// apiprice 文档 → 快照（纯函数，便于单测；抓取只负责 HTTP）。
+fn map_apiprice(doc: &ApipriceDoc, source_id: &str) -> AppResult<MarketSnapshot> {
+    // 按厂商分组（保持首次出现顺序），组内按模型名 + 通道排序
+    let mut order: Vec<String> = Vec::new();
+    let mut groups: std::collections::HashMap<String, Vec<&ApipriceEntry>> =
+        std::collections::HashMap::new();
+    for e in doc.prices.iter().filter(|e| !e.retired) {
+        if !groups.contains_key(&e.provider) {
+            order.push(e.provider.clone());
+        }
+        groups.entry(e.provider.clone()).or_default().push(e);
+    }
+
+    let cite = doc.cite_as.as_deref().unwrap_or("apiprice.app");
+    let mut providers = Vec::new();
+    for code in order {
+        let entries = &groups[&code];
+        let mut models = Vec::new();
+        for e in entries.iter() {
+            let channel_label = match e.channel.as_str() {
+                "official" => "官方价",
+                "official_cn" => "国内官方价",
+                "openrouter" => "OpenRouter",
+                other => other,
+            };
+            let mut note_parts = vec![channel_label.to_string()];
+            if let Some(t) = e.tier_notes.as_deref().filter(|t| !t.is_empty()) {
+                note_parts.push(t.chars().take(160).collect());
+            }
+            note_parts.push(format!("来源 {cite} · CC BY 4.0"));
+            let off_peak =
+                if e.off_peak_input_per_1m.is_some() || e.off_peak_output_per_1m.is_some() {
+                    Some(super::OffPeakPrice {
+                        window: e
+                            .off_peak_hours
+                            .clone()
+                            .unwrap_or_else(|| "低谷时段".into()),
+                        input_per_1m: e.off_peak_input_per_1m,
+                        output_per_1m: e.off_peak_output_per_1m,
+                        cached_input_per_1m: None,
+                    })
+                } else {
+                    None
+                };
+            models.push(MarketModel {
+                model: e.model_id.clone(),
+                // apiprice 无模态信息；类型先按文本（比价不受影响）
+                model_type: "text".into(),
+                input_per_1m: e.input_per_1m,
+                cached_input_per_1m: e.cached_per_1m,
+                output_per_1m: e.output_per_1m,
+                currency: if e.currency.eq_ignore_ascii_case("cny") {
+                    "CNY".into()
+                } else {
+                    "USD".into()
+                },
+                note: Some(note_parts.join("；")),
+                off_peak,
+            });
+        }
+        if models.is_empty() {
+            continue;
+        }
+        models.sort_by_key(|m| m.model.clone());
+        providers.push(MarketProvider {
+            id: format!("{source_id}-{code}"),
+            name: apiprice_provider_name(&code),
+            region: "global".into(),
+            pricing_url: "https://apiprice.app/zh/".into(),
+            models,
+        });
+    }
+    if providers.is_empty() {
+        return Err(AppError::Invalid(
+            "apiprice 数据为空（prices 数组无可用条目）".into(),
+        ));
+    }
+    Ok(MarketSnapshot {
+        snapshot_date: doc
+            .generated_at
+            .as_deref()
+            .unwrap_or("")
+            .get(..10)
+            .unwrap_or("")
+            .to_string(),
+        source: format!("apiprice:{cite}"),
+        fetched_at: Some(now_rfc3339()),
+        providers,
+    })
+}
+
+// ------------------------------------------------------------------
 // 测试
 // ------------------------------------------------------------------
 
@@ -565,6 +752,85 @@ mod tests {
         assert_eq!(kimi.input_per_1m, Some(expected));
         assert_eq!(kimi.output_per_1m, Some(expected));
         assert!(kimi.note.as_deref().unwrap().contains("分组 0.9"));
+    }
+
+    #[test]
+    fn apiprice_maps_channels_currency_and_offpeak() {
+        let doc: ApipriceDoc = serde_json::from_value(json!({
+            "cite_as": "apiprice.app (as of 2026-11-19)",
+            "generated_at": "2026-11-19T11:49:22.630Z",
+            "prices": [
+                {"model_id": "minimax-m3", "provider": "minimax", "channel": "official_cn",
+                 "currency": "CNY", "input_per_1m": 2.1, "output_per_1m": 8.4, "cached_per_1m": 0.42,
+                 "tier_notes": "标准服务"},
+                {"model_id": "gpt-6.1-sol", "provider": "openai", "channel": "openrouter",
+                 "currency": "USD", "input_per_1m": 2, "output_per_1m": 10, "cached_per_1m": 0.1,
+                 "or_price_source": "original"},
+                {"model_id": "deepseek-v4", "provider": "deepseek", "channel": "official",
+                 "currency": "USD", "input_per_1m": 0.27, "output_per_1m": 1.1,
+                 "off_peak_input_per_1m": 0.014, "off_peak_output_per_1m": 0.056,
+                 "off_peak_hours": "00:30-08:30 UTC+8"},
+                {"model_id": "retired-old", "provider": "openai", "channel": "official",
+                 "currency": "USD", "input_per_1m": 1, "output_per_1m": 2, "retired": true}
+            ]
+        }))
+        .unwrap();
+        let snap = map_apiprice(&doc, "builtin_apiprice").unwrap();
+        assert_eq!(
+            snap.providers.len(),
+            3,
+            "按厂商分组：minimax/openai/deepseek"
+        );
+        assert_eq!(snap.snapshot_date, "2026-11-19");
+
+        let mm = &snap
+            .providers
+            .iter()
+            .find(|p| p.name == "MiniMax")
+            .unwrap()
+            .models[0];
+        assert_eq!(mm.currency, "CNY");
+        assert_eq!(mm.input_per_1m, Some(2.1));
+        assert!(mm.note.as_deref().unwrap().contains("国内官方价"));
+        assert!(mm.note.as_deref().unwrap().contains("CC BY 4.0"));
+
+        let oai = &snap
+            .providers
+            .iter()
+            .find(|p| p.name == "OpenAI")
+            .unwrap()
+            .models[0];
+        assert_eq!(oai.currency, "USD");
+        assert!(oai.note.as_deref().unwrap().contains("OpenRouter"));
+        // retired 条目被过滤
+        assert_eq!(
+            snap.providers
+                .iter()
+                .find(|p| p.name == "OpenAI")
+                .unwrap()
+                .models
+                .len(),
+            1
+        );
+
+        let ds = &snap
+            .providers
+            .iter()
+            .find(|p| p.name == "DeepSeek")
+            .unwrap()
+            .models[0];
+        let op = ds.off_peak.as_ref().expect("低谷价应映射");
+        assert_eq!(op.window, "00:30-08:30 UTC+8");
+        assert_eq!(op.input_per_1m, Some(0.014));
+    }
+
+    #[test]
+    fn apiprice_empty_is_error() {
+        let doc: ApipriceDoc = serde_json::from_value(json!({"prices": [
+            {"model_id": "x", "provider": "p", "channel": "official", "retired": true}
+        ]}))
+        .unwrap();
+        assert!(map_apiprice(&doc, "s").is_err());
     }
 
     #[test]

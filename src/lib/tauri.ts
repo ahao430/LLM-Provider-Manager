@@ -1453,6 +1453,17 @@ export function listMarketSources(): Promise<MarketSourceRow[]> {
   return invoke<MarketSourceRow[]>("list_market_sources");
 }
 
+/** 国内厂商官网价明细（data_cn 叠加层每家厂商的官网链接与条目数）。 */
+export interface CnVendorRow {
+  name: string;
+  pricingUrl: string;
+  modelCount: number;
+}
+
+export function listCnVendors(): Promise<CnVendorRow[]> {
+  return invoke<CnVendorRow[]>("list_cn_vendors");
+}
+
 export function saveMarketSource(input: MarketSourceInput): Promise<string> {
   return invoke<string>("save_market_source", { input });
 }

@@ -65,8 +65,8 @@ use crate::commands::image::{
 };
 use crate::commands::market::{
     delete_market_source, fetch_market_prices, fetch_market_source, get_market_fx,
-    list_channel_price_annotations, list_market_prices, list_market_sources, save_market_source,
-    toggle_market_source,
+    list_channel_price_annotations, list_cn_vendors, list_market_prices, list_market_sources,
+    save_market_source, toggle_market_source,
 };
 use crate::commands::models::{
     add_model_price, create_global_model, delete_channel_model, delete_global_model,
@@ -194,6 +194,7 @@ pub fn run() {
             fetch_market_prices,
             get_market_fx,
             list_channel_price_annotations,
+            list_cn_vendors,
             list_market_sources,
             save_market_source,
             delete_market_source,

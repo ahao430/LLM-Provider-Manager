@@ -75,6 +75,10 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "0017_chat_completions_url",
         include_str!("../../migrations/0017_chat_completions_url.sql"),
     ),
+    (
+        "0018_apiprice_source",
+        include_str!("../../migrations/0018_apiprice_source.sql"),
+    ),
 ];
 
 pub fn run(conn: &Connection) -> AppResult<()> {
