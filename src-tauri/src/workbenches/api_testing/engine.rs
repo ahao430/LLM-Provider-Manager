@@ -65,7 +65,11 @@ pub fn prepare(
         req.channel_model_id.as_deref(),
         req.parent_trace_id.as_deref(),
         &req.protocol,
-        "api_test",
+        // 测试类型：quick_test（快速连通性）/ api_test（工作台 API 测试）
+        match req.test_kind.as_deref() {
+            Some("quick_test") => "quick_test",
+            _ => "api_test",
+        },
     )?;
 
     for note in &built.notes {

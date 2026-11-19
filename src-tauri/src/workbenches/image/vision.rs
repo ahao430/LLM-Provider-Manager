@@ -154,7 +154,8 @@ pub fn prepare(
         None,
         None,
         &req.protocol,
-        &req.protocol,
+        // 图像理解测试：此前误标为协议名，修复为独立类型（测试记录可按类型筛选）
+        "image_understanding",
     )?;
     records::log_event(
         conn,

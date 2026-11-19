@@ -53,6 +53,9 @@ pub struct ApiTestRequest {
     /// 重放时指向原始请求
     #[serde(default)]
     pub parent_trace_id: Option<String>,
+    /// 测试类型标签（记录的 request_type）：api_test / quick_test；缺省 api_test
+    #[serde(default)]
+    pub test_kind: Option<String>,
 }
 
 /// 请求目标（URL + Headers + 超时 / TLS）。工作台各协议共用。

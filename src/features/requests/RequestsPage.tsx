@@ -7,6 +7,13 @@ import { Badge } from "@/components/ui/badge";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -27,6 +34,28 @@ const STATUS_VARIANT: Record<string, "default" | "destructive" | "secondary" | "
   failed: "destructive",
 };
 
+/** 测试类型标签：request_type → 展示名（含历史数据兼容；vision 旧记录误标为协议名）。 */
+const TYPE_LABELS: Record<string, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
+  quick_test: { label: "快速测试", variant: "secondary" },
+  api_test: { label: "API 测试", variant: "default" },
+  agent_probe: { label: "Agent 测试", variant: "outline" },
+  image_generation: { label: "画图", variant: "secondary" },
+  image_edit: { label: "画图编辑", variant: "secondary" },
+  image_understanding: { label: "图像理解", variant: "outline" },
+};
+
+function typeMeta(requestType: string | null) {
+  return (
+    TYPE_LABELS[requestType ?? ""] ?? {
+      label: requestType || "—",
+      variant: "outline" as const,
+    }
+  );
+}
+
+/** 类型筛选选项（all = 全部）。 */
+type TypeFilter = "all" | keyof typeof TYPE_LABELS;
+
 /** 展示行：普通记录单条；agent 会话（同 sessionId 的多轮探针）聚合为一组。 */
 interface DisplayRow {
   key: string;
@@ -43,19 +72,30 @@ export function RequestsPage() {
   const navigate = useNavigate();
   // 后端单次上限 1000：本地分页足够（更早记录可清理或备份）
   const { data: records = [], isLoading, isError, error } = useTestRecords(1000);
-  // 会话级分页状态：进详情再返回时保留页码
-  const savedUi = loadSessionState("lcm-ui-requests", { page: 1, pageSize: 20 });
+  // 会话级状态：进详情再返回时保留页码 / 类型筛选
+  const savedUi = loadSessionState("lcm-ui-requests", {
+    page: 1,
+    pageSize: 20,
+    typeFilter: "all" as TypeFilter,
+  });
   const [page, setPage] = useState(savedUi.page);
   const [pageSize, setPageSize] = useState(savedUi.pageSize);
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>(savedUi.typeFilter);
   const [expandedSession, setExpandedSession] = useState<string | null>(null);
   useEffect(() => {
-    saveSessionState("lcm-ui-requests", { page, pageSize });
-  }, [page, pageSize]);
+    saveSessionState("lcm-ui-requests", { page, pageSize, typeFilter });
+  }, [page, pageSize, typeFilter]);
+
+  // 类型筛选（记录数少，纯前端过滤；筛选变化回第一页）
+  const filteredRecords = useMemo(
+    () => (typeFilter === "all" ? records : records.filter((r) => r.requestType === typeFilter)),
+    [records, typeFilter]
+  );
 
   // 分组：agent_probe 且 sessionId 非空 → 按会话聚合（records 已按时间倒序，组内首条即最新）
   const displayRows = useMemo<DisplayRow[]>(() => {
     const sessionMap = new Map<string, RequestRecordRow[]>();
-    for (const r of records) {
+    for (const r of filteredRecords) {
       if (r.requestType === "agent_probe" && r.sessionId) {
         const list = sessionMap.get(r.sessionId) ?? [];
         list.push(r);
@@ -64,7 +104,7 @@ export function RequestsPage() {
     }
     const rows: DisplayRow[] = [];
     const emitted = new Set<string>();
-    for (const r of records) {
+    for (const r of filteredRecords) {
       if (r.requestType === "agent_probe" && r.sessionId && sessionMap.has(r.sessionId)) {
         if (!emitted.has(r.sessionId)) {
           emitted.add(r.sessionId);
@@ -75,7 +115,7 @@ export function RequestsPage() {
       }
     }
     return rows;
-  }, [records]);
+  }, [filteredRecords]);
 
   const pageCount = Math.max(Math.ceil(displayRows.length / pageSize), 1);
   const safePage = Math.min(page, pageCount);
@@ -87,6 +127,32 @@ export function RequestsPage() {
         title="测试记录"
         description="工作台测试历史。Raw 是事实记录，Preview 是解释结果；Agent 同一会话的多轮探针合并为一行，点击展开逐轮详情。"
       />
+
+      <div className="flex flex-wrap items-center gap-2">
+        <Select
+          value={typeFilter}
+          onValueChange={(v) => {
+            setTypeFilter(v as TypeFilter);
+            setPage(1);
+          }}
+        >
+          <SelectTrigger className="h-8 w-40 text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">全部类型</SelectItem>
+            <SelectItem value="quick_test">快速测试</SelectItem>
+            <SelectItem value="api_test">API 测试</SelectItem>
+            <SelectItem value="agent_probe">Agent 测试</SelectItem>
+            <SelectItem value="image_generation">画图</SelectItem>
+            <SelectItem value="image_edit">画图编辑</SelectItem>
+            <SelectItem value="image_understanding">图像理解</SelectItem>
+          </SelectContent>
+        </Select>
+        <span className="text-muted-foreground text-xs">
+          {displayRows.length} 条记录（共 {records.length} 条）
+        </span>
+      </div>
       {isLoading ? (
         <div className="space-y-2">
           <Skeleton className="h-10 w-full" />
@@ -106,6 +172,7 @@ export function RequestsPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>时间</TableHead>
+                  <TableHead>类型</TableHead>
                   <TableHead>渠道</TableHead>
                   <TableHead>模型</TableHead>
                   <TableHead>协议</TableHead>
@@ -118,7 +185,7 @@ export function RequestsPage() {
               <TableBody>
                 {pageRows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-muted-foreground py-8 text-center text-sm">
+                    <TableCell colSpan={9} className="text-muted-foreground py-8 text-center text-sm">
                       没有匹配的记录
                     </TableCell>
                   </TableRow>
@@ -127,6 +194,7 @@ export function RequestsPage() {
                     const latest = row.records[0];
                     if (row.sessionId) {
                       const expanded = expandedSession === row.sessionId;
+                      const agentMeta = typeMeta("agent_probe");
                       return (
                         <Fragment key={row.key}>
                           <TableRow
@@ -136,6 +204,9 @@ export function RequestsPage() {
                             <TableCell className="text-xs whitespace-nowrap">
                               {latest.createdAt.slice(0, 19).replace("T", " ")}
                             </TableCell>
+                            <TableCell>
+                              <Badge variant={agentMeta.variant}>{agentMeta.label}</Badge>
+                            </TableCell>
                             <TableCell className="text-sm">{latest.channelName ?? "—"}</TableCell>
                             <TableCell>
                               <code className="text-xs">{latest.model ?? "—"}</code>
@@ -143,7 +214,7 @@ export function RequestsPage() {
                             <TableCell>
                               <Badge variant="secondary" className="inline-flex items-center gap-1">
                                 {expanded ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}
-                                Agent 会话 · {row.records.length} 轮
+                                会话 · {row.records.length} 轮
                               </Badge>
                             </TableCell>
                             <TableCell>
@@ -168,7 +239,7 @@ export function RequestsPage() {
                                   <TableCell className="text-muted-foreground text-xs whitespace-nowrap pl-8">
                                     {r.createdAt.slice(0, 19).replace("T", " ")}
                                   </TableCell>
-                                  <TableCell colSpan={3}>
+                                  <TableCell colSpan={4}>
                                     <span className="text-muted-foreground text-xs">
                                       第 {row.records.length - idx} 轮
                                     </span>
@@ -190,6 +261,7 @@ export function RequestsPage() {
                       );
                     }
                     const r = latest;
+                    const meta = typeMeta(r.requestType);
                     return (
                       <TableRow
                         key={row.key}
@@ -197,20 +269,19 @@ export function RequestsPage() {
                         onClick={() => navigate(`/requests/${r.traceId}`)}
                       >
                         <TableCell className="text-xs whitespace-nowrap">{r.createdAt.slice(0, 19).replace("T", " ")}</TableCell>
+                        <TableCell>
+                          <Badge variant={meta.variant}>{meta.label}</Badge>
+                        </TableCell>
                         <TableCell className="text-sm">{r.channelName ?? "—"}</TableCell>
                         <TableCell>
                           <code className="text-xs">{r.model ?? "—"}</code>
                         </TableCell>
                         <TableCell>
-                          {r.requestType === "agent_probe" ? (
-                            <Badge variant="secondary">Agent 探针</Badge>
-                          ) : (
-                            <Badge variant="outline">
-                              {r.protocol
-                                ? (PROTOCOL_LABELS[r.protocol as Protocol] ?? r.protocol)
-                                : "—"}
-                            </Badge>
-                          )}
+                          <Badge variant="outline">
+                            {r.protocol
+                              ? (PROTOCOL_LABELS[r.protocol as Protocol] ?? r.protocol)
+                              : "—"}
+                          </Badge>
                         </TableCell>
                         <TableCell>
                           <Badge variant={STATUS_VARIANT[r.status] ?? "outline"}>{r.status}</Badge>

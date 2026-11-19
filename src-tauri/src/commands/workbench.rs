@@ -198,6 +198,7 @@ pub async fn replay_test_request(
         custom_query: Vec::new(),
         raw_json: Some(request_body),
         parent_trace_id: Some(trace_id.clone()),
+        test_kind: None,
     };
 
     let run = {
@@ -297,6 +298,7 @@ pub fn copy_test_curl(
             custom_query: Vec::new(),
             raw_json: Some(request_body),
             parent_trace_id: None,
+            test_kind: None,
         };
         // 只重建请求，不调用 prepare（避免写入 pending 记录 / 归档 / 事件）
         let built = crate::workbenches::api_testing::builder::build(&conn, &req)?;
@@ -375,6 +377,8 @@ pub async fn quick_test_channel(
         custom_query: Vec::new(),
         raw_json: Some(raw_json),
         parent_trace_id: None,
+        // 快速连通性测试：类型标记 quick_test（与工作台 API 测试区分）
+        test_kind: Some("quick_test".into()),
     };
 
     let run = {

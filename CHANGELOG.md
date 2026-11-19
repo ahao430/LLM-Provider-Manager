@@ -4,6 +4,14 @@
 
 遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 格式，版本策略见 [AGENTS.md](./AGENTS.md)：每次改动第三位 +1（patch），较大改动第二位 +1（minor），第一位仅在维护者要求时升级。
 
+## [0.27.0] - 2026-11-19
+
+### 新增（较大改动，第二位 +1）
+
+- **测试记录类型列与类型筛选**：列表新增「类型」徽章列（快速测试 / API 测试 / Agent 测试 / 画图 / 画图编辑 / 图像理解），顶部类型下拉筛选（筛选状态进详情返回保留，Agent 会话组行同样带类型徽章）。
+  - 快速连通性测试此前与工作台 API 测试混用同一类型（`api_test`），现以 `quick_test` 独立标记（`ApiTestRequest.test_kind`）。
+  - **修复图像理解记录类型误标**：画图工作台的图像理解（Vision）记录此前 `request_type` 误写为协议名（如 openai_chat），修复为 `image_understanding`（历史记录不受影响，Raw 归档原样保留）。
+
 ## [0.26.0] - 2026-11-19
 
 ### 新增（较大改动，第二位 +1）
