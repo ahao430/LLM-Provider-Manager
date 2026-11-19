@@ -1,21 +1,40 @@
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowUpCircle, Loader2 } from "lucide-react";
+import { ArrowUpCircle, Loader2, RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useAppInfo, useDownloadUpdate, useInstallUpdate, useUpdateCheck } from "@/hooks/use-app-info";
 import { cn } from "@/lib/utils";
 
 /**
- * 侧边栏版本行 + 升级提示：启动即检测更新（useUpdateCheck），
+ * 侧边栏版本行：启动即检测更新（useUpdateCheck）；点击版本号可手动重新检查。
  * 有新版本时一键下载安装包并引导覆盖安装。
  */
 export function UpdateBadge({ collapsed }: { collapsed: boolean }) {
+  const queryClient = useQueryClient();
   const { data: appInfo } = useAppInfo();
-  const { data: update } = useUpdateCheck();
+  const { data: update, isFetching, refetch } = useUpdateCheck();
   const download = useDownloadUpdate();
   const install = useInstallUpdate();
   const [installing, setInstalling] = useState(false);
+
+  async function handleCheck() {
+    await queryClient.invalidateQueries({ queryKey: ["update-check"] });
+    try {
+      const res = await refetch();
+      const latest = res.data?.latestVersion;
+      if (res.data?.hasUpdate && latest) {
+        toast.info(`发现新版本 v${latest}，点旁边「升级」按钮下载安装`);
+      } else if (latest) {
+        toast.success(`已是最新版本（v${latest}）`);
+      } else {
+        toast.info("尚无已发布版本");
+      }
+    } catch (e) {
+      toast.error(`检查更新失败（需联网）：${e}`);
+    }
+  }
 
   async function handleUpgrade() {
     if (!update?.latestVersion) return;
@@ -47,10 +66,24 @@ export function UpdateBadge({ collapsed }: { collapsed: boolean }) {
         collapsed && "justify-center px-0"
       )}
     >
-      {!collapsed && appInfo ? (
-        <span className="text-muted-foreground truncate text-xs tabular-nums">
-          v{appInfo.version}
-        </span>
+      {appInfo ? (
+        <button
+          type="button"
+          className={cn(
+            "text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs tabular-nums",
+            collapsed && "px-0"
+          )}
+          title="点击检查更新"
+          onClick={handleCheck}
+          disabled={isFetching}
+        >
+          {isFetching ? (
+            <Loader2 className="size-3 animate-spin" />
+          ) : (
+            <RefreshCw className="size-3 opacity-0 group-hover:opacity-100" />
+          )}
+          {!collapsed && `v${appInfo.version}`}
+        </button>
       ) : null}
       {hasUpdate ? (
         <Button

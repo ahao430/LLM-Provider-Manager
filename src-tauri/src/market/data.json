@@ -1,7 +1,7 @@
 {
   "snapshotDate": "2026-11",
   "source": "bundled",
-  "fetchedAt": "2026-11-18T14:27:53.530Z",
+  "fetchedAt": "2026-11-19T05:34:58.249Z",
   "providers": [
     {
       "id": "openai",
@@ -792,7 +792,7 @@
         },
         {
           "model": "gemini-3.1-flash-tts-preview",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 1,
           "cachedInputPer1m": null,
           "outputPer1m": 20,
@@ -895,6 +895,15 @@
           "inputPer1m": 1.5,
           "cachedInputPer1m": 0.075,
           "outputPer1m": 7.5,
+          "currency": "USD",
+          "note": null
+        },
+        {
+          "model": "gemini-4-neon",
+          "modelType": "multimodal",
+          "inputPer1m": 3,
+          "cachedInputPer1m": 0.15,
+          "outputPer1m": 15,
           "currency": "USD",
           "note": null
         },
@@ -1132,7 +1141,7 @@
         },
         {
           "model": "glm-5-2",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 1.4,
           "cachedInputPer1m": 0.14,
           "outputPer1m": 4.4,
@@ -1357,7 +1366,7 @@
         },
         {
           "model": "zai-glm-5-2",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 1.4,
           "cachedInputPer1m": 0.14,
           "outputPer1m": 4.4,
@@ -1366,7 +1375,7 @@
         },
         {
           "model": "zai-glm-5-3",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 1.4,
           "cachedInputPer1m": 0.14,
           "outputPer1m": 4.4,
@@ -1419,7 +1428,7 @@
         },
         {
           "model": "command-a-reasoning-08-2025",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 2.5,
           "cachedInputPer1m": null,
           "outputPer1m": 10,
@@ -1482,7 +1491,7 @@
         },
         {
           "model": "north-mini-code-1-0",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 0,
           "cachedInputPer1m": null,
           "outputPer1m": 0,
@@ -1517,7 +1526,7 @@
         },
         {
           "model": "sonar-deep-research",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 2,
           "cachedInputPer1m": null,
           "outputPer1m": 8,
@@ -1650,7 +1659,7 @@
         },
         {
           "model": "deepseek-v4-pro",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 0.66,
           "cachedInputPer1m": 0.022,
           "outputPer1m": 1.98,
@@ -1667,7 +1676,7 @@
       "models": [
         {
           "model": "deepseek-v4-flash-0731",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 0.44,
           "cachedInputPer1m": 0.088,
           "outputPer1m": 1.32,
@@ -1676,7 +1685,7 @@
         },
         {
           "model": "glm-5.2",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 1.4,
           "cachedInputPer1m": 0.28,
           "outputPer1m": 4.4,
@@ -1703,7 +1712,7 @@
         },
         {
           "model": "qwen-flash",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 0.05,
           "cachedInputPer1m": 0.01,
           "outputPer1m": 0.4,
@@ -1757,7 +1766,7 @@
         },
         {
           "model": "qwen-plus",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 0.4,
           "cachedInputPer1m": 0.08,
           "outputPer1m": 1.2,
@@ -1775,7 +1784,7 @@
         },
         {
           "model": "qwen-turbo",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 0.05,
           "cachedInputPer1m": null,
           "outputPer1m": 0.2,
@@ -1820,7 +1829,7 @@
         },
         {
           "model": "qwen3-14b",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 0.35,
           "cachedInputPer1m": null,
           "outputPer1m": 1.4,
@@ -1829,7 +1838,7 @@
         },
         {
           "model": "qwen3-235b-a22b",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 0.7,
           "cachedInputPer1m": null,
           "outputPer1m": 2.8,
@@ -1838,7 +1847,7 @@
         },
         {
           "model": "qwen3-32b",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 0.7,
           "cachedInputPer1m": null,
           "outputPer1m": 2.8,
@@ -1847,7 +1856,7 @@
         },
         {
           "model": "qwen3-8b",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 0.18,
           "cachedInputPer1m": null,
           "outputPer1m": 0.7,
@@ -1919,7 +1928,7 @@
         },
         {
           "model": "qwen3-next-80b-a3b-thinking",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 0.5,
           "cachedInputPer1m": null,
           "outputPer1m": 6,
@@ -2054,7 +2063,7 @@
         },
         {
           "model": "qwen3.6-max-preview",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 1.3,
           "cachedInputPer1m": 0.13,
           "outputPer1m": 7.8,
@@ -2081,7 +2090,7 @@
         },
         {
           "model": "qwen3.7-max",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 2.5,
           "cachedInputPer1m": 0.5,
           "outputPer1m": 7.5,
@@ -2205,7 +2214,7 @@
       "models": [
         {
           "model": "glm-4.5",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 0.6,
           "cachedInputPer1m": 0.11,
           "outputPer1m": 2.2,
@@ -2214,7 +2223,7 @@
         },
         {
           "model": "glm-4.5-air",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 0.11952,
           "cachedInputPer1m": 0.0239,
           "outputPer1m": 0.89637,
@@ -2223,7 +2232,7 @@
         },
         {
           "model": "glm-4.5-flash",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 0,
           "cachedInputPer1m": null,
           "outputPer1m": 0,
@@ -2241,7 +2250,7 @@
         },
         {
           "model": "glm-4.6",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 0.6,
           "cachedInputPer1m": 0.11,
           "outputPer1m": 2.2,
@@ -2268,7 +2277,7 @@
         },
         {
           "model": "glm-4.7",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 0.44819,
           "cachedInputPer1m": 0.08964,
           "outputPer1m": 2.09153,
@@ -2277,7 +2286,7 @@
         },
         {
           "model": "glm-4.7-flash",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 0,
           "cachedInputPer1m": null,
           "outputPer1m": 0,
@@ -2286,7 +2295,7 @@
         },
         {
           "model": "glm-4.7-flashx",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 0.0747,
           "cachedInputPer1m": 0.01494,
           "outputPer1m": 0.44819,
@@ -2295,7 +2304,7 @@
         },
         {
           "model": "glm-5",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 0.59758,
           "cachedInputPer1m": 0.1494,
           "outputPer1m": 2.68911,
@@ -2304,7 +2313,7 @@
         },
         {
           "model": "glm-5.1",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 0.89637,
           "cachedInputPer1m": 0.19421,
           "outputPer1m": 3.58548,
@@ -2313,7 +2322,7 @@
         },
         {
           "model": "glm-5.2",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 1.19516,
           "cachedInputPer1m": 0.29879,
           "outputPer1m": 4.18306,
@@ -2322,7 +2331,7 @@
         },
         {
           "model": "glm-5.3",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 1.19516,
           "cachedInputPer1m": 0.29879,
           "outputPer1m": 4.18306,
@@ -2366,7 +2375,7 @@
       "models": [
         {
           "model": "deepseek-v4-flash-ga-260731",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 0.4453,
           "cachedInputPer1m": 0.01484,
           "outputPer1m": 1.3359,
@@ -2375,7 +2384,7 @@
         },
         {
           "model": "deepseek-v4-pro-ga-260813",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 1.3359,
           "cachedInputPer1m": 0.04453,
           "outputPer1m": 4.00771,
@@ -2492,7 +2501,7 @@
         },
         {
           "model": "glm-5-2-260617",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 1.18747,
           "cachedInputPer1m": 0.29687,
           "outputPer1m": 4.15615,
@@ -2518,7 +2527,7 @@
       "models": [
         {
           "model": "MiniMax-M2",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 0.3,
           "cachedInputPer1m": null,
           "outputPer1m": 1.2,
@@ -2527,7 +2536,7 @@
         },
         {
           "model": "MiniMax-M2.1",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 0.3,
           "cachedInputPer1m": 0.03,
           "outputPer1m": 1.2,
@@ -2536,7 +2545,7 @@
         },
         {
           "model": "MiniMax-M2.5",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 0.3,
           "cachedInputPer1m": 0.03,
           "outputPer1m": 1.2,
@@ -2545,7 +2554,7 @@
         },
         {
           "model": "MiniMax-M2.5-highspeed",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 0.6,
           "cachedInputPer1m": 0.03,
           "outputPer1m": 2.4,
@@ -2554,7 +2563,7 @@
         },
         {
           "model": "MiniMax-M2.7",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 0.3,
           "cachedInputPer1m": 0.06,
           "outputPer1m": 1.2,
@@ -2563,7 +2572,7 @@
         },
         {
           "model": "MiniMax-M2.7-highspeed",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 0.6,
           "cachedInputPer1m": 0.06,
           "outputPer1m": 2.4,
@@ -2598,7 +2607,7 @@
       "models": [
         {
           "model": "step-3.5-flash",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 0.10461,
           "cachedInputPer1m": 0.02092,
           "outputPer1m": 0.31384,
@@ -2607,7 +2616,7 @@
         },
         {
           "model": "step-3.5-flash-2603",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 0.10461,
           "cachedInputPer1m": 0.02092,
           "outputPer1m": 0.31384,
@@ -2651,7 +2660,7 @@
         },
         {
           "model": "mimo-v2.5-pro",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 0.435,
           "cachedInputPer1m": 0.0036,
           "outputPer1m": 0.87,
@@ -2660,7 +2669,7 @@
         },
         {
           "model": "mimo-v2.5-pro-ultraspeed",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 1.305,
           "cachedInputPer1m": 0.0108,
           "outputPer1m": 2.61,

@@ -133,7 +133,7 @@ pub fn map_snapshot(root: &Value) -> AppResult<MarketSnapshot> {
                 }
                 models.push(MarketModel {
                     model: mid.clone(),
-                    model_type: classify(mv),
+                    model_type: classify(mv, mid),
                     input_per_1m: input,
                     cached_input_per_1m: num(cost, "cache_read").filter(|v| *v > 0.0),
                     output_per_1m: output,
@@ -179,8 +179,11 @@ fn num(cost: Option<&Value>, key: &str) -> Option<f64> {
     cost?.get(key)?.as_f64()
 }
 
-/// 模型类型：输出含 image → 图像；输入含 image → 多模态；推理模型 → 决策；否则文本。
-fn classify(mv: &Value) -> String {
+/// 模型类型：输出含 image → 图像；输入含 image → 多模态；
+/// 纯推理系列（o1/o3/o4/o5、R 系等）→ 决策；否则文本。
+/// 注意：models.dev 的 reasoning=true 对 glm/qwen3/MiniMax 等混合思考模型普遍为 true，
+/// 不能作为「决策模型」依据（决策 = 纯推理/系统一类型，如 o 系），故按模型名识别。
+fn classify(mv: &Value, model_id: &str) -> String {
     let outputs_image = mv
         .get("modalities")
         .and_then(|m| m.get("output"))
@@ -191,19 +194,33 @@ fn classify(mv: &Value) -> String {
         .and_then(|m| m.get("input"))
         .and_then(Value::as_array)
         .is_some_and(|a| a.iter().any(|v| v.as_str() == Some("image")));
-    let reasoning = mv
-        .get("reasoning")
-        .and_then(Value::as_bool)
-        .unwrap_or(false);
     if outputs_image {
         "image".into()
     } else if inputs_image {
         "multimodal".into()
-    } else if reasoning {
+    } else if is_pure_reasoning(model_id) {
         "decision".into()
     } else {
         "text".into()
     }
+}
+
+/// 纯推理（决策）系列判定：OpenAI o1/o3/o4/o5 系、DeepSeek R 系、qwq 等纯推理模型名。
+fn is_pure_reasoning(model_id: &str) -> bool {
+    let n = model_id.to_lowercase();
+    let stripped = n.strip_prefix("openai/").unwrap_or(&n);
+    // o 系列：o1 / o3 / o4-mini / o4mini…（排除正文词如 sonata，直接 ^o\d）
+    if regex_like_o_series(stripped) {
+        return true;
+    }
+    // DeepSeek R 系 / Qwen 纯推理 qwq
+    stripped.starts_with("r1") || stripped.starts_with("deepseek-r1") || stripped.starts_with("qwq")
+}
+
+/// ^o\d 系列判定（o1/o3/o4/o5，含 -mini/-pro 后缀）。
+fn regex_like_o_series(name: &str) -> bool {
+    let mut chars = name.chars();
+    matches!(chars.next(), Some('o')) && matches!(chars.next(), Some(c) if c.is_ascii_digit())
 }
 
 #[cfg(test)]
@@ -221,7 +238,7 @@ mod tests {
                         "modalities": { "input": ["text", "image"], "output": ["text"] },
                         "cost": { "input": 1.25, "output": 10.0, "cache_read": 0.125 }
                     },
-                    "o-test": {
+                    "o3-test": {
                         "reasoning": true,
                         "modalities": { "input": ["text"], "output": ["text"] },
                         "cost": { "input": 2.0, "output": 8.0 }
@@ -272,10 +289,11 @@ mod tests {
         assert_eq!(gpt.currency, "USD");
 
         let o = &openai.models[1];
-        assert_eq!(o.model_type, "decision", "reasoning=true 应归为决策");
+        assert_eq!(o.model_type, "decision", "纯推理 o 系应归为决策");
 
+        // glm 系是混合思考模型（reasoning=true 但非纯推理系列），应归文本而非决策
         let glm = &snap.providers[1].models[0];
-        assert_eq!(glm.model_type, "decision");
+        assert_eq!(glm.model_type, "text", "glm 不应被误标为决策");
         assert_eq!(glm.cached_input_per_1m, None, "cache_read=0 视为未提供");
     }
 

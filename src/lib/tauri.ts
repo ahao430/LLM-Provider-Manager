@@ -354,6 +354,33 @@ export function exportChannelCredentials(path: string, format: "csv" | "xlsx"): 
 }
 
 // ------------------------------------------------------------------
+// 画图历史（v0.22.0：历史面板，点击回填表单）
+// ------------------------------------------------------------------
+
+export interface ImageHistoryRow {
+  traceId: string;
+  /** image_generation / image_edit */
+  requestType: string;
+  status: string;
+  channelId: string | null;
+  channelName: string | null;
+  model: string | null;
+  createdAt: string;
+  prompt: string | null;
+  size: string | null;
+  n: number | null;
+  responseFormat: string | null;
+  /** 首张归档图相对路径（readArchivedImage 加载缩略图） */
+  firstImagePath: string | null;
+  /** url 形态首图（不自动下载） */
+  firstImageUrl: string | null;
+}
+
+export function listImageHistory(limit?: number): Promise<ImageHistoryRow[]> {
+  return invoke<ImageHistoryRow[]>("list_image_history", { limit: limit ?? 50 });
+}
+
+// ------------------------------------------------------------------
 // 模型与价格（Phase 2）
 // ------------------------------------------------------------------
 

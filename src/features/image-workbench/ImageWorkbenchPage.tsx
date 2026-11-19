@@ -7,6 +7,14 @@ import { ElapsedTimer } from "@/components/ElapsedTimer";
 import { PageHeader } from "@/components/PageHeader";
 import { ResponseText } from "@/components/ResponseText";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { History, ExternalLink } from "lucide-react";
+import {
+  listImageHistory,
+  readArchivedImage,
+  type ImageHistoryRow,
+} from "@/lib/tauri";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -31,6 +39,13 @@ import {
 } from "@/lib/tauri";
 import { useChannelsForTest, useModelsForTest } from "@/features/api-testing/api";
 import { useImageWorkbenchStore, type ImagePanelState } from "@/stores/imageWorkbench";
+
+const STATUS_VARIANT: Record<string, "default" | "destructive" | "secondary" | "outline"> = {
+  success: "default",
+  http_error: "destructive",
+  protocol_error: "destructive",
+  failed: "destructive",
+};
 
 /** 测试中心共享的渠道选择状态（画图 / 图像理解各路由页独立持有）。 */
 function useImageChannel() {
@@ -189,6 +204,7 @@ function ImageGenPanel({
   channelModels: { id: string; actualModelId: string; modelType: ModelType; enabled: boolean }[];
 }) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   // 画图状态入 store：跨页面切换（甚至整段路由离开）不丢；invoke 回调只写 store，卸载后也能落位
   const panel = useImageWorkbenchStore((s) => s.gen);
   const setForm = useImageWorkbenchStore((s) => s.setForm);
@@ -225,6 +241,7 @@ function ImageGenPanel({
       finishRun("gen", res);
       if (res.status === "success") {
         toast.success(`生成完成：${res.images.length} 张图片已归档`);
+        void queryClient.invalidateQueries({ queryKey: ["image-history"] });
       } else {
         toast.error(`生成失败：${JSON.stringify(res.error)}`);
       }
@@ -277,7 +294,22 @@ function ImageGenPanel({
         </CardContent>
       </Card>
 
-      <ResultCard panel={panel} onOpenTrace={(id) => navigate(`/requests/${id}`)} />
+      <div className="space-y-4">
+        <ResultCard panel={panel} onOpenTrace={(id) => navigate(`/requests/${id}`)} />
+        <ImageHistoryCard
+          onSelect={(row) => {
+            if (row.channelId) onChannelChange(row.channelId);
+            setForm("gen", {
+              model: row.model ?? "",
+              prompt: row.prompt ?? "",
+              size: row.size ?? "",
+              count: row.n != null ? String(row.n) : "1",
+              responseFormat: row.responseFormat === "url" ? "url" : "b64_json",
+            });
+            toast.info("已回填该历史记录的渠道 / 模型 / 提示词");
+          }}
+        />
+      </div>
     </div>
   );
 }
@@ -584,6 +616,101 @@ function ArchivedImageCard({ image }: { image: ArchivedImage }) {
       {image.revisedPrompt ? (
         <p className="text-muted-foreground text-[10px]">revised: {image.revisedPrompt}</p>
       ) : null}
+    </div>
+  );
+}
+
+// ------------------------------------------------------------------
+// 历史记录（v0.22.0：点击回填表单；缩略图懒加载）
+// ------------------------------------------------------------------
+
+/** 画图历史面板：最近的生成 / 编辑记录，点击行回填渠道 / 模型 / 提示词；右上角进详情。 */
+function ImageHistoryCard({ onSelect }: { onSelect: (row: ImageHistoryRow) => void }) {
+  const { data: rows = [], isLoading } = useQuery({
+    queryKey: ["image-history"],
+    queryFn: () => listImageHistory(30),
+  });
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <History className="size-4" />
+          历史记录
+        </CardTitle>
+        <CardDescription>点击任意一条即可回填渠道 / 模型 / 提示词（含尺寸与返回格式）。</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {isLoading ? (
+          <Skeleton className="h-24 w-full" />
+        ) : rows.length === 0 ? (
+          <p className="text-muted-foreground text-sm">还没有生成记录，左侧发起一次生成即可。</p>
+        ) : (
+          rows.map((row) => <ImageHistoryRowItem key={row.traceId} row={row} onSelect={onSelect} />)
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ImageHistoryRowItem({
+  row,
+  onSelect,
+}: {
+  row: ImageHistoryRow;
+  onSelect: (row: ImageHistoryRow) => void;
+}) {
+  const navigate = useNavigate();
+  return (
+    <div
+      className="hover:bg-accent/40 flex cursor-pointer items-center gap-3 rounded-md border p-2"
+      onClick={() => onSelect(row)}
+    >
+      <HistoryThumb row={row} />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-xs font-medium">{row.prompt ?? "（无提示词）"}</p>
+        <p className="text-muted-foreground mt-0.5 truncate text-[10px]">
+          {row.model ?? "—"} · {row.requestType === "image_edit" ? "编辑" : "生成"} ·{" "}
+          {row.createdAt.slice(5, 16).replace("T", " ")}
+        </p>
+      </div>
+      <Badge variant={STATUS_VARIANT[row.status] ?? "outline"} className="shrink-0 text-[10px]">
+        {row.status === "success" ? "成功" : row.status}
+      </Badge>
+      <button
+        type="button"
+        className="text-muted-foreground hover:text-foreground shrink-0"
+        title="查看记录详情"
+        onClick={(e) => {
+          e.stopPropagation();
+          navigate(`/requests/${row.traceId}`);
+        }}
+      >
+        <ExternalLink className="size-3.5" />
+      </button>
+    </div>
+  );
+}
+
+/** 历史缩略图：首张归档图懒加载；url 形态显示链接占位；无图显示占位块。 */
+function HistoryThumb({ row }: { row: ImageHistoryRow }) {
+  const [dataUrl, setDataUrl] = useState<string | null>(null);
+  const attemptRef = useRef(false);
+
+  useEffect(() => {
+    if (!row.firstImagePath || attemptRef.current) return;
+    attemptRef.current = true;
+    void readArchivedImage(row.firstImagePath)
+      .then(setDataUrl)
+      .catch(() => setDataUrl(null));
+  }, [row.firstImagePath]);
+
+  if (row.firstImagePath && dataUrl) {
+    return <img src={dataUrl} alt="thumb" className="h-14 w-14 shrink-0 rounded object-cover" />;
+  }
+  return (
+    <div className="text-muted-foreground bg-muted/50 flex h-14 w-14 shrink-0 items-center justify-center rounded text-[10px]">
+      {row.firstImageUrl ? "URL" : "—"}
     </div>
   );
 }

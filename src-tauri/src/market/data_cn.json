@@ -135,7 +135,7 @@
         },
         {
           "model": "qwen3.7-max",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 18.736,
           "cachedInputPer1m": null,
           "outputPer1m": 56.207,
@@ -285,7 +285,7 @@
       "models": [
         {
           "model": "step-3.5-flash",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 0.6975,
           "cachedInputPer1m": 0.1395,
           "outputPer1m": 2.0924,
@@ -294,7 +294,7 @@
         },
         {
           "model": "step-3.5-flash-2603",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 0.6975,
           "cachedInputPer1m": 0.1395,
           "outputPer1m": 2.0924,
@@ -338,7 +338,7 @@
         },
         {
           "model": "mimo-v2.5-pro",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 2.9002,
           "cachedInputPer1m": 0.024,
           "outputPer1m": 5.8005,
@@ -347,7 +347,7 @@
         },
         {
           "model": "mimo-v2.5-pro-ultraspeed",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 8.7007,
           "cachedInputPer1m": 0.072,
           "outputPer1m": 17.4014,
@@ -419,7 +419,7 @@
       "models": [
         {
           "model": "glm-4.5",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 4.0003,
           "cachedInputPer1m": 0.7334,
           "outputPer1m": 14.6678,
@@ -428,7 +428,7 @@
         },
         {
           "model": "glm-4.5-air",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 0.7969,
           "cachedInputPer1m": 0.1593,
           "outputPer1m": 5.9763,
@@ -437,7 +437,7 @@
         },
         {
           "model": "glm-4.5-flash",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 0,
           "cachedInputPer1m": null,
           "outputPer1m": 0,
@@ -455,7 +455,7 @@
         },
         {
           "model": "glm-4.6",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 4.0003,
           "cachedInputPer1m": 0.7334,
           "outputPer1m": 14.6678,
@@ -482,7 +482,7 @@
         },
         {
           "model": "glm-4.7",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 2.9882,
           "cachedInputPer1m": 0.5976,
           "outputPer1m": 13.9446,
@@ -491,7 +491,7 @@
         },
         {
           "model": "glm-4.7-flash",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 0,
           "cachedInputPer1m": null,
           "outputPer1m": 0,
@@ -500,7 +500,7 @@
         },
         {
           "model": "glm-4.7-flashx",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 0.498,
           "cachedInputPer1m": 0.0996,
           "outputPer1m": 2.9882,
@@ -509,7 +509,7 @@
         },
         {
           "model": "glm-5",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 3.9842,
           "cachedInputPer1m": 0.9961,
           "outputPer1m": 17.9288,
@@ -518,7 +518,7 @@
         },
         {
           "model": "glm-5.1",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 5.9763,
           "cachedInputPer1m": 1.2948,
           "outputPer1m": 23.9051,
@@ -527,7 +527,7 @@
         },
         {
           "model": "glm-5.2",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 7.9684,
           "cachedInputPer1m": 1.9921,
           "outputPer1m": 27.8893,
@@ -536,7 +536,7 @@
         },
         {
           "model": "glm-5.3",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 7.9684,
           "cachedInputPer1m": 1.9921,
           "outputPer1m": 27.8893,
@@ -580,7 +580,7 @@
       "models": [
         {
           "model": "qwen-flash",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 0.3334,
           "cachedInputPer1m": 0.0667,
           "outputPer1m": 2.6669,
@@ -634,7 +634,7 @@
         },
         {
           "model": "qwen-plus",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 2.6669,
           "cachedInputPer1m": 0.5334,
           "outputPer1m": 8.0006,
@@ -652,7 +652,7 @@
         },
         {
           "model": "qwen-turbo",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 0.3334,
           "cachedInputPer1m": null,
           "outputPer1m": 1.3334,
@@ -697,7 +697,7 @@
         },
         {
           "model": "qwen3-14b",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 2.3335,
           "cachedInputPer1m": null,
           "outputPer1m": 9.3341,
@@ -706,7 +706,7 @@
         },
         {
           "model": "qwen3-235b-a22b",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 4.667,
           "cachedInputPer1m": null,
           "outputPer1m": 18.6682,
@@ -715,7 +715,7 @@
         },
         {
           "model": "qwen3-32b",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 4.667,
           "cachedInputPer1m": null,
           "outputPer1m": 18.6682,
@@ -724,7 +724,7 @@
         },
         {
           "model": "qwen3-8b",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 1.2001,
           "cachedInputPer1m": null,
           "outputPer1m": 4.667,
@@ -796,7 +796,7 @@
         },
         {
           "model": "qwen3-next-80b-a3b-thinking",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 3.3336,
           "cachedInputPer1m": null,
           "outputPer1m": 40.0032,
@@ -931,7 +931,7 @@
         },
         {
           "model": "qwen3.6-max-preview",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 8.6674,
           "cachedInputPer1m": 0.8667,
           "outputPer1m": 52.0042,
@@ -958,7 +958,7 @@
         },
         {
           "model": "qwen3.7-max",
-          "modelType": "decision",
+          "modelType": "text",
           "inputPer1m": 16.668,
           "cachedInputPer1m": 3.3336,
           "outputPer1m": 50.004,

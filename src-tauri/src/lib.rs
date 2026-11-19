@@ -61,7 +61,7 @@ use crate::commands::credentials::{
 use crate::commands::dashboard::get_dashboard_stats;
 use crate::commands::diagnostics::diagnose_request;
 use crate::commands::image::{
-    edit_image, generate_image, read_archived_image, send_vision_request,
+    edit_image, generate_image, list_image_history, read_archived_image, send_vision_request,
 };
 use crate::commands::market::{
     fetch_market_prices, get_market_fx, list_channel_price_annotations, list_market_prices,
@@ -151,6 +151,7 @@ pub fn run() {
             generate_image,
             send_vision_request,
             read_archived_image,
+            list_image_history,
             list_test_records,
             get_test_record,
             get_test_raw,

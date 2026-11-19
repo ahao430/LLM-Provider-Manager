@@ -40,13 +40,17 @@ const num = (cost, key) => {
   return typeof v === "number" ? v : null;
 };
 
-/** 与 Rust 端 classify 一致：输出图→图像；输入图→多模态；推理→决策；否则文本 */
-function classify(model) {
+/** 与 Rust 端 classify 一致：输出图→图像；输入图→多模态；纯推理系列→决策；否则文本。
+ * reasoning=true 对 glm/qwen3/MiniMax 等混合思考模型普遍为 true，不作为决策依据。 */
+function classify(model, modelId = "") {
   const out = model.modalities?.output ?? [];
   const inp = model.modalities?.input ?? [];
   if (out.includes("image")) return "image";
   if (inp.includes("image")) return "multimodal";
-  if (model.reasoning === true) return "decision";
+  const n = modelId.toLowerCase();
+  if (/^o\d/.test(n) || n.startsWith("r1") || n.startsWith("deepseek-r1") || n.startsWith("qwq")) {
+    return "decision";
+  }
   return "text";
 }
 
@@ -76,7 +80,7 @@ async function main() {
       const cacheRead = num(mv.cost, "cache_read");
       models.push({
         model: mid,
-        modelType: classify(mv),
+        modelType: classify(mv, mid),
         inputPer1m: input,
         cachedInputPer1m: cacheRead !== null && cacheRead > 0 ? cacheRead : null,
         outputPer1m: output,
