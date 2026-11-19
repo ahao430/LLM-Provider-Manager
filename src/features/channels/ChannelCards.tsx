@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -11,6 +12,8 @@ import { Switch } from "@/components/ui/switch";
 import { ProviderIcon } from "@/components/ProviderIcon";
 import { copyChannelCredential, refreshChannelBalance, type ChannelGroupRow, type ChannelRow, type LatestBalanceRow } from "@/lib/tauri";
 import { useSetChannelEnabled, useSetChannelPinned } from "@/features/channels/api";
+import { channelDisplayStatus } from "@/features/channels/opsStatus";
+import { listLatestModelTests } from "@/lib/tauri";
 
 interface ChannelCardsProps {
   channels: ChannelRow[];
@@ -168,6 +171,7 @@ function ChannelCard({
             {channel.hasPrimaryCredential ? "已配置凭证" : "未配置凭证"}
           </Badge>
           {channel.groupName ? <Badge variant="outline">{channel.groupName}</Badge> : null}
+          <OpsStatusBadge channel={channel} />
         </div>
         <p className="text-muted-foreground font-mono truncate text-xs" title={channel.chatBaseUrl}>
           {channel.chatBaseUrl}
@@ -198,5 +202,24 @@ function ChannelCard({
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+/** 运维状态灯（suspect 按最近测试自动推导，见 opsStatus.ts）。 */
+function OpsStatusBadge({ channel }: { channel: ChannelRow }) {
+  const { data: latest = [] } = useQuery({
+    queryKey: ["latest-model-tests"],
+    queryFn: listLatestModelTests,
+  });
+  const st = useMemo(() => {
+    const mine = latest.filter((t) => t.channelId === channel.id);
+    const status = mine.some((t) => t.status === "success") ? "success" : mine[0]?.status;
+    return channelDisplayStatus(channel, status);
+  }, [latest, channel]);
+  return (
+    <span className="inline-flex items-center gap-1" title={`运维状态：${st.meta.label}`}>
+      <span className={`size-2 rounded-full ${st.meta.dot}`} />
+      <span className="text-muted-foreground text-[10px]">{st.meta.label}</span>
+    </span>
   );
 }

@@ -35,6 +35,8 @@ pub struct RequestRecordRow {
     pub completed_at: Option<String>,
     /// Agent 探针所属会话 id（多轮续接合并展示用）；其余请求类型为 NULL
     pub session_id: Option<String>,
+    /// 所属故障事件（incident 聚合；多数记录为 NULL）
+    pub incident_id: Option<String>,
 }
 
 /// 模型列表页：每个 (渠道, 模型) 最近一次测试。
@@ -189,6 +191,7 @@ fn row_from(row: &rusqlite::Row) -> rusqlite::Result<RequestRecordRow> {
         created_at: row.get(22)?,
         completed_at: row.get(23)?,
         session_id: row.get(24)?,
+        incident_id: row.get(25)?,
     })
 }
 
@@ -198,7 +201,7 @@ pub fn list(conn: &Connection, limit: u32) -> AppResult<Vec<RequestRecordRow>> {
          r.protocol, r.request_type, r.status, r.request_ref, r.response_ref, r.error_code, \
          r.error_message, r.provider_request_id, r.http_status, r.ttfb_ms, r.ttft_ms, r.duration_ms, \
          r.input_tokens, r.output_tokens, r.cache_tokens, r.tokens_per_second, r.created_at, r.completed_at, \
-         r.session_id \
+         r.session_id, r.incident_id \
          FROM request_records r LEFT JOIN channels c ON r.channel_id = c.id \
          ORDER BY r.created_at DESC LIMIT ?1",
     )?;
@@ -215,7 +218,7 @@ pub fn get(conn: &Connection, trace_id: &str) -> AppResult<RequestRecordRow> {
          r.protocol, r.request_type, r.status, r.request_ref, r.response_ref, r.error_code, \
          r.error_message, r.provider_request_id, r.http_status, r.ttfb_ms, r.ttft_ms, r.duration_ms, \
          r.input_tokens, r.output_tokens, r.cache_tokens, r.tokens_per_second, r.created_at, r.completed_at, \
-         r.session_id \
+         r.session_id, r.incident_id \
          FROM request_records r LEFT JOIN channels c ON r.channel_id = c.id \
          WHERE r.trace_id = ?1",
     )?;
@@ -304,7 +307,7 @@ pub fn list_errors(conn: &Connection, limit: u32) -> AppResult<Vec<RequestRecord
          r.protocol, r.request_type, r.status, r.request_ref, r.response_ref, r.error_code, \
          r.error_message, r.provider_request_id, r.http_status, r.ttfb_ms, r.ttft_ms, r.duration_ms, \
          r.input_tokens, r.output_tokens, r.cache_tokens, r.tokens_per_second, r.created_at, r.completed_at, \
-         r.session_id \
+         r.session_id, r.incident_id \
          FROM request_records r LEFT JOIN channels c ON r.channel_id = c.id \
          WHERE r.status IN ({}) ORDER BY r.created_at DESC LIMIT ?1",
         ERROR_STATUSES.iter().map(|s| format!("'{s}'")).collect::<Vec<_>>().join(", ")

@@ -36,7 +36,7 @@ pub fn list_providers(conn: &Connection) -> AppResult<Vec<ProviderRow>> {
 const ROW_COLUMNS: &str = "c.id, c.name, c.provider_id, p.name, c.channel_type, c.base_url, \
      c.chat_base_url, c.anthropic_base_url, c.responses_base_url, c.chat_completions_url, \
      c.enabled, c.notes, c.created_at, c.updated_at, c.config_json, \
-     c.group_id, g.name, c.dashboard_pinned";
+     c.group_id, g.name, c.dashboard_pinned, c.ops_status";
 
 fn row_from(row: &rusqlite::Row) -> rusqlite::Result<ChannelRow> {
     let chat: String = row.get(6)?;
@@ -58,6 +58,7 @@ fn row_from(row: &rusqlite::Row) -> rusqlite::Result<ChannelRow> {
         provider_name: row.get(3)?,
         channel_type: row.get(4)?,
         base_url: row.get(5)?,
+        ops_status: row.get(18)?,
         chat_base_url: chat.clone(),
         anthropic_base_url: anthropic.clone(),
         responses_base_url: responses.clone(),
@@ -168,6 +169,21 @@ pub fn delete_group(conn: &Connection, id: &str) -> AppResult<()> {
         params![id],
     )?;
     conn.execute("DELETE FROM channel_groups WHERE id = ?1", params![id])?;
+    Ok(())
+}
+
+/// 设置渠道运维状态（枚举校验；suspect 为前端推导态不落库）。
+pub fn set_ops_status(conn: &Connection, id: &str, status: &str) -> AppResult<()> {
+    const ALLOWED: &[&str] = &["normal", "fault", "maintenance", "deprecated"];
+    if !ALLOWED.contains(&status) {
+        return Err(crate::error::AppError::Invalid(format!(
+            "非法运维状态: {status}（允许 normal/fault/maintenance/deprecated）"
+        )));
+    }
+    conn.execute(
+        "UPDATE channels SET ops_status = ?2, updated_at = ?3 WHERE id = ?1",
+        params![id, status, crate::util::now_rfc3339()],
+    )?;
     Ok(())
 }
 

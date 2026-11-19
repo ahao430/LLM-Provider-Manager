@@ -50,9 +50,10 @@ use crate::commands::billing::{
     list_recharges, update_bill, update_recharge,
 };
 use crate::commands::channels::{
-    create_channel, create_channel_group, delete_channel, delete_channel_group, get_channel,
-    list_channel_groups, list_channels, list_providers, provider_templates, rename_channel_group,
-    set_channel_dashboard_pinned, set_channel_enabled, update_channel,
+    create_channel, create_channel_group, create_incident, delete_channel, delete_channel_group,
+    get_channel, get_record_incident, list_channel_groups, list_channels, list_incidents,
+    list_providers, provider_templates, rename_channel_group, resolve_incident, save_channel_ops,
+    set_channel_dashboard_pinned, set_channel_enabled, set_channel_ops_status, update_channel,
 };
 use crate::commands::credentials::{
     clear_channel_credential, copy_channel_credential, export_channel_credentials,
@@ -120,6 +121,12 @@ pub fn run() {
             update_channel,
             delete_channel,
             set_channel_enabled,
+            set_channel_ops_status,
+            save_channel_ops,
+            create_incident,
+            resolve_incident,
+            list_incidents,
+            get_record_incident,
             list_channel_groups,
             create_channel_group,
             rename_channel_group,

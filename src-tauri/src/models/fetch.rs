@@ -85,6 +85,7 @@ pub async fn perform(target: FetchTarget) -> AppResult<RemoteModelList> {
         http_status: status,
         models,
         note,
+        previous_ids: None,
     })
 }
 

@@ -22,10 +22,15 @@ import {
   listChannelModels,
   listGlobalModels,
   listModelPrices,
+  createIncident,
+  listIncidents,
   listProviders,
   renameChannelGroup,
+  resolveIncident,
+  saveChannelOps,
   setChannelDashboardPinned,
   setChannelEnabled,
+  setChannelOpsStatus,
   updateChannel,
   upsertAgentCompat,
   upsertChannelModel,
@@ -33,6 +38,8 @@ import {
   type AgentCompatStatus,
   type ChannelInput,
   type ChannelModelInput,
+  type ChannelOps,
+  type ChannelOpsStatus,
   type ImportItem,
 } from "@/lib/tauri";
 
@@ -305,6 +312,65 @@ export function useDeleteModelPrice(channelModelId: string) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: modelKeys.prices(channelModelId) });
       void queryClient.invalidateQueries({ queryKey: modelKeys.effective(channelModelId) });
+    },
+  });
+}
+
+// ------------------------------------------------------------------
+// 渠道运维（v0.33.0：健康状态 / 运维档案 / 故障事件）
+// ------------------------------------------------------------------
+
+export function useSetChannelOpsStatus() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: ChannelOpsStatus }) =>
+      setChannelOpsStatus(id, status),
+    onSuccess: (_data, { id }) => {
+      void queryClient.invalidateQueries({ queryKey: channelKeys.all });
+      void queryClient.invalidateQueries({ queryKey: channelKeys.detail(id) });
+      void queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+    },
+  });
+}
+
+export function useSaveChannelOps() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ops }: { id: string; ops: ChannelOps }) => saveChannelOps(id, ops),
+    onSuccess: (_data, { id }) => {
+      void queryClient.invalidateQueries({ queryKey: channelKeys.detail(id) });
+    },
+  });
+}
+
+export function useIncidents(channelId?: string) {
+  return useQuery({
+    queryKey: ["incidents", channelId ?? "all"],
+    queryFn: () => listIncidents(channelId),
+  });
+}
+
+export function useCreateIncident() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { channelId: string; title: string; traceIds: string[]; rootCause?: string | null }) =>
+      createIncident(input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["incidents"] });
+      void queryClient.invalidateQueries({ queryKey: ["test-records"] });
+      void queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+    },
+  });
+}
+
+export function useResolveIncident() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, rootCause }: { id: string; rootCause?: string | null }) =>
+      resolveIncident(id, rootCause),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["incidents"] });
+      void queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
     },
   });
 }

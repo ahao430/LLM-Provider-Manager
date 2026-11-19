@@ -13,6 +13,7 @@ import {
 
 import { PageHeader } from "@/components/PageHeader";
 import { goBackOr } from "@/lib/sessionState";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -36,16 +37,27 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery } from "@tanstack/react-query";
-import { listChannelModels, type AgentCompatStatus, type BalanceQuery } from "@/lib/tauri";
+import {
+  listChannelModels,
+  type AgentCompatStatus,
+  type BalanceQuery,
+  type ChannelOpsStatus,
+  type ChannelDetail,
+} from "@/lib/tauri";
 import {
   useAgentCompat,
   useChannel,
   useDeleteChannel,
+  useIncidents,
   useLaunchAgent,
   useProviders,
+  useResolveIncident,
+  useSaveChannelOps,
   useSetChannelEnabled,
+  useSetChannelOpsStatus,
   useUpsertAgentCompat,
 } from "@/features/channels/api";
+import { channelDisplayStatus } from "@/features/channels/opsStatus";
 import { ChannelFormDialog } from "@/features/channels/ChannelFormDialog";
 import { CredentialField } from "@/features/channels/CredentialField";
 import { ModelsTab } from "@/features/channels/ModelsTab";
@@ -125,6 +137,7 @@ export function ChannelDetailPage() {
             <Button variant="outline" onClick={() => setEditOpen(true)}>
               <Pencil className="size-4" />编辑
             </Button>
+            <OpsStatusControl channel={channel} />
             <Button variant="outline" onClick={() => setBalanceOpen(true)}>
               <CircleDollarSign className="size-4" />余额查询
             </Button>
@@ -147,11 +160,13 @@ export function ChannelDetailPage() {
           <TabsTrigger value="models">模型</TabsTrigger>
           <TabsTrigger value="pricing">价格</TabsTrigger>
           <TabsTrigger value="funds">资金</TabsTrigger>
+          <TabsTrigger value="incidents">故障</TabsTrigger>
           <TabsTrigger value="compat">Agent 兼容性</TabsTrigger>
           <TabsTrigger value="launcher">启动器</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
+          <OpsArchiveCard channel={channel} />
           <Card>
             <CardHeader>
               <CardTitle>Base URL（按协议）</CardTitle>
@@ -175,6 +190,10 @@ export function ChannelDetailPage() {
                 </dd>
                 <dt className="text-muted-foreground">TLS 验证</dt>
                 <dd>{channel.tlsVerify ? "启用" : "关闭（有风险）"}</dd>
+                <dt className="text-muted-foreground">运维状态</dt>
+                <dd>
+                  <OpsStatusControl channel={channel} compact />
+                </dd>
               </dl>
               {channel.externalLinks.length > 0 ? (
                 <>
@@ -228,6 +247,10 @@ export function ChannelDetailPage() {
 
         <TabsContent value="funds" className="space-y-4">
           <FundsTab channelId={channel.id} balanceProvider={channel.balanceQuery?.provider} />
+        </TabsContent>
+
+        <TabsContent value="incidents" className="space-y-4">
+          <IncidentsTab channelId={channel.id} />
         </TabsContent>
 
         <TabsContent value="compat" className="space-y-4">
@@ -661,5 +684,198 @@ function BalanceQueryDialog({
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ------------------------------------------------------------------
+// 运维状态控制（Badge 展示 + 手动设置；suspect 推导见 opsStatus.ts）
+// ------------------------------------------------------------------
+
+function OpsStatusControl({ channel, compact }: { channel: ChannelDetail; compact?: boolean }) {
+  const setStatus = useSetChannelOpsStatus();
+  const st = channelDisplayStatus(channel, null);
+  const current = channel.opsStatus as ChannelOpsStatus;
+  return (
+    <div className="inline-flex items-center gap-1.5">
+      {compact ? (
+        <>
+          <span className={`size-2 rounded-full ${st.meta.dot}`} />
+          <span className="text-xs">{st.meta.label}</span>
+        </>
+      ) : (
+        <Badge variant={st.meta.badge} className="gap-1">
+          <span className={`size-2 rounded-full ${st.meta.dot}`} />
+          {st.meta.label}
+        </Badge>
+      )}
+      <Select
+        value={current}
+        onValueChange={(v) => setStatus.mutate({ id: channel.id, status: v as ChannelOpsStatus })}
+        disabled={setStatus.isPending}
+      >
+        <SelectTrigger className="h-7 w-8 border-dashed px-1" title="手动设置运维状态" />
+      </Select>
+      <SelectContent className="hidden" />
+    </div>
+  );
+}
+
+// ------------------------------------------------------------------
+// 运维档案卡（控制台 / 联系方式 / 有效期 / key 轮换；config_json.ops）
+// ------------------------------------------------------------------
+
+function OpsArchiveCard({ channel }: { channel: ChannelDetail }) {
+  const save = useSaveChannelOps();
+  const ops = channel.ops;
+  const [form, setForm] = useState({
+    consoleUrl: ops?.consoleUrl ?? "",
+    contact: ops?.contact ?? "",
+    expiresAt: ops?.expiresAt ?? "",
+    keyRotationNote: ops?.keyRotationNote ?? "",
+  });
+  const [editing, setEditing] = useState(false);
+
+  const expiresSoon =
+    form.expiresAt &&
+    (() => {
+      const d = new Date(form.expiresAt);
+      if (Number.isNaN(d.getTime())) return false;
+      const days = (d.getTime() - Date.now()) / 86_400_000;
+      return days >= 0 && days <= 7;
+    })();
+
+  async function handleSave() {
+    try {
+      await save.mutateAsync({ id: channel.id, ops: form });
+      toast.success("运维档案已保存");
+      setEditing(false);
+    } catch (e) {
+      toast.error(`保存失败：${e}`);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-start justify-between space-y-0">
+        <div className="space-y-1.5">
+          <CardTitle className="text-base">运维档案</CardTitle>
+          <CardDescription>
+            控制台 / 联系方式 / 有效期 / key 轮换备注（出问题找得到人）；仅本机存储。
+          </CardDescription>
+        </div>
+        <Button size="sm" variant="outline" onClick={() => setEditing(!editing)}>
+          {editing ? "取消编辑" : "编辑"}
+        </Button>
+      </CardHeader>
+      <CardContent>
+        {editing ? (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label>控制台地址</Label>
+              <Input value={form.consoleUrl} onChange={(e) => setForm({ ...form, consoleUrl: e.target.value })} placeholder="https://..." />
+            </div>
+            <div className="space-y-1.5">
+              <Label>联系方式 / 工单渠道</Label>
+              <Input value={form.contact} onChange={(e) => setForm({ ...form, contact: e.target.value })} placeholder="微信群 / 工单地址 / 邮箱" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>余额 / 合同有效期</Label>
+              <Input value={form.expiresAt} onChange={(e) => setForm({ ...form, expiresAt: e.target.value })} placeholder="2026-12-31 或文字说明" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>key 轮换备注</Label>
+              <Input value={form.keyRotationNote} onChange={(e) => setForm({ ...form, keyRotationNote: e.target.value })} placeholder="如：每季度轮换" />
+            </div>
+            <div className="sm:col-span-2 flex justify-end">
+              <Button size="sm" onClick={handleSave} disabled={save.isPending}>
+                {save.isPending ? "保存中…" : "保存"}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <dl className="grid grid-cols-1 gap-x-8 gap-y-2 text-sm sm:grid-cols-[max-content_1fr]">
+            <dt className="text-muted-foreground">控制台</dt>
+            <dd>
+              {form.consoleUrl ? (
+                <a href={form.consoleUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline break-all">
+                  {form.consoleUrl}
+                </a>
+              ) : (
+                <span className="text-muted-foreground">—（点击「编辑」填写）</span>
+              )}
+            </dd>
+            <dt className="text-muted-foreground">联系方式</dt>
+            <dd>{form.contact || <span className="text-muted-foreground">—</span>}</dd>
+            <dt className="text-muted-foreground">有效期</dt>
+            <dd className={expiresSoon ? "font-medium text-yellow-600" : ""}>
+              {form.expiresAt || <span className="text-muted-foreground">—</span>}
+              {expiresSoon ? "（7 天内到期）" : ""}
+            </dd>
+            <dt className="text-muted-foreground">key 轮换</dt>
+            <dd>{form.keyRotationNote || <span className="text-muted-foreground">—</span>}</dd>
+          </dl>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ------------------------------------------------------------------
+// 故障事件 Tab（列表 + 标记解决）
+// ------------------------------------------------------------------
+
+function IncidentsTab({ channelId }: { channelId: string }) {
+  const { data: incidents = [] } = useIncidents(channelId);
+  const resolve = useResolveIncident();
+  if (incidents.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-8">
+          <p className="text-muted-foreground text-center text-sm">
+            暂无故障事件。在测试记录页多选失败记录后「标记为故障事件」。
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">故障事件</CardTitle>
+        <CardDescription>相关失败记录的聚合复盘（起止 / 根因），只做标记不改记录状态。</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {incidents.map((i) => (
+          <div key={i.id} className="rounded-lg border p-3">
+            <div className="flex flex-wrap items-center gap-2">
+              {i.resolvedAt ? (
+                <Badge variant="outline">已解决</Badge>
+              ) : (
+                <Badge variant="destructive">未解决</Badge>
+              )}
+              <span className="text-sm font-medium">{i.title}</span>
+              <span className="text-muted-foreground text-xs">
+                {i.startedAt.slice(0, 19).replace("T", " ")} · {i.recordCount} 条记录
+              </span>
+            </div>
+            {i.rootCause ? (
+              <p className="text-muted-foreground mt-1.5 text-xs">根因：{i.rootCause}</p>
+            ) : null}
+            {!i.resolvedAt ? (
+              <div className="mt-2 flex justify-end">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={resolve.isPending}
+                  onClick={() => resolve.mutate({ id: i.id })}
+                >
+                  标记解决
+                </Button>
+              </div>
+            ) : null}
+          </div>
+        ))}
+      </CardContent>
+    </Card>
   );
 }

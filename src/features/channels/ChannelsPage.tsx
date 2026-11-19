@@ -39,6 +39,7 @@ import {
   copyChannelCredential,
   listChannelModels,
   listLatestBalances,
+  listLatestModelTests,
   refreshChannelBalance,
   MODEL_TYPE_LABELS,
   PROTOCOL_LABELS,
@@ -53,6 +54,7 @@ import { CredentialsDialog } from "@/features/channels/CredentialsDialog";
 import { ManageGroupsDialog } from "@/features/channels/ManageGroupsDialog";
 import { ModelTestButton } from "@/features/models/ModelTestButton";
 import { LatestTestResult, useLatestModelTestMap } from "@/features/models/LatestTestResult";
+import { OPS_STATUS_META, channelDisplayStatus } from "@/features/channels/opsStatus";
 import { useChannelGroups, useChannels, useSetChannelEnabled } from "@/features/channels/api";
 
 const columnHelper = createColumnHelper<ChannelRow>();
@@ -88,6 +90,7 @@ export function ChannelsPage() {
   const [groupFilter, setGroupFilter] = useState(savedUi.groupFilter);
   const [expandedId, setExpandedId] = useState<string | null>(savedUi.expandedId);
   const [balanceBusy, setBalanceBusy] = useState<string | null>(null);
+  const [opsFilter, setOpsFilter] = useState(""); // 空 = 全部（疑似异常按最近测试推导）
   const [sorting, setSorting] = useState<SortingState>(
     () => loadSessionState("lcm-ui-channels-sorting", [{ id: "name", desc: false }] as SortingState)
   );
@@ -113,11 +116,35 @@ export function ChannelsPage() {
     return map;
   }, [latestBalances]);
 
-  // 分组筛选（两个视图共用）；空串 = 全部分组
-  const visibleChannels = useMemo(
-    () => (groupFilter ? channels.filter((c) => c.groupId === groupFilter) : channels),
-    [channels, groupFilter]
-  );
+  // 渠道级最近测试列表（每渠道每模型最近一次）
+  const { data: latestList = [] } = useQuery({
+    queryKey: ["latest-model-tests"],
+    queryFn: listLatestModelTests,
+  });
+
+  // 渠道级最近测试状态（聚合：有任意 success → 该渠道记为 success；否则最后见到的非成功态）
+  const channelTestStatus = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const t of latestList) {
+      const prev = m.get(t.channelId);
+      if (prev === "success") continue;
+      m.set(t.channelId, t.status);
+    }
+    return m;
+  }, [latestList]);
+
+  // 运维状态过滤（空 = 全部；suspect 由 channelTestStatus 推导）
+  const visibleChannels = useMemo(() => {
+    let list = groupFilter ? channels.filter((c) => c.groupId === groupFilter) : channels;
+    if (opsFilter) {
+      list = list.filter((c) => {
+        const st = channelDisplayStatus(c, channelTestStatus.get(c.id)).status;
+        return st === opsFilter;
+      });
+    }
+    return list;
+  }, [channels, groupFilter, opsFilter, channelTestStatus]);
+
 
   async function refreshBalance(id: string) {
     setBalanceBusy(id);
@@ -245,6 +272,22 @@ export function ChannelsPage() {
         },
       }),
       columnHelper.display({
+        id: "ops",
+        header: "状态",
+        cell: ({ row }) => {
+          const st = channelDisplayStatus(
+            row.original,
+            channelTestStatus.get(row.original.id),
+          );
+          return (
+            <span className="inline-flex items-center gap-1.5" title={`运维状态：${st.meta.label}${st.status === "suspect" ? "（最近测试未成功）" : ""}`}>
+              <span className={`size-2 rounded-full ${st.meta.dot}`} />
+              <span className="text-xs">{st.meta.label}</span>
+            </span>
+          );
+        },
+      }),
+      columnHelper.display({
         id: "balance",
         header: "余额",
         cell: ({ row }) => {
@@ -353,19 +396,34 @@ export function ChannelsPage() {
               凭证一览
             </Button>
             {channelsView === "list" ? (
-              <Select value={groupFilter} onValueChange={setGroupFilter}>
-                <SelectTrigger className="h-9 w-40">
-                  <SelectValue placeholder="全部分组" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">全部分组</SelectItem>
-                  {groups.map((g) => (
-                    <SelectItem key={g.id} value={g.id}>
-                      {g.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <>
+                <Select value={groupFilter} onValueChange={setGroupFilter}>
+                  <SelectTrigger className="h-9 w-36">
+                    <SelectValue placeholder="全部分组" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">全部分组</SelectItem>
+                    {groups.map((g) => (
+                      <SelectItem key={g.id} value={g.id}>
+                        {g.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={opsFilter} onValueChange={setOpsFilter}>
+                  <SelectTrigger className="h-9 w-36" title="按运维状态筛选（疑似异常按最近测试自动推导）">
+                    <SelectValue placeholder="全部状态" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">全部状态</SelectItem>
+                    {Object.entries(OPS_STATUS_META).map(([k, v]) => (
+                      <SelectItem key={k} value={k}>
+                        {v.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </>
             ) : null}
             <Button onClick={() => setCreateOpen(true)}>
               <Plus className="size-4" />新建渠道

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowLeft, RefreshCw, Terminal } from "lucide-react";
+import { ArrowLeft, RefreshCw, Terminal, Flag } from "lucide-react";
 
 import { PageHeader } from "@/components/PageHeader";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { copyTestCurl, diagnoseRequest, type Attribution, type Diagnosis } from "@/lib/tauri";
+import { copyTestCurl, diagnoseRequest, type Attribution, type Diagnosis, getRecordIncident } from "@/lib/tauri";
 import { goBackOr } from "@/lib/sessionState";
 import { ConversationBoard } from "@/features/requests/ConversationBoard";
 import { useReparse, useTestRaw, useTestRecord, useReplayRequest } from "@/features/api-testing/api";
@@ -50,6 +50,7 @@ export function RequestDetailPage() {
       <PageHeader
         title={`测试 ${traceId.slice(0, 8)}…`}
         description={`${detail.channelName ?? "未知渠道"} · ${detail.model ?? "—"} · ${detail.protocol ?? "—"}`}
+        extra={<RecordIncidentBadge traceId={traceId} />}
         actions={
           <>
             <Button
@@ -360,5 +361,24 @@ function Metric({ label, value }: { label: string; value: string | number | null
       <dt className="text-muted-foreground">{label}</dt>
       <dd className="font-mono text-xs break-all">{value ?? "—"}</dd>
     </div>
+  );
+}
+
+// ------------------------------------------------------------------
+// 记录所属故障事件徽章（getRecordIncident；只读展示）
+// ------------------------------------------------------------------
+
+function RecordIncidentBadge({ traceId }: { traceId: string }) {
+  const { data: incident } = useQuery({
+    queryKey: ["record-incident", traceId],
+    queryFn: () => getRecordIncident(traceId),
+  });
+  if (!incident) return null;
+  return (
+    <Badge variant={incident.resolvedAt ? "outline" : "destructive"} className="gap-1">
+      <Flag className="size-3" />
+      故障：{incident.title}
+      {incident.resolvedAt ? "（已解决）" : ""}
+    </Badge>
   );
 }

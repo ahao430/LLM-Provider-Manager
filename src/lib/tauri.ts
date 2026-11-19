@@ -102,6 +102,8 @@ export interface ChannelRow {
   groupName: string | null;
   /** 置顶到首页仪表盘 */
   dashboardPinned: boolean;
+  /** 运维状态（normal / fault / maintenance / deprecated；suspect 为前端推导） */
+  opsStatus: string;
 }
 
 export interface ChannelGroupRow {
@@ -125,6 +127,8 @@ export interface ChannelDetail extends ChannelRow {
   tlsVerify: boolean;
   externalLinks: ExternalLinkInput[];
   balanceQuery: BalanceQuery | null;
+  /** 运维档案（config_json.ops） */
+  ops: ChannelOps | null;
 }
 
 export function listProviders(): Promise<ProviderRow[]> {
@@ -499,6 +503,8 @@ export interface RemoteModelList {
   httpStatus: number;
   models: RemoteModel[];
   note: string | null;
+  /** 上次成功获取的模型 id 集合（首次获取为 null）——供上下架 diff */
+  previousIds: string[] | null;
 }
 
 export interface ImportItem {
@@ -757,6 +763,8 @@ export interface RequestRecordRow {
   completedAt: string | null;
   /** Agent 探针所属会话 id（多轮续接合并展示用）；其余请求类型为 null */
   sessionId: string | null;
+  /** 所属故障事件（incident 聚合；多数记录为 null） */
+  incidentId: string | null;
 }
 
 export interface ProcessingEventRow {
@@ -788,6 +796,56 @@ export function sendTestRequest(req: ApiTestRequestPayload): Promise<TestRunResu
 /** 把若干条测试记录关联为同一会话（A/B 对比两腿等）。 */
 export function setRecordsSession(traceIds: string[], sessionId: string): Promise<void> {
   return invoke<void>("set_records_session", { traceIds, sessionId });
+}
+
+export type ChannelOpsStatus = "normal" | "fault" | "maintenance" | "deprecated";
+
+export interface ChannelOps {
+  consoleUrl: string | null;
+  contact: string | null;
+  expiresAt: string | null;
+  keyRotationNote: string | null;
+}
+
+export function setChannelOpsStatus(id: string, status: ChannelOpsStatus): Promise<void> {
+  return invoke<void>("set_channel_ops_status", { id, status });
+}
+
+export function saveChannelOps(id: string, ops: ChannelOps): Promise<void> {
+  return invoke<void>("save_channel_ops", { id, ops });
+}
+
+/** 故障事件行（recordCount = 关联失败记录数）。 */
+export interface IncidentRow {
+  id: string;
+  channelId: string;
+  title: string;
+  startedAt: string;
+  resolvedAt: string | null;
+  rootCause: string | null;
+  createdAt: string;
+  recordCount: number;
+}
+
+export function createIncident(input: {
+  channelId: string;
+  title: string;
+  traceIds: string[];
+  rootCause?: string | null;
+}): Promise<string> {
+  return invoke<string>("create_incident", { input: undefined, ...input } as never);
+}
+
+export function resolveIncident(id: string, rootCause?: string | null): Promise<void> {
+  return invoke<void>("resolve_incident", { id, rootCause: rootCause ?? null });
+}
+
+export function listIncidents(channelId?: string): Promise<IncidentRow[]> {
+  return invoke<IncidentRow[]>("list_incidents", { channelId: channelId ?? null });
+}
+
+export function getRecordIncident(traceId: string): Promise<IncidentRow | null> {
+  return invoke<IncidentRow | null>("get_record_incident", { traceId });
 }
 
 export async function sendTestStream(
@@ -900,6 +958,10 @@ export interface DashboardStats {
   monthlyCosts: MonthCost[];
   recentRequests: RequestRecordRow[];
   recentErrors: RequestRecordRow[];
+  /** 未解决故障事件数 */
+  incidentOpen: number;
+  /** 故障确认渠道数 */
+  channelFault: number;
 }
 
 export function getDashboardStats(): Promise<DashboardStats> {

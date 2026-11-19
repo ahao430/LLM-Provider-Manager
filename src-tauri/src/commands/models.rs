@@ -4,7 +4,7 @@ use rusqlite::Connection;
 use tauri::State;
 
 use crate::channels::domain::{ChannelModelInput, ChannelModelRow};
-use crate::error::AppResult;
+use crate::error::{AppError, AppResult};
 use crate::models::domain::{
     AddPriceInput, EffectivePrice, GlobalModelRow, ImportOutcome, ModelPriceRow, RemoteModelList,
 };
@@ -138,7 +138,34 @@ pub async fn fetch_channel_model_list(
         let conn = db(&state)?;
         fetch::prepare(&conn, &channel_id)?
     }; // 锁在此释放
-    fetch::perform(target).await
+    let mut list = fetch::perform(target).await?;
+
+    // 上下架 diff 基线：读上次获取快照（锁内），并把本次成功结果写成新快照（每渠道只留最新一条）
+    let previous_ids: Option<Vec<String>> = {
+        let conn = db(&state)?;
+        let prev: Option<String> = conn
+            .query_row(
+                "SELECT model_ids_json FROM channel_model_fetches channel_model_fetches_ WHERE channel_id = ?1",
+                rusqlite::params![channel_id],
+                |r| r.get(0),
+            )
+            .ok();
+        let prev: Option<Vec<String>> = prev.and_then(|json| serde_json::from_str(&json).ok());
+        let ids_json =
+            serde_json::to_string(&list.models.iter().map(|m| m.id.clone()).collect::<Vec<_>>())
+                .map_err(|e| AppError::Invalid(e.to_string()))?;
+        conn.execute(
+            "INSERT INTO channel_model_fetches (channel_id, fetched_at, model_ids_json) VALUES (?1, ?2, ?3)",
+            rusqlite::params![channel_id, crate::util::now_rfc3339(), ids_json],
+        )?;
+        conn.execute(
+            "DELETE FROM channel_model_fetches WHERE channel_id = ?1 AND id NOT IN (SELECT id FROM channel_model_fetches WHERE channel_id = ?1 ORDER BY id DESC LIMIT 1)",
+            rusqlite::params![channel_id],
+        )?;
+        prev
+    };
+    list.previous_ids = previous_ids;
+    Ok(list)
 }
 
 #[tauri::command]

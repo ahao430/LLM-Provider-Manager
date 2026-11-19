@@ -143,6 +143,7 @@ pub fn get(conn: &Connection, id: &str) -> AppResult<ChannelDetail> {
         tls_verify: config.tls_verify,
         external_links: config.external_links,
         balance_query: config.balance_query,
+        ops: config.ops,
     })
 }
 

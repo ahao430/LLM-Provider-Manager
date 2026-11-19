@@ -5,10 +5,12 @@ interface PageHeaderProps {
   description?: string;
   className?: string;
   actions?: React.ReactNode;
+  /** 标题旁的附加徽章区（如所属故障事件） */
+  extra?: React.ReactNode;
 }
 
 /** 页面统一标题区（滚动吸顶：负 margin 盖住内容 wrapper 的 p-6，全宽贴顶）。 */
-export function PageHeader({ title, description, className, actions }: PageHeaderProps) {
+export function PageHeader({ title, description, className, actions, extra }: PageHeaderProps) {
   return (
     <div
       className={cn(
@@ -17,7 +19,10 @@ export function PageHeader({ title, description, className, actions }: PageHeade
       )}
     >
       <div className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+          {extra}
+        </div>
         {description ? <p className="text-muted-foreground text-sm">{description}</p> : null}
       </div>
       {actions ? <div className="flex items-center gap-2">{actions}</div> : null}

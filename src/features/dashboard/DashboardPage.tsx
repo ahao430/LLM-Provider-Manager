@@ -58,6 +58,14 @@ export function DashboardPage() {
           note={`成功 ${stats.requests.success} · 失败 ${stats.requests.failed} · 成功率 ${successRate}%`}
           onClick={() => navigate("/requests")}
         />
+        {(stats.incidentOpen > 0 || stats.channelFault > 0) ? (
+          <StatCard
+            title="需要关注"
+            value={`${stats.incidentOpen + stats.channelFault}`}
+            note={`未解决故障 ${stats.incidentOpen} · 故障渠道 ${stats.channelFault}`}
+            onClick={() => navigate("/requests")}
+          />
+        ) : null}
         {/* 置顶渠道卡片：与统计卡同一网格流式排布（前面有空位就接排，不强制换行） */}
         <PinnedChannelCards />
       </div>

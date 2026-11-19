@@ -733,8 +733,15 @@ function PriceAnnotationDialog({
 function ModelManageDialog({ channelId, onClose }: { channelId: string; onClose: () => void }) {
   const fetchList = useFetchModelList(channelId);
   const importMutation = useImportModels(channelId);
+  const { data: localModels = [] } = useChannelModels(channelId);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const remote = fetchList.data;
+
+  // 上下架 diff：远端本次列表 vs 上次获取快照（previousIds）vs 本地库
+  const remoteIds = useMemo(() => new Set((remote?.models ?? []).map((m: RemoteModel) => m.id)), [remote]);
+  const localIds = useMemo(() => new Set(localModels.map((m) => m.actualModelId)), [localModels]);
+  const prevIds = useMemo(() => new Set(remote?.previousIds ?? []), [remote]);
+  const removedLocal = useMemo(() => [...localIds].filter((id) => !remoteIds.has(id)), [remoteIds, localIds]);
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -746,10 +753,10 @@ function ModelManageDialog({ channelId, onClose }: { channelId: string; onClose:
   }
 
   function selectAll() {
-    if (remote && selected.size === remote.models.length) {
+    if (remote && selected.size === remoteIds.size) {
       setSelected(new Set());
     } else if (remote) {
-      setSelected(new Set(remote.models.map((m: RemoteModel) => m.id)));
+      setSelected(new Set(remoteIds));
     }
   }
 
@@ -769,7 +776,7 @@ function ModelManageDialog({ channelId, onClose }: { channelId: string; onClose:
     }
   }
 
-  const allSelected = remote ? selected.size === remote.models.length : false;
+  const allSelected = remote ? selected.size === remoteIds.size : false;
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
@@ -813,7 +820,10 @@ function ModelManageDialog({ channelId, onClose }: { channelId: string; onClose:
             {remote.models.length === 0 ? (
               <p className="text-muted-foreground text-sm">渠道返回了空列表。</p>
             ) : (
-              remote.models.map((m: RemoteModel) => (
+              remote.models.map((m: RemoteModel) => {
+                const isNew = !localIds.has(m.id);
+                const appearedSinceLast = prevIds.size > 0 && !prevIds.has(m.id);
+                return (
                 <label
                   key={m.id}
                   className="hover:bg-accent/50 flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 text-sm"
@@ -825,15 +835,26 @@ function ModelManageDialog({ channelId, onClose }: { channelId: string; onClose:
                     className="accent-primary size-4"
                   />
                   <code className="text-xs">{m.id}</code>
+                  {isNew ? <Badge variant="default" className="text-[10px]">新增</Badge> : null}
+                  {appearedSinceLast ? (
+                    <Badge variant="outline" className="text-[10px]">上次获取后新增</Badge>
+                  ) : null}
                   {selected.has(m.id) ? <Check className="text-muted-foreground size-3" /> : null}
                 </label>
-              ))
+                );
+              })
             )}
           </div>
         ) : (
           <p className="text-muted-foreground text-sm">点击「获取模型列表」开始。</p>
         )}
 
+        {removedLocal.length > 0 && remote ? (
+          <div className="text-muted-foreground rounded-md border border-dashed p-2 text-xs">
+            本地有、远端本次未返回 {removedLocal.length} 个（疑似下架，不自动删除）：
+            <code className="ml-1 break-all">{removedLocal.join("、")}</code>
+          </div>
+        ) : null}
         <DialogFooter>
           <span className="text-muted-foreground mr-auto text-xs">已选 {selected.size} 个</span>
           <Button variant="outline" onClick={onClose}>

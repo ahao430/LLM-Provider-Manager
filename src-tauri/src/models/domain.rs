@@ -104,6 +104,9 @@ pub struct RemoteModelList {
     pub http_status: u16,
     pub models: Vec<RemoteModel>,
     pub note: Option<String>,
+    /// 上次成功获取的模型 id 集合（首次获取为 None）——供上下架 diff
+    #[serde(default)]
+    pub previous_ids: Option<Vec<String>>,
 }
 
 /// 导入结果（如实报告创建与跳过）。

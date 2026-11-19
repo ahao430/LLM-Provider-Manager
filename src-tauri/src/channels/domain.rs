@@ -139,6 +139,22 @@ pub struct ChannelConfig {
     pub tls_verify: bool,
     pub external_links: Vec<ExternalLink>,
     pub balance_query: Option<BalanceQuery>,
+    /// 运维档案（v0.33.0：控制台 / 联系方式 / 有效期 / key 轮换备注；serde default 向后兼容）
+    pub ops: Option<ChannelOps>,
+}
+
+/// 渠道运维档案（config_json.ops；全部可选，出问题找得到人、看得到到期）。
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase", default)]
+pub struct ChannelOps {
+    /// 服务商控制台地址
+    pub console_url: Option<String>,
+    /// 联系方式 / 工单渠道（不含密钥）
+    pub contact: Option<String>,
+    /// 余额 / 合同有效期（YYYY-MM-DD 或自由文本）
+    pub expires_at: Option<String>,
+    /// key 轮换备注
+    pub key_rotation_note: Option<String>,
 }
 
 /// 渠道列表行（含凭证状态概览）。
@@ -175,6 +191,8 @@ pub struct ChannelRow {
     pub group_name: Option<String>,
     /// 置顶到首页仪表盘
     pub dashboard_pinned: bool,
+    /// 运维状态（normal / fault / maintenance / deprecated；suspect 为前端推导不落库）
+    pub ops_status: String,
 }
 
 /// 渠道分组行。
@@ -216,6 +234,8 @@ pub struct ChannelDetail {
     pub tls_verify: bool,
     pub external_links: Vec<ExternalLink>,
     pub balance_query: Option<BalanceQuery>,
+    /// 运维档案（config_json.ops）
+    pub ops: Option<ChannelOps>,
 }
 
 /// 创建 / 更新渠道的输入。

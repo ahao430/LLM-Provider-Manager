@@ -66,6 +66,10 @@ pub struct DashboardStats {
     pub monthly_costs: Vec<MonthCost>,
     pub recent_requests: Vec<records::RequestRecordRow>,
     pub recent_errors: Vec<records::RequestRecordRow>,
+    /// 未解决故障事件数（incidents.resolved_at IS NULL）
+    pub incident_open: i64,
+    /// 处于「故障确认」状态的渠道数
+    pub channel_fault: i64,
 }
 
 fn currency_sums(conn: &Connection, table: &str) -> Vec<CurrencyAmount> {
@@ -201,6 +205,20 @@ pub fn compute(conn: &Connection) -> DashboardStats {
         monthly_costs,
         recent_requests: records::list(conn, 5).unwrap_or_default(),
         recent_errors: records::list_errors(conn, 5).unwrap_or_default(),
+        incident_open: conn
+            .query_row(
+                "SELECT COUNT(*) FROM incidents WHERE resolved_at IS NULL",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap_or(0),
+        channel_fault: conn
+            .query_row(
+                "SELECT COUNT(*) FROM channels WHERE ops_status = 'fault'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap_or(0),
     }
 }
 

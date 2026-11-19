@@ -4,7 +4,20 @@ import { PageHeader } from "@/components/PageHeader";
 import { loadSessionState, saveSessionState } from "@/lib/sessionState";
 import { Pagination } from "@/components/Pagination";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
+import { ChevronDown, ChevronRight, Flag } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
@@ -23,6 +36,7 @@ import {
 } from "@/components/ui/table";
 import { PROTOCOL_LABELS, type Protocol, type RequestRecordRow } from "@/lib/tauri";
 import { useTestRecords } from "@/features/api-testing/api";
+import { useCreateIncident } from "@/features/channels/api";
 
 const STATUS_VARIANT: Record<string, "default" | "destructive" | "secondary" | "outline"> = {
   success: "default",
@@ -81,16 +95,23 @@ export function RequestsPage() {
   const [page, setPage] = useState(savedUi.page);
   const [pageSize, setPageSize] = useState(savedUi.pageSize);
   const [typeFilter, setTypeFilter] = useState<TypeFilter>(savedUi.typeFilter);
+  const [statusFilter, setStatusFilter] = useState("");
   const [expandedSession, setExpandedSession] = useState<string | null>(null);
+  // 故障事件多选（仅普通行）
+  const [selectedTraces, setSelectedTraces] = useState<Set<string>>(new Set());
+  const [incidentOpen, setIncidentOpen] = useState(false);
   useEffect(() => {
     saveSessionState("lcm-ui-requests", { page, pageSize, typeFilter });
   }, [page, pageSize, typeFilter]);
 
-  // 类型筛选（记录数少，纯前端过滤；筛选变化回第一页）
-  const filteredRecords = useMemo(
-    () => (typeFilter === "all" ? records : records.filter((r) => r.requestType === typeFilter)),
-    [records, typeFilter]
-  );
+  // 类型 + 状态筛选（记录数少，纯前端过滤；筛选变化回第一页）
+  const filteredRecords = useMemo(() => {
+    let list = typeFilter === "all" ? records : records.filter((r) => r.requestType === typeFilter);
+    if (statusFilter === "ok") list = list.filter((r) => r.status === "success");
+    else if (statusFilter === "bad")
+      list = list.filter((r) => r.status !== "success" && r.status !== "pending");
+    return list;
+  }, [records, typeFilter, statusFilter]);
 
   // 分组：agent_probe 且 sessionId 非空 → 按会话聚合（records 已按时间倒序，组内首条即最新）
   const displayRows = useMemo<DisplayRow[]>(() => {
@@ -149,10 +170,47 @@ export function RequestsPage() {
             <SelectItem value="image_understanding">图像理解</SelectItem>
           </SelectContent>
         </Select>
+        <Select
+          value={statusFilter}
+          onValueChange={(v) => {
+            setStatusFilter(v);
+            setPage(1);
+          }}
+        >
+          <SelectTrigger className="h-8 w-36 text-sm" title="按结果状态筛选">
+            <SelectValue placeholder="全部结果" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">全部结果</SelectItem>
+            <SelectItem value="ok">成功</SelectItem>
+            <SelectItem value="bad">非成功</SelectItem>
+          </SelectContent>
+        </Select>
         <span className="text-muted-foreground text-xs">
           {displayRows.length} 条记录（共 {records.length} 条）
         </span>
+        {selectedTraces.size > 0 ? (
+          <Button
+            size="sm"
+            variant="outline"
+            className="ml-auto"
+            onClick={() => setIncidentOpen(true)}
+          >
+            <Flag className="size-3.5" />
+            标记为故障事件（{selectedTraces.size} 条）
+          </Button>
+        ) : null}
       </div>
+      {incidentOpen ? (
+        <IncidentCreateDialog
+          traceIds={[...selectedTraces]}
+          channelsHint={
+            records.find((r) => selectedTraces.has(r.traceId))?.channelId ?? ""
+          }
+          onClose={() => setIncidentOpen(false)}
+          onCreated={() => setSelectedTraces(new Set())}
+        />
+      ) : null}
       {isLoading ? (
         <div className="space-y-2">
           <Skeleton className="h-10 w-full" />
@@ -171,6 +229,29 @@ export function RequestsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-8">
+                    <input
+                      type="checkbox"
+                      className="accent-primary size-3.5"
+                      title="全选/清空本页普通行"
+                      checked={pageRows.some((row) => row.sessionId === null) &&
+                        pageRows.filter((row) => row.sessionId === null).every((row) =>
+                          selectedTraces.has(row.records[0]?.traceId ?? ""))}
+                      onChange={(e) => {
+                        const ids = pageRows
+                          .filter((row) => row.sessionId === null)
+                          .map((row) => row.records[0]?.traceId)
+                          .filter(Boolean) as string[];
+                        if (e.target.checked) {
+                          setSelectedTraces(new Set([...selectedTraces, ...ids]));
+                        } else {
+                          const next = new Set(selectedTraces);
+                          for (const id of ids) next.delete(id);
+                          setSelectedTraces(next);
+                        }
+                      }}
+                    />
+                  </TableHead>
                   <TableHead>时间</TableHead>
                   <TableHead>类型</TableHead>
                   <TableHead>渠道</TableHead>
@@ -270,6 +351,19 @@ export function RequestsPage() {
                         className="cursor-pointer"
                         onClick={() => navigate(`/requests/${r.traceId}`)}
                       >
+                        <TableCell className="w-8" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            className="accent-primary size-3.5"
+                            checked={selectedTraces.has(r.traceId)}
+                            onChange={(e) => {
+                              const next = new Set(selectedTraces);
+                              if (e.target.checked) next.add(r.traceId);
+                              else next.delete(r.traceId);
+                              setSelectedTraces(next);
+                            }}
+                          />
+                        </TableCell>
                         <TableCell className="text-xs whitespace-nowrap">{r.createdAt.slice(0, 19).replace("T", " ")}</TableCell>
                         <TableCell>
                           <Badge variant={meta.variant}>{meta.label}</Badge>
@@ -326,5 +420,88 @@ export function RequestsPage() {
         </>
       )}
     </>
+  );
+}
+
+// ------------------------------------------------------------------
+// 故障事件创建弹窗（多选失败记录 → 一次聚合）
+// ------------------------------------------------------------------
+
+function IncidentCreateDialog({
+  traceIds,
+  channelsHint,
+  onClose,
+  onCreated,
+}: {
+  traceIds: string[];
+  channelsHint: string;
+  onClose: () => void;
+  onCreated: () => void;
+}) {
+  const create = useCreateIncident();
+  const [title, setTitle] = useState("");
+  const [rootCause, setRootCause] = useState("");
+
+  async function handleCreate() {
+    if (!title.trim()) {
+      toast.error("请填写故障标题");
+      return;
+    }
+    try {
+      // 渠道取所选记录的渠道（同批记录通常同渠道）
+      const channelId = channelsHint || "ch-unknown";
+      await create.mutateAsync({
+        channelId,
+        title: title.trim(),
+        traceIds,
+        rootCause: rootCause.trim() || null,
+      });
+      toast.success(`故障事件已创建（${traceIds.length} 条记录已关联）`);
+      onCreated();
+      onClose();
+    } catch (e) {
+      toast.error(`创建失败：${e}`);
+    }
+  }
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>标记为故障事件</DialogTitle>
+          <DialogDescription>
+            把 {traceIds.length} 条失败记录聚合为一次故障复盘；渠道：{channelsHint || "—"}。
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label>故障标题 *</Label>
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="如：易准 glm-5 无可用渠道（429）"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>根因备注（可选，解决时也可补填）</Label>
+            <Textarea
+              rows={2}
+              value={rootCause}
+              onChange={(e) => setRootCause(e.target.value)}
+              placeholder="如：站点令牌额度耗尽，充值后恢复"
+            />
+            <Textarea hidden />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            取消
+          </Button>
+          <Button onClick={handleCreate} disabled={create.isPending}>
+            {create.isPending ? "创建中…" : "创建故障事件"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -250,6 +250,13 @@ Preview 不得覆盖 Raw。
 - **币种切换**：默认（各厂商原生币种）/ 美元 / 人民币；折算用实时汇率（frankfurter → open.er-api.com 回退，「抓取数据」顺带更新 `market_fx`，兜底 7.20），折算值带 ≈ 与汇率来源标注（估算必须标注红线）。
 
 
+### 渠道运维（v0.33.0）
+
+- **模型上下架追踪**：每次「获取模型列表」成功后留存快照（channel_model_fetches，每渠道最新一份），对话框三方对比标注新增 / 上次获取后新增 / 疑似下架；下架不自动删除（历史只追加）。
+- **健康状态**：channels.ops_status（normal / fault / maintenance / deprecated）手动设置 + 卡片/列表/筛选状态灯；「疑似异常」为前端推导（最近测试均非成功），不写库。
+- **故障事件**：incidents 表聚合相关失败记录（title / root_cause / resolved_at），记录详情徽章、渠道详情「故障」Tab、仪表盘「需要关注」卡片。
+- **运维档案**：config_json.ops（控制台 / 联系方式 / 有效期 / key 轮换），有效期临期标黄。
+
 ### 数据源体系（v0.31.0）
 
 - **内置汇总源**：models.dev（国际价，市场页「抓取数据」统一刷新）、**apiprice.app**（开放数据 `prices.json`，CC BY 4.0 署名「apiprice.app」；官方 / 国内官方 CNY / OpenRouter 三通道，带缓存与低谷分时段价；设置页独立开关与抓取，缓存走 market_source_cache）、**OpenRouter**（v0.31.1，公开 `api/v1/models`；69 家厂商托管平台转售价 USD ×1M 折算，带缓存价 / 模态 / 推理标记，免费与计划下线标注；多家比价站的数据上游）。
