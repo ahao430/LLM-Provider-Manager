@@ -61,6 +61,7 @@ Raw 请求可能包含认证 Header：界面展示与导出时执行脱敏策略
 | 项 | 状态 | 计划 |
 |---|---|---|
 | 凭证存储 | ✅ v0.12.0 起为独立凭证文件（0600 + 原子写入 + 掩码 + 受控查看；Keychain 一次性迁移） | 涵盖 |
+| 凭证批量导出 | ✅ v0.21.0 「凭证一览」弹窗（用户显式触发）：明文列表 + CSV 复制 + CSV/Excel 导出（用户选路径）；明文仅进剪贴板/指定文件，不落日志/DB/归档；导出文件由用户保管 | 导出文件风险由用户承担，UI 持续提示 |
 | CSP | ✅ Phase 7 已收紧（self + data/blob 资源 + ipc；`ws://localhost:5173` 仅为开发 HMR 例外） | 随功能演进复查 |
 | Tauri capabilities | ✅ 最小权限 `core:default` + `dialog:default` | 持续保持 |
 | 加密备份 | ✅ Phase 7（.lcmbackup：AES-256-GCM + PBKDF2 计费凭证独立段） | 持续保持 |

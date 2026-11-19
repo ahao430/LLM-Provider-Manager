@@ -10,7 +10,7 @@ import {
   useReactTable,
   type SortingState,
 } from "@tanstack/react-table";
-import { ChevronDown, ChevronRight, Copy, ExternalLink, FolderCog, LayoutGrid, List, Pencil, Plus, RefreshCw } from "lucide-react";
+import { ChevronDown, ChevronRight, Copy, ExternalLink, FolderCog, KeyRound, LayoutGrid, List, Pencil, Plus, RefreshCw } from "lucide-react";
 
 import { PageHeader } from "@/components/PageHeader";
 import { Pagination } from "@/components/Pagination";
@@ -49,6 +49,7 @@ import { useUiStore } from "@/stores/ui";
 import { loadSessionState, saveSessionState } from "@/lib/sessionState";
 import { ChannelFormDialog } from "@/features/channels/ChannelFormDialog";
 import { ChannelCards } from "@/features/channels/ChannelCards";
+import { CredentialsDialog } from "@/features/channels/CredentialsDialog";
 import { ManageGroupsDialog } from "@/features/channels/ManageGroupsDialog";
 import { ModelTestButton } from "@/features/models/ModelTestButton";
 import { LatestTestResult, useLatestModelTestMap } from "@/features/models/LatestTestResult";
@@ -74,6 +75,7 @@ export function ChannelsPage() {
   const setChannelsView = useUiStore((s) => s.setChannelsView);
   const [createOpen, setCreateOpen] = useState(false);
   const [groupsOpen, setGroupsOpen] = useState(false);
+  const [credentialsOpen, setCredentialsOpen] = useState(false);
   // 会话级 UI 状态：进详情再返回时保留展开行 / 分页 / 筛选 / 排序
   const savedUi = loadSessionState("lcm-ui-channels", {
     expandedId: null as string | null,
@@ -345,6 +347,10 @@ export function ChannelsPage() {
               <FolderCog className="size-4" />
               管理分组
             </Button>
+            <Button variant="outline" onClick={() => setCredentialsOpen(true)}>
+              <KeyRound className="size-4" />
+              凭证一览
+            </Button>
             {channelsView === "list" ? (
               <Select value={groupFilter} onValueChange={setGroupFilter}>
                 <SelectTrigger className="h-9 w-40">
@@ -441,6 +447,7 @@ export function ChannelsPage() {
         onSaved={(id) => navigate(`/channels/${id}`)}
       />
       <ManageGroupsDialog open={groupsOpen} onOpenChange={setGroupsOpen} />
+      <CredentialsDialog open={credentialsOpen} onOpenChange={setCredentialsOpen} />
     </>
   );
 }

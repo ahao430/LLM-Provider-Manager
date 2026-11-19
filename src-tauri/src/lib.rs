@@ -55,8 +55,8 @@ use crate::commands::channels::{
     set_channel_dashboard_pinned, set_channel_enabled, update_channel,
 };
 use crate::commands::credentials::{
-    clear_channel_credential, copy_channel_credential, reveal_channel_credential,
-    set_channel_credential,
+    clear_channel_credential, copy_channel_credential, export_channel_credentials,
+    list_channel_credentials, reveal_channel_credential, set_channel_credential,
 };
 use crate::commands::dashboard::get_dashboard_stats;
 use crate::commands::diagnostics::diagnose_request;
@@ -124,6 +124,8 @@ pub fn run() {
             reveal_channel_credential,
             copy_channel_credential,
             clear_channel_credential,
+            list_channel_credentials,
+            export_channel_credentials,
             list_agent_compat,
             upsert_agent_compat,
             launch_agent,

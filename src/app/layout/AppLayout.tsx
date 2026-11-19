@@ -26,7 +26,7 @@ export function AppLayout() {
         className="min-w-0 flex-1 overflow-y-auto"
         onScroll={(e) => saveScrollPosition(location.pathname, (e.target as HTMLElement).scrollTop)}
       >
-        <div className="mx-auto w-full max-w-6xl space-y-6 p-6">
+        <div className="mx-auto w-full max-w-6xl space-y-6 p-6 xl:max-w-7xl 2xl:max-w-none">
           <Outlet />
         </div>
       </main>

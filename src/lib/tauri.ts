@@ -332,6 +332,28 @@ export function copyAgentCliCommand(channelId: string, model: string | null): Pr
 }
 
 // ------------------------------------------------------------------
+// 凭证一览 / 批量导出（用户显式触发的明文操作）
+// ------------------------------------------------------------------
+
+export interface ChannelCredentialRow {
+  channelId: string;
+  channelName: string;
+  providerName: string | null;
+  baseUrl: string;
+  /** 主凭证明文（未配置渠道为空串） */
+  token: string;
+}
+
+export function listChannelCredentials(): Promise<ChannelCredentialRow[]> {
+  return invoke<ChannelCredentialRow[]>("list_channel_credentials");
+}
+
+/** 导出全部渠道凭证到指定路径（csv / xlsx），返回导出条数。 */
+export function exportChannelCredentials(path: string, format: "csv" | "xlsx"): Promise<number> {
+  return invoke<number>("export_channel_credentials", { path, format });
+}
+
+// ------------------------------------------------------------------
 // 模型与价格（Phase 2）
 // ------------------------------------------------------------------
 
