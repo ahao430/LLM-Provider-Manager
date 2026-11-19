@@ -45,6 +45,8 @@ pub struct Diagnosis {
     pub advice: String,
     /// 处理事件中的失败步骤（事实）
     pub failed_events: Vec<String>,
+    /// 多层网关归因（v0.29.0）：错误出自中转网关 / 上游厂商的规则式判定
+    pub attribution: super::attribution::Attribution,
 }
 
 /// 对一条测试记录做知识库诊断。
@@ -144,6 +146,11 @@ fn build(
                 "通用排查：打开 Raw 请求 / 响应归档核对实际交互；查看处理事件链路；用「复制 curl」在终端复现".into()
             }),
         failed_events,
+        // 多层网关归因：与知识库匹配独立（即使知识条目 unknown 也给出层归因）
+        attribution: super::attribution::attribute(
+            record.error_message.as_deref().unwrap_or(""),
+            record.provider_request_id.as_deref(),
+        ),
     }
 }
 

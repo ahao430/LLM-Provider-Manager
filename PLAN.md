@@ -1384,7 +1384,7 @@ MCP 不返回 API Key、Bearer Token、AccessKey Secret 或其他渠道凭证。
 > get_request_error / get_request_raw / list_balances / list_funds / search_market_prices；
 > DB 只读打开、凭证零输出。注册方式见 App 设置页「MCP」卡片。
 > **v0.16.0 已提供**：错误知识库（迁移 0011，内置 15 条）+ 三档置信度诊断引擎（diagnostics/），
-> 测试详情页「错误诊断」Tab 与 MCP 的 diagnose_request_error / search_error_docs / get_error_chain 三个工具随之可用；多层网关归因（跨中转层的自动定位）仍属后续。
+> 测试详情页「错误诊断」Tab 与 MCP 的 diagnose_request_error / search_error_docs / get_error_chain 三个工具随之可用；**多层网关归因**已于 v0.29.0 落地——`diagnostics::attribution` 规则式判定错误出自中转网关层（NewAPI / OneAPI 系特有文案）还是上游厂商（OpenAI / Anthropic 标准错误结构），事实（命中特征、上游请求 ID 有无）与推测分开、置信度 confirmed / probable / unknown；不调 AI（外部 AI 可经 MCP 三个工具拿事实自行推理）。
 
 ---
 

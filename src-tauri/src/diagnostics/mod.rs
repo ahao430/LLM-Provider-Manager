@@ -4,7 +4,9 @@
 //! 证据不足时标记 unknown、AI 诊断不得修改任何数据。
 //!
 //! v0.16.0：错误知识库（迁移 0011，内置 15 条）+ 三档置信度匹配引擎。
-//! 多层网关归因（get_error_chain 的归因部分）仍属后续——目前只输出事实链路。
+//! v0.29.0：多层网关归因（attribution）——错误出自中转网关 / 上游厂商的规则式判定，
+//! 事实与推测分开、置信度明确（不调 AI）。
 
+pub mod attribution;
 pub mod engine;
 pub mod knowledge;

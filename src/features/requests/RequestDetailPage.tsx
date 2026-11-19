@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { copyTestCurl, diagnoseRequest, type Diagnosis } from "@/lib/tauri";
+import { copyTestCurl, diagnoseRequest, type Attribution, type Diagnosis } from "@/lib/tauri";
 import { goBackOr } from "@/lib/sessionState";
 import { ConversationBoard } from "@/features/requests/ConversationBoard";
 import { useReparse, useTestRaw, useTestRecord, useReplayRequest } from "@/features/api-testing/api";
@@ -283,6 +283,7 @@ function DiagnosisCard({ traceId, hasError }: { traceId: string; hasError: boole
               <p className="text-xs">{data.evidence}</p>
               {data.matched ? <p className="mt-1 text-xs">{data.matched.facts}</p> : null}
             </div>
+            <AttributionCard attribution={data.attribution} />
             <div className="rounded-md border p-3">
               <p className="text-muted-foreground text-xs">建议（推测性内容，仅供参考）</p>
               <p className="text-xs">{data.advice}</p>
@@ -307,6 +308,49 @@ function DiagnosisCard({ traceId, hasError }: { traceId: string; hasError: boole
         )}
       </CardContent>
     </Card>
+  );
+}
+
+/** 多层网关归因块：层判定（中转网关 / 上游厂商 / 未知）+ 事实与推测分开。 */
+function AttributionCard({ attribution: a }: { attribution: Attribution }) {
+  const LAYER_LABELS: Record<Attribution["layer"], string> = {
+    gateway: "中转网关层",
+    upstream: "上游厂商",
+    unknown: "未定层",
+  };
+  const LAYER_VARIANT: Record<Attribution["layer"], "default" | "secondary" | "outline"> = {
+    gateway: "default",
+    upstream: "secondary",
+    unknown: "outline",
+  };
+  const CONF_LABELS: Record<string, string> = {
+    confirmed: "确认（特异特征命中）",
+    probable: "可能（宽泛特征命中）",
+    unknown: "证据不足",
+  };
+  return (
+    <div className="rounded-md border p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-muted-foreground text-xs">链路层归因（规则式，不调 AI）</p>
+        <Badge variant={LAYER_VARIANT[a.layer]}>{LAYER_LABELS[a.layer]}</Badge>
+        <Badge variant="outline" className="text-[10px]">
+          {CONF_LABELS[a.confidence] ?? a.confidence}
+        </Badge>
+        {a.gatewayHint ? (
+          <span className="text-muted-foreground text-[10px]">{a.gatewayHint}</span>
+        ) : null}
+      </div>
+      <ul className="mt-2 space-y-0.5">
+        {a.facts.map((f, i) => (
+          <li key={i} className="text-xs">
+            · {f}
+          </li>
+        ))}
+      </ul>
+      <p className="text-muted-foreground mt-1.5 text-xs">
+        推测：{a.speculation}
+      </p>
+    </div>
   );
 }
 

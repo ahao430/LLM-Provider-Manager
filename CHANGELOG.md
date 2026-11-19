@@ -4,6 +4,12 @@
 
 遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 格式，版本策略见 [AGENTS.md](./AGENTS.md)：每次改动第三位 +1（patch），较大改动第二位 +1（minor），第一位仅在维护者要求时升级。
 
+## [0.29.0] - 2026-11-19
+
+### 新增（较大改动，第二位 +1）
+
+- **多层网关错误归因**（规则式，本地特征匹配，不调 AI）：错误诊断新增「链路层归因」块——判定错误出自**中转网关层**（NewAPI / OneAPI 系特有文案：无可用渠道 / 当前分组 / 令牌额度 / distributor 等）还是**上游厂商**（OpenAI / Anthropic 标准错误结构：insufficient_quota / invalid_request_error / model_not_found / context_length_exceeded / overloaded_error 等），上游特异特征优先于宽泛网关词。严格红线：事实（命中特征串、上游请求 ID 有无）与推测分开输出，置信度 confirmed（特异命中）/ probable（宽泛命中）/ unknown（证据不足不硬猜）。测试详情「错误诊断」Tab 直接展示；MCP `diagnose_request_error` 输出同字段（外部 AI 可据此推理）；单测 6 例覆盖网关 / 上游 / 优先级 / 宽泛 / 无证据 / 空消息。
+
 ## [0.28.0] - 2026-11-19
 
 ### 新增（较大改动，第二位 +1）

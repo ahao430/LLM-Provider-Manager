@@ -820,6 +820,19 @@ export interface DiagnosisMatched {
   advice: string;
 }
 
+/** 多层网关归因：错误出自中转网关 / 上游厂商的规则式判定（事实与推测分开）。 */
+export interface Attribution {
+  /** gateway（中转网关层）/ upstream（上游厂商）/ unknown */
+  layer: "gateway" | "upstream" | "unknown";
+  confidence: "confirmed" | "probable" | "unknown";
+  /** 观察到的事实（命中特征串、上游请求 ID 有无） */
+  facts: string[];
+  /** 推测（仅供参考） */
+  speculation: string;
+  /** 命中的网关类型提示（如 NewAPI / OneAPI 系中转） */
+  gatewayHint: string | null;
+}
+
 /** 诊断结果：事实（evidence / facts）与建议分开，置信度必填。 */
 export interface Diagnosis {
   traceId: string;
@@ -830,6 +843,8 @@ export interface Diagnosis {
   matched: DiagnosisMatched | null;
   advice: string;
   failedEvents: string[];
+  /** 多层网关归因 */
+  attribution: Attribution;
 }
 
 /** 对测试记录做知识库诊断（只读，不自动执行建议）。 */
