@@ -243,6 +243,9 @@ Preview 不得覆盖 Raw。
 - 页面「**抓取数据**」按钮实时拉取 [models.dev/api.json](https://models.dev/api.json)（机器可读、官方第一方厂商、统一 USD/百万 token），存入 `market_cache` 表，展示优先用抓取缓存；
 - **国内价快照层**（`src-tauri/src/market/data_cn.json`）在读取时叠加：国内厂商以官网人民币价替换 USD 折算值（DeepSeek / 百炼 / Kimi / 火山方舟 / MiniMax 国内 / 硅基流动由 `pnpm market:cn-refresh` 官网抓取维护，解析失败保留旧值或按汇率折算兜底并在 note 标注）；智谱、MiniMax 双定价拆「海外 / 国内」两条，另有千问平台、硅基流动独立条目；
 - **低谷分时段价**：`MarketModel.offPeak`（时段窗口 + 低谷三项价），DeepSeek / 硅基流动已含数据，表格主价下方小字展示；
+- **自定义数据源**（设置 → 市场数据源，迁移 0016 `market_sources` / `market_source_cache`）：支持 NewAPI 类站点——填「模型广场」页面地址，抓取站点 `/api/pricing` 按倍率折算 USD 估算价（1 倍率 = $2/百万 token，输出另乘 completion_ratio，分组倍率取 enable_groups 最优，note 标注口径），顺带抓 favicon 作源图标；内置源（models.dev / 国内官网价）只读展示，不可新增 / 编辑 / 删除；sub2api 类型预留（TODO 置灰）。启用的源 providers 在读取时 append 到快照链尾（只增不改），每行厂商链接即源站价格页；
+- **比价模式**：搜索特定模型时开启「比价」，模型列表的渠道标注行（厂商列展示「模型列表 · 渠道名」+ 实际价悬浮明细）插入市场行后并排比价；市场侧无此模型时单独展示标注行；
+- **常用模型快捷筛选**（glm / gpt / deepseek / claude / gemini / kimi / qwen / minimax）与价格排序（输入 / 输出，键 = max(单一, 低谷, 阶梯最高档) 折算 CNY，方向可切「低 → 高 / 高 → 低」，无价垫底）；顶部标注抓取时间与数据来源链接；
 - **币种切换**：默认（各厂商原生币种）/ 美元 / 人民币；折算用实时汇率（frankfurter → open.er-api.com 回退，「抓取数据」顺带更新 `market_fx`，兜底 7.20），折算值带 ≈ 与汇率来源标注（估算必须标注红线）。
 
 ### 测试中心

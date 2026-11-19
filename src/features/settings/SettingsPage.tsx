@@ -31,6 +31,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { openExternal } from "@/lib/external";
 import { useAppInfo, useDatabaseStats } from "@/hooks/use-app-info";
+import { MarketSourcesCard } from "@/features/settings/MarketSourcesCard";
 import { THEME_LABELS, useUiStore, type Theme } from "@/stores/ui";
 import {
   checkArchiveConsistency,
@@ -60,6 +61,7 @@ export function SettingsPage() {
           <TabsTrigger value="general">常规</TabsTrigger>
           <TabsTrigger value="database">数据库</TabsTrigger>
           <TabsTrigger value="mcp">MCP 接入</TabsTrigger>
+          <TabsTrigger value="market">市场数据源</TabsTrigger>
           <TabsTrigger value="data">数据</TabsTrigger>
           <TabsTrigger value="about">关于</TabsTrigger>
         </TabsList>
@@ -123,6 +125,9 @@ export function SettingsPage() {
 
         <TabsContent value="mcp" className="space-y-6">
           <McpCard dataDir={appInfo?.dataDir ?? ""} />
+        </TabsContent>
+        <TabsContent value="market" className="space-y-6">
+          <MarketSourcesCard />
         </TabsContent>
 
         <TabsContent value="data" className="space-y-6">

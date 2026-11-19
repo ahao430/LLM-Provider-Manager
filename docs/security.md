@@ -69,6 +69,6 @@ Raw 请求可能包含认证 Header：界面展示与导出时执行脱敏策略
 | 跨域认证 Header | Phase 3 工作台按渠道固定渠道地址发起请求，不做跨域重定向跟随 | 保持现状 |
 | 图片 URL 下载 / SSRF | 生成结果 url 形态不自动下载；一致性检查可发现孤儿文件 | Phase 8 完善下载防护 |
 | 归档 Header 掩码 | ✅ v0.18.0 加宽：header 名含 authorization / auth / token / key / secret 子串即掩码 | 持续保持 |
-| 出站请求清单 | 应用自身仅访问：models.dev（市场抓取）、frankfurter.app / open.er-api.com（USD→CNY 汇率，v0.19.0）、api.github.com（更新检测与安装包下载）；其余请求均为用户配置的模型渠道地址 | 新增域名须在此登记 |
+| 出站请求清单 | 应用自身仅访问：models.dev（市场抓取）、frankfurter.app / open.er-api.com（USD→CNY 汇率，v0.19.0）、api.github.com（更新检测与安装包下载）、用户配置的市场数据源站点（v0.25.0，仅 `{origin}/api/pricing` 与 `/favicon.ico`，源配置不含密钥）；其余请求均为用户配置的模型渠道地址 | 新增域名须在此登记 |
 | MCP 输出脱敏 | ✅ v0.18.0 白名单序列化之外，notes / 错误消息 / 事件 / Raw 原文输出前统一做令牌样式二次脱敏（sk- / LTAI / AKLT / Bearer / 敏感 query 参数）；历史归档读取时 headers 实时再掩码 | 持续保持 |
 | 应用内更新 | ✅ v0.18.0 安装包下载到数据目录 updates/ 并由用户确认后运行安装器；不做静默自动更新 | 自动更新需签名基础设施后再评估 |

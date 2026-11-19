@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { CloudDownload, ExternalLink, Search } from "lucide-react";
@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 import {
   Table,
   TableBody,
@@ -79,6 +80,10 @@ export function MarketPage() {
   const [search, setSearch] = useState("");
   // 比价排序：模型名 / 市场输入价 / 市场输出价（键 = max(单一, 低谷) 的市场价，折算后比较）
   const [priceSort, setPriceSort] = useState<"name" | "input" | "output">("name");
+  // 价格排序方向（按模型名时忽略）
+  const [priceDir, setPriceDir] = useState<"asc" | "desc">("asc");
+  // 比价模式：搜索时把模型列表的渠道标注行插入表格并排比价
+  const [compareMode, setCompareMode] = useState(false);
   // 渠道标注（比价列）：actualModelId（小写）→ 标注行
   const annotationsQuery = useQuery({
     queryKey: ["channel-price-annotations"],
@@ -158,21 +163,33 @@ export function MarketPage() {
       if (av === null && bv === null) return a.model.model.localeCompare(b.model.model);
       if (av === null) return 1;
       if (bv === null) return -1;
-      return av - bv; // 升序 = 从低到高（无价垫底）
+      const diff = av - bv;
+      return priceDir === "asc" ? diff : -diff; // 无价始终垫底
     });
-  }, [filtered, priceSort, fx]);
+  }, [filtered, priceSort, priceDir, fx]);
   const pageCount = Math.max(Math.ceil(flatRows.length / pageSize), 1);
   const safePage = Math.min(page, pageCount);
   const pageRows = flatRows.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   const modelCount = filtered.reduce((n, e) => n + e.models.length, 0);
 
-  // source 形如 "bundled + cn/2026-11" 或 "models.dev + cn/2026-11"（国内价叠加层标注）
+  /** 比价模式：按当前搜索词匹配的渠道标注行（市场无此模型时也能单独展示）。 */
+  const matchedAnnotations = () => {
+    const q = search.trim().toLowerCase();
+    if (!q) return [];
+    return [...annotationMap.entries()]
+      .filter(([modelKey]) => modelKey.includes(q))
+      .flatMap(([, list]) => list);
+  };
+
+  // source 形如 "bundled + cn/2026-11 + sources"（国内价叠加层 / 自定义源标注）
   const baseSource = snapshot?.source.split(" + cn/")[0] ?? "";
   const cnDate = snapshot?.source.match(/\+ cn\/([\d-]+)/)?.[1];
   const sourceLabel = snapshot
-    ? `${baseSource === "models.dev" ? `已抓取（models.dev · ${fmtTime(snapshot.fetchedAt)}）` : `内置快照（${snapshot.snapshotDate}）`}${cnDate ? ` · 国内价 ${cnDate}` : ""}`
+    ? `${baseSource === "models.dev" ? `已抓取 models.dev · ${fmtTime(snapshot.fetchedAt)}` : `内置快照 ${snapshot.snapshotDate}`}${cnDate ? ` · 国内价 ${cnDate}` : ""}`
     : "";
+
+  const QUICK_MODELS = ["glm", "gpt", "deepseek", "claude", "gemini", "kimi", "qwen", "minimax"];
 
   return (
     <>
@@ -180,14 +197,19 @@ export function MarketPage() {
         title="市场信息"
         description={
           snapshot
-            ? `各厂商模型价格快照 · ${sourceLabel} · 每百万 token，币种见列。仅供参考，不算费用。`
+            ? `各厂商模型价格快照 · ${sourceLabel} · 每百万 token，币种见列。数据来源见各行厂商链接。仅供参考，不算费用。`
             : "各厂商模型价格参考"
         }
         actions={
-          <Button onClick={() => fetchMutation.mutate()} disabled={fetchMutation.isPending}>
-            <CloudDownload className="size-4" />
-            {fetchMutation.isPending ? "抓取中…" : "抓取数据"}
-          </Button>
+          <div className="flex flex-col items-end gap-0.5">
+            <Button onClick={() => fetchMutation.mutate()} disabled={fetchMutation.isPending}>
+              <CloudDownload className="size-4" />
+              {fetchMutation.isPending ? "抓取中…" : "抓取数据"}
+            </Button>
+            <span className="text-muted-foreground text-[10px]">
+              {snapshot?.fetchedAt ? `抓取于 ${fmtTime(snapshot.fetchedAt)}` : "未抓取（用内置快照）"}
+            </span>
+          </div>
         }
       />
 
@@ -226,6 +248,26 @@ export function MarketPage() {
             className="h-8 w-56 pl-8 text-sm"
           />
         </div>
+        {/* 常用模型快捷筛选：点击模糊搜索，再点取消 */}
+        <div className="flex flex-wrap items-center gap-1">
+          {QUICK_MODELS.map((chip) => {
+            const active = search.trim().toLowerCase() === chip;
+            return (
+              <Button
+                key={chip}
+                size="sm"
+                variant={active ? "secondary" : "ghost"}
+                className="h-7 rounded-full px-2.5 text-xs"
+                onClick={() => {
+                  setSearch(active ? "" : chip);
+                  setPage(1);
+                }}
+              >
+                {chip}
+              </Button>
+            );
+          })}
+        </div>
         <Select
           value={priceSort}
           onValueChange={(v) => {
@@ -233,15 +275,26 @@ export function MarketPage() {
             setPage(1);
           }}
         >
-          <SelectTrigger className="h-8 w-44 text-sm" title="排序键 = max(单一价, 低谷价) 折算 CNY（升序 = 从低到高，无价垫底）">
+          <SelectTrigger className="h-8 w-36 text-sm" title="排序键 = max(单一价, 低谷价, 阶梯最高档) 折算 CNY（无价垫底）">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="name">按模型名</SelectItem>
-            <SelectItem value="input">输入价从低到高</SelectItem>
-            <SelectItem value="output">输出价从低到高</SelectItem>
+            <SelectItem value="input">按输入价</SelectItem>
+            <SelectItem value="output">按输出价</SelectItem>
           </SelectContent>
         </Select>
+        {priceSort !== "name" ? (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 px-2 text-xs"
+            title={priceDir === "asc" ? "当前从低到高，点击切换为从高到低" : "当前从高到低，点击切换为从低到高"}
+            onClick={() => setPriceDir(priceDir === "asc" ? "desc" : "asc")}
+          >
+            {priceDir === "asc" ? "低 → 高" : "高 → 低"}
+          </Button>
+        ) : null}
         {/* 币种切换：默认=各厂商原生币种；USD/CNY=按汇率折算（≈ 标注） */}
         <div className="bg-muted inline-flex rounded-lg p-0.5">
           {CURRENCY_MODES.map((m) => (
@@ -256,6 +309,13 @@ export function MarketPage() {
             </Button>
           ))}
         </div>
+        {/* 比价模式：搜索特定模型时把模型列表的渠道标注行插进来并排比价 */}
+        {search.trim() !== "" ? (
+          <label className="text-muted-foreground inline-flex cursor-pointer items-center gap-1.5 text-xs">
+            <Switch checked={compareMode} onCheckedChange={setCompareMode} />
+            比价（加入模型列表渠道标注）
+          </label>
+        ) : null}
         <span className="text-muted-foreground text-xs">
           {providers.length} 家厂商 · {modelCount} 个模型
         </span>
@@ -274,34 +334,56 @@ export function MarketPage() {
                 <TableHead className="text-right">输入 / 百万</TableHead>
                 <TableHead className="text-right">缓存 / 百万</TableHead>
                 <TableHead className="text-right">输出 / 百万</TableHead>
-                <TableHead
-                  className="w-44"
-                  title="渠道标注实际价（原价 × 倍率，含阶梯 / 低谷最高档）；悬浮看明细"
-                >
-                  渠道标注（实际价）
-                </TableHead>
+                {!compareMode ? (
+                  <TableHead
+                    className="w-44"
+                    title="渠道标注实际价（原价 × 倍率，含阶梯 / 低谷最高档）；悬浮看明细"
+                  >
+                    渠道标注（实际价）
+                  </TableHead>
+                ) : null}
               </TableRow>
             </TableHeader>
             <TableBody>
-              {flatRows.length === 0 ? (
+              {flatRows.length === 0 && !compareMode ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-muted-foreground py-8 text-center text-sm">
+                  <TableCell colSpan={compareMode ? 6 : 7} className="text-muted-foreground py-8 text-center text-sm">
                     没有匹配的模型
                   </TableCell>
                 </TableRow>
               ) : (
-                pageRows.map(({ provider, model }) => (
-                  <MarketModelRow
-                    key={`${provider.id}:${model.model}`}
-                    provider={provider}
-                    model={model}
-                    displayCurrency={currencyMode}
-                    fxRate={rate}
-                    annotations={
-                      annotationMap.get(model.model.trim().toLowerCase()) ?? []
-                    }
-                  />
-                ))
+                <>
+                  {pageRows.map(({ provider, model }) => {
+                    const key = `${provider.id}:${model.model}`;
+                    // 比价模式：同名模型的渠道标注行紧跟市场行（不参与分页计数）
+                    const anns = compareMode
+                      ? (annotationMap.get(model.model.trim().toLowerCase()) ?? [])
+                      : [];
+                    return (
+                      <Fragment key={key}>
+                        <MarketModelRow
+                          provider={provider}
+                          model={model}
+                          displayCurrency={currencyMode}
+                          fxRate={rate}
+                          hideCompareCell={compareMode}
+                          annotations={
+                            compareMode ? [] : (annotationMap.get(model.model.trim().toLowerCase()) ?? [])
+                          }
+                        />
+                        {anns.map((a) => (
+                          <AnnotationCompareRow key={a.channelModelId} annotation={a} />
+                        ))}
+                      </Fragment>
+                    );
+                  })}
+                  {compareMode && flatRows.length === 0
+                    ? // 市场无此模型时只显示标注行（自建渠道独有模型也能比价）
+                      matchedAnnotations().map((a) => (
+                        <AnnotationCompareRow key={a.channelModelId} annotation={a} />
+                      ))
+                    : null}
+                </>
               )}
             </TableBody>
           </Table>
@@ -323,9 +405,22 @@ export function MarketPage() {
       )}
 
       <p className="text-muted-foreground text-xs">
-        国际厂商价格来自 models.dev（USD）；国内厂商为官网抓取的人民币价（低谷分时段价见行内小字），由
-        `pnpm market:cn-refresh` 维护快照，以各官方价格页为准。中转 / 聚合渠道（NewAPI
-        等）价格各异，以渠道页为准。折算视图：{rateLabel}。
+        国际厂商价格来自{" "}
+        <a
+          href="https://models.dev"
+          target="_blank"
+          rel="noreferrer"
+          className="text-primary hover:underline"
+          onClick={(e) => {
+            e.preventDefault();
+            void openExternal("https://models.dev");
+          }}
+        >
+          models.dev
+        </a>
+        （USD）；国内厂商为官网抓取的人民币价（低谷分时段价见行内小字），由 `pnpm market:cn-refresh`
+        维护快照；自定义源价格为 NewAPI 倍率折算的估算值。数据来源以各行「厂商」链接（价格页）为准。折算视图：
+        {rateLabel}。
       </p>
     </>
   );
@@ -340,13 +435,17 @@ function MarketModelRow({
   model,
   displayCurrency,
   fxRate,
+  hideCompareCell,
   annotations,
 }: {
   provider: MarketProvider;
   model: MarketModel;
   displayCurrency: MarketCurrency;
   fxRate: number;
-  annotations: ChannelPriceAnnotation[];
+  /** 比价模式：渠道标注以独立行展示，隐藏本行的比价单元格 */
+  hideCompareCell?: boolean;
+  /** 本模型的渠道标注（比价列数据；hideCompareCell 时忽略） */
+  annotations?: ChannelPriceAnnotation[];
 }) {
   // native = 各厂商原生币种；否则折算到目标币种（≈ 标注，脚注说明汇率）
   const conv = (value: number | null): { text: string; approx: boolean } => {
@@ -402,9 +501,54 @@ function MarketModelRow({
         <PriceCell approx={output.approx} text={output.text} />
         {off ? <PriceSubLine label="低谷" value={conv(off.outputPer1m).text} window={off.window} /> : null}
       </TableCell>
+      {hideCompareCell ? null : (
+        <TableCell className="align-top">
+          <AnnotationCompareCell annotations={annotations ?? []} />
+        </TableCell>
+      )}
+    </TableRow>
+  );
+}
+
+/** 比价模式下的渠道标注行：厂商列展示「模型列表 · 渠道名」，价格为标注实际价（最高档口径）。 */
+function AnnotationCompareRow({ annotation: a }: { annotation: ChannelPriceAnnotation }) {
+  const eff = annotationEffective(a);
+  const sym = CURRENCY_SYMBOL[a.priceCurrency] ?? "";
+  const fmt = (v: number | null) => (v === null ? "—" : `${sym}${Number(v.toFixed(4))}`);
+  const marks = [
+    a.priceMultiplier !== 1 ? `×${a.priceMultiplier}` : null,
+    eff.hasTiers ? "阶梯" : null,
+    eff.hasOffPeak ? "分时段" : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  return (
+    <TableRow className="bg-muted/40">
       <TableCell className="align-top">
-        <AnnotationCompareCell annotations={annotations} />
+        <code className="text-xs font-medium">{a.actualModelId}</code>
       </TableCell>
+      <TableCell className="align-top">
+        <span
+          className="inline-flex items-center gap-1.5 text-sm"
+          title={`来源：模型列表的渠道标注（渠道 ${a.channelName}）\n${annotationTooltip(a)}`}
+        >
+          <Badge variant="secondary" className="text-[9px]">
+            模型列表
+          </Badge>
+          {a.channelName}
+        </span>
+      </TableCell>
+      <TableCell className="align-top">
+        <Badge variant="outline" className="text-[10px]">
+          标注
+        </Badge>
+      </TableCell>
+      <TableCell className="text-right align-top tabular-nums text-xs">
+        {fmt(eff.input)}
+        {marks ? <span className="text-muted-foreground text-[10px]"> {marks}</span> : null}
+      </TableCell>
+      <TableCell className="text-muted-foreground text-right align-top text-xs">—</TableCell>
+      <TableCell className="text-right align-top tabular-nums text-xs">{fmt(eff.output)}</TableCell>
     </TableRow>
   );
 }

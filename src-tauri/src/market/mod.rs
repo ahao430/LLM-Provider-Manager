@@ -6,6 +6,7 @@
 //! - 与 model_prices（价格历史 / 费用估算）完全独立，互不影响。
 
 pub mod fetch;
+pub mod sources;
 
 use std::sync::LazyLock;
 
@@ -161,13 +162,22 @@ pub fn save_cached_snapshot(conn: &Connection, snapshot: &MarketSnapshot) -> App
     Ok(())
 }
 
-/// 当前展示的快照：优先抓取缓存，其次内置；统一叠加国内价快照层。
+/// 当前展示的快照：优先抓取缓存，其次内置；统一叠加国内价快照层与自定义源 providers。
 pub fn current_snapshot(conn: &Connection) -> AppResult<MarketSnapshot> {
     let base = match load_cached_snapshot(conn)? {
         Some(cached) => cached,
         None => snapshot().clone(),
     };
-    Ok(merge_cn_snapshot(base))
+    let mut snap = merge_cn_snapshot(base);
+    // 自定义源（NewAPI 模型广场等）append 到链尾：只增不改，不影响内置 / 国内条目
+    let source_providers = sources::load_enabled_source_providers(conn)?;
+    if !source_providers.is_empty() {
+        snap.providers.extend(source_providers);
+        if !snap.source.contains(" + sources") {
+            snap.source.push_str(" + sources");
+        }
+    }
+    Ok(snap)
 }
 
 /// 渠道模型标注价（只返回已标注的行），供市场页并排比较。

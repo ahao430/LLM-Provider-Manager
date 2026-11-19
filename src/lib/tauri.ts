@@ -1412,3 +1412,53 @@ export interface ChannelPriceAnnotation {
 export function listChannelPriceAnnotations(): Promise<ChannelPriceAnnotation[]> {
   return invoke<ChannelPriceAnnotation[]>("list_channel_price_annotations");
 }
+
+// ------------------------------------------------------------------
+// 自定义市场数据源（v0.25.0：NewAPI 类站点模型广场抓取）
+// ------------------------------------------------------------------
+
+/** 一条市场数据源（builtin 行只读）。 */
+export interface MarketSourceRow {
+  id: string;
+  name: string;
+  /** newapi / sub2api（TODO）/ builtin（内置只读） */
+  kind: string;
+  /** 模型广场页面地址 */
+  baseUrl: string;
+  enabled: boolean;
+  builtin: boolean;
+  /** 站点 favicon（data URL；null 用字母回退） */
+  iconData: string | null;
+  cachedModelCount: number | null;
+  fetchedAt: string | null;
+}
+
+export interface MarketSourceInput {
+  /** 编辑时提供，新建为 null */
+  id: string | null;
+  name: string;
+  kind: string;
+  baseUrl: string;
+  enabled?: boolean | null;
+}
+
+export function listMarketSources(): Promise<MarketSourceRow[]> {
+  return invoke<MarketSourceRow[]>("list_market_sources");
+}
+
+export function saveMarketSource(input: MarketSourceInput): Promise<string> {
+  return invoke<string>("save_market_source", { input });
+}
+
+export function deleteMarketSource(sourceId: string): Promise<void> {
+  return invoke<void>("delete_market_source", { sourceId });
+}
+
+export function toggleMarketSource(sourceId: string, enabled: boolean): Promise<void> {
+  return invoke<void>("toggle_market_source", { sourceId, enabled });
+}
+
+/** 抓取 NewAPI 源（/api/pricing 换算 + favicon），返回该源快照。 */
+export function fetchMarketSource(sourceId: string): Promise<MarketSnapshot> {
+  return invoke<MarketSnapshot>("fetch_market_source", { sourceId });
+}
