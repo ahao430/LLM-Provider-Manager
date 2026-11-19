@@ -49,8 +49,9 @@ const KIND_LABELS: Record<string, string> = {
   builtin: "内置",
 };
 
-/** builtin_apiprice 是「可独立抓取 / 开关」的内置汇总源；其余内置源只读。 */
-const FETCHABLE_BUILTIN = "builtin_apiprice";
+/** 可独立抓取 / 开关的内置汇总源；其余内置源（models.dev / 国内叠加层）只读。 */
+const FETCHABLE_BUILTINS = ["builtin_apiprice", "builtin_openrouter"];
+const isFetchableBuiltin = (id: string) => FETCHABLE_BUILTINS.includes(id);
 
 /**
  * 市场数据源管理，分三个区块：
@@ -119,7 +120,7 @@ export function MarketSourcesCard() {
                       <div className="flex items-center gap-2">
                         <SourceIcon source={s} />
                         <span className="text-sm font-medium">{s.name}</span>
-                        {s.id === FETCHABLE_BUILTIN ? (
+                        {isFetchableBuiltin(s.id) ? (
                           <Badge variant="outline" className="text-[10px]">CC BY 4.0</Badge>
                         ) : null}
                       </div>
@@ -146,7 +147,7 @@ export function MarketSourcesCard() {
                     <TableCell>
                       <Switch
                         checked={s.enabled}
-                        disabled={s.builtin && s.id !== FETCHABLE_BUILTIN}
+                        disabled={s.builtin && !isFetchableBuiltin(s.id)}
                         onCheckedChange={(v) => toggleSource.mutate({ sourceId: s.id, enabled: v })}
                       />
                     </TableCell>
@@ -156,7 +157,7 @@ export function MarketSourcesCard() {
                           {fmtTime(s.fetchedAt)}
                           <span className="text-muted-foreground/80"> · {s.cachedModelCount ?? 0} 模型</span>
                         </>
-                      ) : s.id === FETCHABLE_BUILTIN ? (
+                      ) : isFetchableBuiltin(s.id) ? (
                         "未抓取"
                       ) : (
                         "随应用快照"
@@ -164,11 +165,11 @@ export function MarketSourcesCard() {
                     </TableCell>
                     <TableCell>
                       <div className="flex justify-end">
-                        {s.id === FETCHABLE_BUILTIN ? (
+                        {isFetchableBuiltin(s.id) ? (
                           <Button
                             variant="ghost"
                             size="icon"
-                            title="抓取 apiprice 开放数据"
+                            title="抓取开放数据"
                             disabled={fetchSource.isPending}
                             onClick={() => fetchSource.mutate(s.id)}
                           >
@@ -185,8 +186,8 @@ export function MarketSourcesCard() {
             </Table>
           )}
           <p className="text-muted-foreground text-xs">
-            models.dev 与国内叠加层由市场信息页「抓取数据」统一刷新；apiprice.app
-            开放数据（官方 / 国内官方 / OpenRouter 三通道，带缓存与分时段价）在此独立抓取与开关。
+            models.dev 与国内叠加层由市场信息页「抓取数据」统一刷新；apiprice.app（官方 /
+            国内官方 / OpenRouter 三通道）与 OpenRouter（全球托管平台转售价）在此独立抓取与开关。
           </p>
         </section>
 
@@ -354,8 +355,11 @@ function SourceIcon({ source }: { source: MarketSourceRow }) {
   if (source.builtin && source.id === "builtin_cn") {
     return <LetterIcon letter="国" />;
   }
-  if (source.builtin && source.id === FETCHABLE_BUILTIN) {
+  if (source.builtin && source.id === "builtin_apiprice") {
     return <LetterIcon letter="A" />;
+  }
+  if (source.builtin && source.id === "builtin_openrouter") {
+    return <LetterIcon letter="O" />;
   }
   return <LetterIcon letter="N" />;
 }

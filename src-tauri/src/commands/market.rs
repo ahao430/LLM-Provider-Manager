@@ -100,9 +100,15 @@ pub async fn fetch_market_source(
     state: State<'_, AppState>,
     source_id: String,
 ) -> AppResult<MarketSnapshot> {
-    // 内置汇总源 apiprice：单独分派（端点固定，无 favicon 概念）
+    // 内置汇总源 apiprice / openrouter：单独分派（端点固定，无 favicon 概念）
     if source_id == "builtin_apiprice" {
         let snapshot = sources::fetch_apiprice(&source_id, "apiprice.app").await?;
+        let conn = db(&state)?;
+        sources::save_source_cache(&conn, &source_id, &snapshot)?;
+        return Ok(snapshot);
+    }
+    if source_id == "builtin_openrouter" {
+        let snapshot = sources::fetch_openrouter(&source_id).await?;
         let conn = db(&state)?;
         sources::save_source_cache(&conn, &source_id, &snapshot)?;
         return Ok(snapshot);

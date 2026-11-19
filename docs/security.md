@@ -69,6 +69,6 @@ Raw 请求可能包含认证 Header：界面展示与导出时执行脱敏策略
 | 跨域认证 Header | Phase 3 工作台按渠道固定渠道地址发起请求，不做跨域重定向跟随 | 保持现状 |
 | 图片 URL 下载 / SSRF | 生成结果 url 形态不自动下载；一致性检查可发现孤儿文件 | Phase 8 完善下载防护 |
 | 归档 Header 掩码 | ✅ v0.18.0 加宽：header 名含 authorization / auth / token / key / secret 子串即掩码 | 持续保持 |
-| 出站请求清单 | 应用自身仅访问：models.dev（市场抓取）、frankfurter.app / open.er-api.com（USD→CNY 汇率，v0.19.0）、api.github.com / github.com（更新检测与更新包下载，v0.30.0 起 updater 走 `releases/latest/download/latest.json`）、apiprice.app（v0.31.0 汇总源，仅 `/data/prices.json`，数据 CC BY 4.0 已署名）、用户配置的市场数据源站点（v0.25.0，仅 `{origin}/api/pricing` 与 `/favicon.ico`，源配置不含密钥）；其余请求均为用户配置的模型渠道地址 | 新增域名须在此登记 |
+| 出站请求清单 | 应用自身仅访问：models.dev（市场抓取）、frankfurter.app / open.er-api.com（USD→CNY 汇率，v0.19.0）、api.github.com / github.com（更新检测与更新包下载，v0.30.0 起 updater 走 `releases/latest/download/latest.json`）、apiprice.app（v0.31.0 汇总源，仅 `/data/prices.json`，数据 CC BY 4.0 已署名）、openrouter.ai（v0.31.1 汇总源，仅 `/api/v1/models` 公开端点）、用户配置的市场数据源站点（v0.25.0，仅 `{origin}/api/pricing` 与 `/favicon.ico`，源配置不含密钥）；其余请求均为用户配置的模型渠道地址 | 新增域名须在此登记 |
 | MCP 输出脱敏 | ✅ v0.18.0 白名单序列化之外，notes / 错误消息 / 事件 / Raw 原文输出前统一做令牌样式二次脱敏（sk- / LTAI / AKLT / Bearer / 敏感 query 参数）；历史归档读取时 headers 实时再掩码 | 持续保持 |
 | 应用内更新 | ✅ v0.30.0 一键更新（tauri-plugin-updater：下载 → minisign 验签 → 替换 → 自动重启）；更新包与 latest.json 由 Release workflow 用 minisign 私钥签名，应用内置公钥校验，防篡改。私钥仅存 GitHub Actions Repository Secrets 与维护者本机（~/.tauri/），不进仓库 / 日志 / 对话。v0.18.0 的「下载到 updates/ + 手动运行安装器」流程已移除；GitHub API 版本检测保留为降级路径 | 私钥泄露即更新通道失守：泄露时立即在源站重新生成密钥对并更新 Secrets 与应用公钥 |

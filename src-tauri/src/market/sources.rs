@@ -234,12 +234,12 @@ pub fn save_source_cache(
 
 /// 读取全部「启用且有缓存」的源的 providers（合并进市场快照展示）。
 pub fn load_enabled_source_providers(conn: &Connection) -> AppResult<Vec<MarketProvider>> {
-    // builtin_apiprice 是「可独立抓取 / 开关」的内置汇总源（走 source 缓存机制），
+    // builtin_apiprice / builtin_openrouter 是「可独立抓取 / 开关」的内置汇总源（走 source 缓存机制），
     // 其余 builtin（models.dev / 国内叠加层）由「抓取数据」按钮统一走 market_cache
     let mut stmt = conn.prepare(
         "SELECT c.snapshot_json FROM market_source_cache c \
          JOIN market_sources s ON s.id = c.source_id \
-         WHERE s.enabled = 1 AND (s.builtin = 0 OR s.id = 'builtin_apiprice')",
+         WHERE s.enabled = 1 AND (s.builtin = 0 OR s.id IN ('builtin_apiprice', 'builtin_openrouter'))",
     )?;
     let jsons: Vec<String> = stmt
         .query_map([], |row| row.get(0))?
@@ -673,6 +673,202 @@ fn map_apiprice(doc: &ApipriceDoc, source_id: &str) -> AppResult<MarketSnapshot>
 // 测试
 // ------------------------------------------------------------------
 
+// ------------------------------------------------------------------
+// OpenRouter 汇总源（公开 models 端点）
+// ------------------------------------------------------------------
+
+/// OpenRouter 公开模型目录端点（无需认证；pricing 为「每 token USD」字符串，×1M 折算）。
+pub const OPENROUTER_ENDPOINT: &str = "https://openrouter.ai/api/v1/models";
+
+/// OpenRouter vendor 前缀 → 展示名（主要厂商映射；小众托管 / 开源社区名原样保留）。
+fn openrouter_vendor_name(vendor: &str) -> String {
+    match vendor {
+        "openai" => "OpenAI",
+        "anthropic" => "Anthropic",
+        "google" => "Google",
+        "deepseek" => "DeepSeek",
+        "meta-llama" | "meta" => "Meta Llama",
+        "mistralai" | "mistral" => "Mistral",
+        "qwen" | "alibaba" => "阿里 Qwen",
+        "moonshotai" | "moonshot" => "月之暗面 Kimi",
+        "z-ai" | "zhipu" | "thudm" => "智谱 AI",
+        "minimax" => "MiniMax",
+        "x-ai" | "xai" => "xAI",
+        "microsoft" => "Microsoft",
+        "amazon" => "Amazon",
+        "cohere" => "Cohere",
+        "nvidia" => "NVIDIA",
+        "perplexity" => "Perplexity",
+        "bytedance" | "bytedance-seed" => "字节豆包",
+        "baidu" => "百度",
+        "tencent" => "腾讯",
+        "stepfun-ai" => "阶跃星辰",
+        "meituan" => "美团 LongCat",
+        "inclusionai" => "蚂蚁 Ling",
+        other => other,
+    }
+    .to_string()
+}
+
+/// OpenRouter 模型条目（仅取所需字段；端点 schema 加字段时容忍缺失）。
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "snake_case")]
+struct OpenRouterModel {
+    id: String,
+    #[serde(default)]
+    architecture: Option<OpenRouterArchitecture>,
+    #[serde(default)]
+    pricing: Option<OpenRouterPricing>,
+    /// 推理能力描述对象；null = 非推理模型
+    #[serde(default)]
+    reasoning: Option<Value>,
+    /// 计划下线日期（未到期的保留展示，note 标注）
+    #[serde(default)]
+    expiration_date: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "snake_case")]
+struct OpenRouterArchitecture {
+    #[serde(default)]
+    input_modalities: Vec<String>,
+    #[serde(default)]
+    output_modalities: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "snake_case")]
+struct OpenRouterPricing {
+    #[serde(default)]
+    prompt: Option<String>,
+    #[serde(default)]
+    completion: Option<String>,
+    #[serde(default)]
+    input_cache_read: Option<String>,
+}
+
+/// 「每 token USD」字符串 → 「每百万 token USD」数值（解析失败 / 负值返回 None）。
+fn per_token_to_per_1m(v: &Option<String>) -> Option<f64> {
+    let s = v.as_deref()?.trim();
+    if s.is_empty() {
+        return None;
+    }
+    let n: f64 = s.parse().ok()?;
+    (n >= 0.0).then(|| round4(n * 1_000_000.0))
+}
+
+/// OpenRouter 端点响应。
+#[derive(Debug, Deserialize)]
+struct OpenRouterDoc {
+    #[serde(default)]
+    data: Vec<OpenRouterModel>,
+}
+
+/// 抓取 OpenRouter models 端点并映射为快照（每厂商一个 provider）。
+pub async fn fetch_openrouter(source_id: &str) -> AppResult<MarketSnapshot> {
+    let client = http_client()?;
+    let resp = client
+        .get(OPENROUTER_ENDPOINT)
+        .send()
+        .await
+        .map_err(|e| AppError::Invalid(format!("抓取 {OPENROUTER_ENDPOINT} 失败: {e}")))?;
+    if !resp.status().is_success() {
+        return Err(AppError::Invalid(format!(
+            "抓取失败：{OPENROUTER_ENDPOINT} 返回 HTTP {}",
+            resp.status()
+        )));
+    }
+    let doc: OpenRouterDoc = resp
+        .json()
+        .await
+        .map_err(|e| AppError::Invalid(format!("OpenRouter 数据解析失败: {e}")))?;
+    map_openrouter(&doc, source_id)
+}
+
+/// OpenRouter 文档 → 快照（纯函数，便于单测；抓取只负责 HTTP）。
+fn map_openrouter(doc: &OpenRouterDoc, source_id: &str) -> AppResult<MarketSnapshot> {
+    // 按 id 的厂商前缀分组（保持首次出现顺序）
+    let mut order: Vec<String> = Vec::new();
+    let mut groups: std::collections::HashMap<String, Vec<&OpenRouterModel>> =
+        std::collections::HashMap::new();
+    for m in &doc.data {
+        let vendor = m.id.split('/').next().unwrap_or("other").to_string();
+        if !groups.contains_key(&vendor) {
+            order.push(vendor.clone());
+        }
+        groups.entry(vendor).or_default().push(m);
+    }
+
+    let mut providers = Vec::new();
+    for vendor in order {
+        let entries = &groups[&vendor];
+        let mut models = Vec::new();
+        for m in entries {
+            let (inputs_image, outputs_image) = match &m.architecture {
+                Some(a) => (
+                    a.input_modalities.iter().any(|x| x == "image"),
+                    a.output_modalities.iter().any(|x| x == "image"),
+                ),
+                None => (false, false),
+            };
+            let model_type = if outputs_image {
+                "image"
+            } else if inputs_image {
+                "multimodal"
+            } else if m.reasoning.is_some() {
+                "reasoning"
+            } else {
+                "text"
+            };
+            let input = per_token_to_per_1m(&m.pricing.as_ref().and_then(|p| p.prompt.clone()));
+            let output =
+                per_token_to_per_1m(&m.pricing.as_ref().and_then(|p| p.completion.clone()));
+            let cached =
+                per_token_to_per_1m(&m.pricing.as_ref().and_then(|p| p.input_cache_read.clone()));
+
+            let mut note_parts = vec!["OpenRouter 转售价（平台托管）".to_string()];
+            if input == Some(0.0) && output == Some(0.0) {
+                note_parts.push("免费模型".into());
+            }
+            if let Some(exp) = m.expiration_date.as_deref().filter(|e| !e.is_empty()) {
+                note_parts.push(format!("将于 {exp} 下线"));
+            }
+            models.push(MarketModel {
+                model: m.id.clone(),
+                model_type: model_type.into(),
+                input_per_1m: input,
+                cached_input_per_1m: cached,
+                output_per_1m: output,
+                currency: "USD".into(),
+                note: Some(note_parts.join("；")),
+                off_peak: None,
+            });
+        }
+        if models.is_empty() {
+            continue;
+        }
+        models.sort_by_key(|m| m.model.clone());
+        providers.push(MarketProvider {
+            id: format!("{source_id}-{vendor}"),
+            name: openrouter_vendor_name(&vendor),
+            region: "global".into(),
+            pricing_url: "https://openrouter.ai/models".into(),
+            models,
+        });
+    }
+    if providers.is_empty() {
+        return Err(AppError::Invalid(
+            "OpenRouter 数据为空（data 数组无条目）".into(),
+        ));
+    }
+    Ok(MarketSnapshot {
+        snapshot_date: now_rfc3339()[..10].to_string(),
+        source: "openrouter:api/v1/models".into(),
+        fetched_at: Some(now_rfc3339()),
+        providers,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -822,6 +1018,70 @@ mod tests {
         let op = ds.off_peak.as_ref().expect("低谷价应映射");
         assert_eq!(op.window, "00:30-08:30 UTC+8");
         assert_eq!(op.input_per_1m, Some(0.014));
+    }
+
+    #[test]
+    fn openrouter_maps_pricing_types_and_flags() {
+        let doc: OpenRouterDoc = serde_json::from_value(json!({
+            "data": [
+                {"id": "deepseek/deepseek-chat-v4", "pricing": {"prompt": "0.00000027", "completion": "0.0000011", "input_cache_read": "0.000000027"},
+                 "architecture": {"input_modalities": ["text", "image"], "output_modalities": ["text"]}},
+                {"id": "deepseek/deepseek-r3", "pricing": {"prompt": "0.0000005", "completion": "0.000002"},
+                 "architecture": {"input_modalities": ["text"], "output_modalities": ["text"]},
+                 "reasoning": {"mandatory": true}},
+                {"id": "google/gemini-4-neon", "pricing": {"prompt": "0.000003", "completion": "0.000015"},
+                 "architecture": {"input_modalities": ["text"], "output_modalities": ["text"]},
+                 "expiration_date": "2027-01-31"},
+                {"id": "free/mini", "pricing": {"prompt": "0", "completion": "0"},
+                 "architecture": {"input_modalities": ["text"], "output_modalities": ["text"]}}
+            ]
+        }))
+        .unwrap();
+        let snap = map_openrouter(&doc, "builtin_openrouter").unwrap();
+        assert_eq!(
+            snap.providers.len(),
+            3,
+            "按厂商前缀分组 deepseek/google/free"
+        );
+        assert_eq!(snap.source, "openrouter:api/v1/models");
+
+        let ds = &snap
+            .providers
+            .iter()
+            .find(|p| p.name == "DeepSeek")
+            .unwrap()
+            .models;
+        assert_eq!(ds.len(), 2);
+        let chat = &ds[0];
+        assert_eq!(chat.input_per_1m, Some(0.27), "每 token USD ×1M 折算");
+        assert_eq!(chat.output_per_1m, Some(1.1));
+        assert_eq!(chat.cached_input_per_1m, Some(0.027));
+        assert_eq!(chat.model_type, "multimodal", "输入含 image → 多模态");
+        let r3 = &ds[1];
+        assert_eq!(r3.model_type, "reasoning", "reasoning 非 null → 推理");
+
+        let gemini = &snap
+            .providers
+            .iter()
+            .find(|p| p.name == "Google")
+            .unwrap()
+            .models[0];
+        assert!(gemini.note.as_deref().unwrap().contains("2027-01-31 下线"));
+
+        let free = &snap
+            .providers
+            .iter()
+            .find(|p| p.name == "free")
+            .unwrap()
+            .models[0];
+        assert_eq!(free.input_per_1m, Some(0.0));
+        assert!(free.note.as_deref().unwrap().contains("免费"));
+    }
+
+    #[test]
+    fn openrouter_empty_is_error() {
+        let doc: OpenRouterDoc = serde_json::from_value(json!({"data": []})).unwrap();
+        assert!(map_openrouter(&doc, "s").is_err());
     }
 
     #[test]

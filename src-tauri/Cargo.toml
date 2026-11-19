@@ -1,6 +1,6 @@
 [package]
 name = "lcm"
-version = "0.31.0"
+version = "0.31.1"
 description = "LCM — Local Channel Manager，本地优先的大模型渠道管理与 API 测试工具"
 authors = ["王昊"]
 edition = "2021"

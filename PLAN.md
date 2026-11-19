@@ -252,11 +252,11 @@ Preview 不得覆盖 Raw。
 
 ### 数据源体系（v0.31.0）
 
-- **内置汇总源**：models.dev（国际价，市场页「抓取数据」统一刷新）、**apiprice.app**（开放数据 `prices.json`，CC BY 4.0 署名「apiprice.app」；官方 / 国内官方 CNY / OpenRouter 三通道，带缓存与低谷分时段价；设置页独立开关与抓取，缓存走 market_source_cache）。
+- **内置汇总源**：models.dev（国际价，市场页「抓取数据」统一刷新）、**apiprice.app**（开放数据 `prices.json`，CC BY 4.0 署名「apiprice.app」；官方 / 国内官方 CNY / OpenRouter 三通道，带缓存与低谷分时段价；设置页独立开关与抓取，缓存走 market_source_cache）、**OpenRouter**（v0.31.1，公开 `api/v1/models`；69 家厂商托管平台转售价 USD ×1M 折算，带缓存价 / 模态 / 推理标记，免费与计划下线标注；多家比价站的数据上游）。
 - **国内叠加层**：data_cn.json 人工维护 + `pnpm market:cn-refresh` 辅助刷新；设置页逐家展示官网链接。
 - **自定义源**：NewAPI 类站点模型广场（/api/pricing 倍率折算）。
 - **多源取值原则**：各源独立成组、行级标注来源与渠道，**不做黑盒合并 / 平均**——比价让用户直接看各源数字（LCM 不估算原则的延伸）。
-- 调研结论（2026-11）：ai-price-compare.konata9.cc、gpuprice.cn、qust.ltd、aimap.page 均无开放数据端点或明确许可，暂不接入；OpenRouter models 端点可作为后续候选（多家比价站的实际上游）。
+- 调研结论（2026-11）：ai-price-compare.konata9.cc、gpuprice.cn、qust.ltd、aimap.page 均无开放数据端点或明确许可，暂不接入；OpenRouter models 端点已于 v0.31.1 接入（多家比价站的实际上游）。
 
 ### 测试中心
 
