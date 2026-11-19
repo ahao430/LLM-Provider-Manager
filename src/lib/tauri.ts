@@ -905,6 +905,32 @@ export function deleteTodo(id: string): Promise<void> {
   return invoke<void>("delete_todo", { id });
 }
 
+// ------------------------------------------------------------------
+// 运维日历（v0.34.2，仪表盘日历卡：按本地日期聚合日志/待办）
+// ------------------------------------------------------------------
+
+export interface CalendarDay {
+  /** 本地日期 YYYY-MM-DD */
+  date: string;
+  logCount: number;
+  todoCount: number;
+  /** 当日到期且未完成 */
+  todoOpen: number;
+}
+
+export interface OpsDayItems {
+  logs: OpsLogRow[];
+  todos: TodoRow[];
+}
+
+export function opsCalendarMonth(year: number, month: number): Promise<CalendarDay[]> {
+  return invoke<CalendarDay[]>("ops_calendar_month", { year, month });
+}
+
+export function opsDayItems(date: string): Promise<OpsDayItems> {
+  return invoke<OpsDayItems>("ops_day_items", { date });
+}
+
 export async function sendTestStream(
   req: ApiTestRequestPayload,
   onEvent?: (event: ApiTestStreamEvent) => void

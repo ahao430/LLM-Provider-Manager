@@ -76,7 +76,8 @@ use crate::commands::models::{
     rename_global_model, upsert_channel_model,
 };
 use crate::commands::ops_journal::{
-    add_ops_log, add_todo, delete_ops_log, delete_todo, list_ops_logs, list_todos, toggle_todo,
+    add_ops_log, add_todo, delete_ops_log, delete_todo, list_ops_logs, list_todos,
+    ops_calendar_month, ops_day_items, toggle_todo,
 };
 use crate::commands::workbench::replay_test_request;
 use crate::commands::workbench::{
@@ -137,6 +138,8 @@ pub fn run() {
             list_ops_logs,
             list_todos,
             toggle_todo,
+            ops_calendar_month,
+            ops_day_items,
             list_channel_groups,
             create_channel_group,
             rename_channel_group,

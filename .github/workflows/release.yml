@@ -126,25 +126,25 @@ jobs:
         run: |
           version=$(jq -r '.version' src-tauri/tauri.conf.json)
           tag="v${version}"
-          echo "校验 ${tag} 的更新链路资产（防多矩阵上传竞态导致半成品发布）..."
-          assets=$(gh release view "$tag" --json assets --jq '.assets[].name')
-          missing=0
-          check() {
-            if ! echo "$assets" | grep -qx "$1"; then
-              echo "❌ 缺少资产: $1"
-              missing=1
-            fi
+          echo "校验 ${tag} 的更新链路资产（防多矩阵上传竞态；GitHub API 资产列表有最终一致性延迟，重试容忍）..."
+          missing_report() {
+            local assets="$1" missing=0
+            echo "$assets" | grep -qx "latest.json" || { echo "❌ 缺少资产: latest.json"; missing=1; }
+            # 各平台 updater 签名（tauri-action 在注入私钥时生成）
+            for pat in "aarch64.app.tar.gz.sig" "x64.app.tar.gz.sig" "setup.exe.sig" "AppImage.sig"; do
+              echo "$assets" | grep -q "$pat" || { echo "❌ 缺少签名产物（匹配: $pat）"; missing=1; }
+            done
+            return $missing
           }
-          check "latest.json"
-          # 各平台 updater 签名（tauri-action 在注入私钥时生成）
-          for pat in "aarch64.app.tar.gz.sig" "x64.app.tar.gz.sig" "_setup.exe.sig" "AppImage.sig"; do
-            if ! echo "$assets" | grep -q "$pat"; then
-              echo "❌ 缺少签名产物（匹配: $pat）"
-              missing=1
-            fi
+          ok=0
+          for i in 1 2 3 4 5 6; do
+            assets=$(gh release view "$tag" --json assets --jq '.assets[].name' 2>/dev/null) || assets=""
+            if missing_report "$assets"; then ok=1; break; fi
+            echo "（第 $i 次校验缺资产，5 秒后重试——可能是 API 资产列表延迟）"
+            sleep 5
           done
-          if [ "$missing" -ne 0 ]; then
-            echo "::error::发布资产不完整（多矩阵上传竞态）。草稿已保留：Re-run failed jobs 补齐资产后再发布。"
+          if [ "$ok" -ne 1 ]; then
+            echo "::error::重试后仍缺资产（多矩阵上传竞态或 API 延迟）。草稿已保留：Re-run failed jobs 补齐资产后再发布。"
             exit 1
           fi
           echo "✅ 资产齐全"

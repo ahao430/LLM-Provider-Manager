@@ -18,6 +18,7 @@ import {
   useTodos,
   useToggleTodo,
 } from "@/features/ops-journal/api";
+import { fmtLocalTime } from "@/lib/time";
 
 /**
  * 运维记录页（/ops）：待办与运维日志的完整管理。
@@ -216,7 +217,7 @@ function OpsLogCard() {
                 <div className="min-w-0 flex-1">
                   <p className="text-sm whitespace-pre-wrap">{l.content}</p>
                   <p className="text-muted-foreground mt-0.5 text-xs">
-                    {l.createdAt.slice(0, 19).replace("T", " ")}
+                    {fmtLocalTime(l.createdAt)}
                     {l.channelName ? (
                       <Badge variant="outline" className="ml-1.5 text-[10px]">
                         {l.channelName}

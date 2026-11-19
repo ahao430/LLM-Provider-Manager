@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { listLatestBalances, refreshChannelBalance } from "@/lib/tauri";
 import { useChannels } from "@/features/channels/api";
 import { useDashboardStats } from "@/features/api-testing/api";
+import { OpsCalendarCard } from "@/features/dashboard/OpsCalendarCard";
 import { RecentItemsCard } from "@/features/dashboard/OpsJournalCards";
 
 /** 仪表盘：渠道/模型/请求整体情况。充值与供应商账单分开统计。 */
@@ -71,7 +72,10 @@ export function DashboardPage() {
         <PinnedChannelCards />
       </div>
 
-      <RecentItemsCard />
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <OpsCalendarCard />
+        <RecentItemsCard />
+      </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <MoneyCard

@@ -182,3 +182,117 @@ pub fn delete_todo(state: State<'_, AppState>, id: String) -> AppResult<()> {
     conn.execute("DELETE FROM todos WHERE id = ?1", rusqlite::params![id])?;
     Ok(())
 }
+
+// ------------------------------------------------------------------
+// 日历（仪表盘「运维日历」卡）：按本地日期聚合日志/待办。
+// created_at 一律 UTC RFC3339 存储，展示与分桶用 SQLite 'localtime' 修饰符换算本地日期，
+// 避免 UTC 0-8 点（本地凌晨）的记录落到前一天。
+// ------------------------------------------------------------------
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CalendarDay {
+    /// 本地日期 YYYY-MM-DD
+    pub date: String,
+    pub log_count: i64,
+    /// 当日到期待办总数（含已完成）
+    pub todo_count: i64,
+    /// 当日到期且未完成
+    pub todo_open: i64,
+}
+
+#[tauri::command]
+pub fn ops_calendar_month(
+    state: State<'_, AppState>,
+    year: i32,
+    month: i32,
+) -> AppResult<Vec<CalendarDay>> {
+    if !(1..=12).contains(&month) {
+        return Err(AppError::Invalid("月份超出范围".into()));
+    }
+    if !(1970..=2999).contains(&year) {
+        return Err(AppError::Invalid("年份超出范围".into()));
+    }
+    let prefix = format!("{year:04}-{month:02}");
+    let conn = db(&state)?;
+    let mut map: std::collections::HashMap<String, CalendarDay> = std::collections::HashMap::new();
+    // 日志按本地日期聚合（LIKE 保证跨月边界的时区偏移不漏记）
+    let mut stmt = conn.prepare(
+        "SELECT date(created_at, 'localtime') AS d, COUNT(*) FROM ops_logs \
+         WHERE date(created_at, 'localtime') LIKE ?1 || '-%' GROUP BY d",
+    )?;
+    let mut rows = stmt.query(rusqlite::params![prefix])?;
+    while let Some(r) = rows.next()? {
+        let d: String = r.get(0)?;
+        let n: i64 = r.get(1)?;
+        let entry = map.entry(d.clone()).or_insert(CalendarDay {
+            date: d,
+            log_count: 0,
+            todo_count: 0,
+            todo_open: 0,
+        });
+        entry.log_count = n;
+    }
+    // 待办按 due_date（本身就是本地日期）聚合
+    let mut stmt = conn.prepare(
+        "SELECT due_date, COUNT(*), SUM(CASE WHEN done = 0 THEN 1 ELSE 0 END) FROM todos \
+         WHERE due_date LIKE ?1 || '-%' GROUP BY due_date",
+    )?;
+    let mut rows = stmt.query(rusqlite::params![prefix])?;
+    while let Some(r) = rows.next()? {
+        let d: String = r.get(0)?;
+        let n: i64 = r.get(1)?;
+        let open: i64 = r.get(2)?;
+        let entry = map.entry(d.clone()).or_insert(CalendarDay {
+            date: d,
+            log_count: 0,
+            todo_count: 0,
+            todo_open: 0,
+        });
+        entry.todo_count = n;
+        entry.todo_open = open;
+    }
+    let mut days: Vec<CalendarDay> = map.into_values().collect();
+    days.sort_by_key(|d| d.date.clone());
+    Ok(days)
+}
+
+/// 某一天的明细：当天日志（本地日期口径）+ 当日到期待办（含已完成）。
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OpsDayItems {
+    pub logs: Vec<OpsLogRow>,
+    pub todos: Vec<TodoRow>,
+}
+
+fn is_yyyy_mm_dd(date: &str) -> bool {
+    let b = date.as_bytes();
+    b.len() == 10
+        && b.iter().enumerate().all(|(i, c)| match i {
+            4 | 7 => *c == b'-',
+            _ => c.is_ascii_digit(),
+        })
+}
+
+#[tauri::command]
+pub fn ops_day_items(state: State<'_, AppState>, date: String) -> AppResult<OpsDayItems> {
+    if !is_yyyy_mm_dd(&date) {
+        return Err(AppError::Invalid("日期格式应为 YYYY-MM-DD".into()));
+    }
+    let conn = db(&state)?;
+    let mut stmt = conn.prepare(&format!(
+        "SELECT {LOG_COLUMNS} WHERE date(l.created_at, 'localtime') = ?1 ORDER BY l.created_at ASC"
+    ))?;
+    let logs: Vec<OpsLogRow> = stmt
+        .query_map(rusqlite::params![date], log_from)?
+        .filter_map(|r| r.ok())
+        .collect();
+    let mut stmt = conn.prepare(&format!(
+        "SELECT {TODO_COLUMNS} WHERE t.due_date = ?1 ORDER BY t.done ASC, t.created_at ASC"
+    ))?;
+    let todos: Vec<TodoRow> = stmt
+        .query_map(rusqlite::params![date], todo_from)?
+        .filter_map(|r| r.ok())
+        .collect();
+    Ok(OpsDayItems { logs, todos })
+}

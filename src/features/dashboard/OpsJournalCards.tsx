@@ -15,9 +15,8 @@ import {
 } from "@/components/ui/table";
 import { useIncidents } from "@/features/channels/api";
 import { useOpsLogs, useTodos } from "@/features/ops-journal/api";
+import { fmtDayLabel, fmtLocalTime } from "@/lib/time";
 import type { OpsLogRow, TodoRow } from "@/lib/tauri";
-
-const fmtTime = (iso: string) => `${iso.slice(5, 10)} ${iso.slice(11, 16)}`;
 
 /**
  * 仪表盘近期事项汇总卡：日志 / 待办 / 未解决故障的混合动态表格。
@@ -37,6 +36,7 @@ export function RecentItemsCard() {
         key: `log:${l.id}`,
         kind: "log",
         time: l.createdAt,
+        timeLabel: fmtLocalTime(l.createdAt),
         content: l.content,
         channelName: l.channelName,
         urgent: false,
@@ -48,6 +48,7 @@ export function RecentItemsCard() {
         key: `todo:${t.id}`,
         kind: "todo",
         time: t.dueDate ?? t.createdAt,
+        timeLabel: t.dueDate ? fmtDayLabel(t.dueDate) : fmtLocalTime(t.createdAt),
         content: t.title,
         channelName: t.channelName,
         urgent: !t.done && !!t.dueDate && t.dueDate < today,
@@ -59,6 +60,7 @@ export function RecentItemsCard() {
         key: `incident:${i.id}`,
         kind: "incident",
         time: i.startedAt,
+        timeLabel: fmtLocalTime(i.startedAt),
         content: `故障：${i.title}`,
         channelName: null,
         urgent: !i.resolvedAt,
@@ -129,7 +131,7 @@ export function RecentItemsCard() {
                       {item.channelName ?? "—"}
                     </TableCell>
                     <TableCell className="text-muted-foreground text-xs tabular-nums">
-                      {fmtTime(item.time)}
+                      {item.timeLabel}
                     </TableCell>
                   </TableRow>
                 );
@@ -145,7 +147,10 @@ export function RecentItemsCard() {
 interface RecentItem {
   key: string;
   kind: "log" | "todo" | "incident";
+  /** 排序键（UTC ISO 或本地 due_date 字符串） */
   time: string;
+  /** 展示用（本地时区） */
+  timeLabel: string;
   content: string;
   channelName: string | null;
   /** 待办逾期 / 故障未解决 */
