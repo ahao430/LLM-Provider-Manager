@@ -79,6 +79,27 @@ LCM 不是 AI Gateway、API Proxy、模型路由器或协议转换服务，而�
 
 ## 快速开始
 
+### 下载安装（普通用户）
+
+从 [Releases](https://github.com/ahao430/LLM-Provider-Manager/releases) 下载对应平台安装包：
+
+| 平台 | 资产 |
+|---|---|
+| macOS (Apple Silicon) | `LCM_x.y.z_aarch64.dmg` |
+| macOS (Intel) | `LCM_x.y.z_x64.dmg` |
+| Windows | `LCM_x.y.z_x64-setup.exe`（或 `.msi`） |
+| Linux | `LCM_x.y.z_amd64.AppImage`（或 `.deb`） |
+
+**macOS 首次运行**：应用未做 Apple 公证（notarization），拖入「应用程序」后首次打开可能被 Gatekeeper 拦截（提示「已损坏，无法打开」）。在终端执行以下命令清除隔离属性后即可正常打开：
+
+```bash
+xattr -cr /Applications/LCM.app
+```
+
+> 也可以在「系统设置 → 隐私与安全性」里点击「仍要打开」放行；若仍不行再用上面的命令。
+
+应用内也支持更新：启动自动检测新版本，侧边栏版本号旁出现「升级」按钮，一键下载安装包并引导覆盖安装（应用未公证时 macOS 同样可能需要重跑一次上面的命令）。
+
 ### 前置要求
 
 - [Node.js](https://nodejs.org/) ≥ 20（建议 22）与 [pnpm](https://pnpm.io/) ≥ 9
