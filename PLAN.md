@@ -807,9 +807,7 @@ ChannelBill
 └── created_at
 ```
 
-支持手工录入供应商账单。
-
-后续支持 CSV、Excel 导入。
+支持手工录入供应商账单，并支持 **CSV / Excel 导入**（v0.28.0：`.csv` / `.xlsx`，列序账期 YYYY-MM、金额、币种、备注，首行表头；来源按扩展名标记 csv_import / excel_import，与同渠道同账期同来源唯一约束冲突的行跳过，逐行报告新增 / 跳过 / 失败原因）。
 
 ### 余额快照
 

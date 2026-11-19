@@ -1049,6 +1049,21 @@ export function deleteBill(id: string): Promise<void> {
   return invoke<void>("delete_bill", { id });
 }
 
+/** 账单文件导入结果（逐行写入：重复跳过、失败行不中断整体）。 */
+export interface BillImportReport {
+  total: number;
+  created: number;
+  skipped: number;
+  failed: { row: number; reason: string }[];
+  /** csv_import / excel_import */
+  source: string;
+}
+
+/** 从 CSV / Excel 导入供应商账单（列序：账期 YYYY-MM、金额、币种、备注）。 */
+export function importBillsFromFile(channelId: string, path: string): Promise<BillImportReport> {
+  return invoke<BillImportReport>("import_bills_from_file", { channelId, path });
+}
+
 export function listBalanceSnapshots(channelId?: string): Promise<BalanceSnapshotRow[]> {
   return invoke<BalanceSnapshotRow[]>("list_balance_snapshots", { channelId: channelId ?? null });
 }

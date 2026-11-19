@@ -4,6 +4,12 @@
 
 遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 格式，版本策略见 [AGENTS.md](./AGENTS.md)：每次改动第三位 +1（patch），较大改动第二位 +1（minor），第一位仅在维护者要求时升级。
 
+## [0.28.0] - 2026-11-19
+
+### 新增（较大改动，第二位 +1）
+
+- **供应商账单 CSV / Excel 导入**（Phase 8 清单项落地）：渠道详情 → 资金 → 「导入 CSV/Excel」按钮选文件，列序为账期 YYYY-MM、金额、币种、备注（首行表头）。来源按扩展名标记 `csv_import` / `excel_import`（与手工录入分开统计）；同渠道同账期同来源重复的行自动跳过；逐行校验（账期格式 / 金额数字 / 币种非空），失败行如实报告行号与原因、不中断其余行。Excel 数字单元格无浮点尾巴；Rust 侧 calamine（读取）+ rust_xlsxwriter（既有导出）闭环。
+
 ## [0.27.1] - 2026-11-19
 
 ### 修复

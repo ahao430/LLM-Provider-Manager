@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { CloudDownload, Plus, Trash2, Wallet } from "lucide-react";
+import { open as openDialog } from "@tauri-apps/plugin-dialog";
+import { CloudDownload, FileUp, Plus, Trash2, Wallet } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,7 @@ import {
   deleteRecharge,
   getChannelFunds,
   importBailianBills,
+  importBillsFromFile,
   queryBailianTransactions,
   type BailianTransaction,
   type RechargeRow,
@@ -162,6 +164,40 @@ export function FundsTab({
       invalidate();
     } catch (e) {
       toast.error(`保存失败：${e}`);
+    }
+  }
+
+  /** CSV / Excel 账单导入（列序：账期 YYYY-MM、金额、币种、备注）。 */
+  const [importing, setImporting] = useState(false);
+  async function handleImportBills() {
+    const picked = await openDialog({
+      multiple: false,
+      title: "选择账单文件（.csv / .xlsx）",
+      filters: [{ name: "账单文件", extensions: ["csv", "xlsx"] }],
+    });
+    if (!picked || Array.isArray(picked)) return;
+    setImporting(true);
+    try {
+      const report = await importBillsFromFile(channelId, picked);
+      if (report.failed.length > 0) {
+        const preview = report.failed
+          .slice(0, 3)
+          .map((f) => `第 ${f.row} 行：${f.reason}`)
+          .join("\n");
+        toast.warning(
+          `导入完成：新增 ${report.created} / 跳过重复 ${report.skipped} / 失败 ${report.failed.length}\n${preview}${report.failed.length > 3 ? "\n…" : ""}`,
+          { duration: 8000 }
+        );
+      } else {
+        toast.success(
+          `导入完成：新增 ${report.created}${report.skipped > 0 ? `（跳过重复 ${report.skipped}）` : ""}`
+        );
+      }
+      invalidate();
+    } catch (e) {
+      toast.error(`导入失败：${e}`);
+    } finally {
+      setImporting(false);
     }
   }
 
@@ -329,7 +365,8 @@ export function FundsTab({
           <div className="space-y-1.5">
             <CardTitle className="text-base">供应商账单</CardTitle>
             <CardDescription>
-              手工录入实际结算金额；同渠道同账期同来源唯一（CSV/Excel 导入在 Phase 8）。
+              手工录入实际结算金额；同渠道同账期同来源唯一。支持 CSV / Excel 导入
+              （列序：账期 YYYY-MM、金额、币种、备注，首行为表头）。
             </CardDescription>
           </div>
           <div className="flex gap-2">
@@ -338,6 +375,10 @@ export function FundsTab({
                 <CloudDownload className="size-4" />拉取百炼账单
               </Button>
             ) : null}
+            <Button size="sm" variant="outline" onClick={handleImportBills} disabled={importing}>
+              <FileUp className="size-4" />
+              {importing ? "导入中…" : "导入 CSV/Excel"}
+            </Button>
             <Button size="sm" variant="outline" onClick={() => setBillOpen(true)}>
               <Plus className="size-4" />录入账单
             </Button>

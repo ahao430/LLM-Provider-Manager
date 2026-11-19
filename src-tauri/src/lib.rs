@@ -46,8 +46,8 @@ use crate::commands::balance::{
 };
 use crate::commands::billing::{
     add_balance_snapshot, add_bill, add_recharge, delete_balance_snapshot, delete_bill,
-    delete_recharge, get_channel_funds, list_balance_snapshots, list_bills, list_recharges,
-    update_bill, update_recharge,
+    delete_recharge, get_channel_funds, import_bills_from_file, list_balance_snapshots, list_bills,
+    list_recharges, update_bill, update_recharge,
 };
 use crate::commands::channels::{
     create_channel, create_channel_group, delete_channel, delete_channel_group, get_channel,
@@ -165,6 +165,7 @@ pub fn run() {
             add_recharge,
             update_recharge,
             delete_recharge,
+            import_bills_from_file,
             list_bills,
             add_bill,
             update_bill,
