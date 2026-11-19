@@ -123,6 +123,9 @@ pub fn import_channel_models(
             price_input_per_1m: None,
             price_output_per_1m: None,
             price_currency: None,
+            price_multiplier: None,
+            price_tiers: None,
+            price_off_peak: None,
         };
         repo::insert_channel_model(conn, &input)?;
         created.push(actual.to_string());
@@ -149,6 +152,12 @@ pub fn upsert_channel_model(
     validate_protocol(&input.protocol)?;
     if input.actual_model_id.trim().is_empty() {
         return Err(AppError::Invalid("实际模型 ID 不能为空".into()));
+    }
+    // 倍率校验：> 0（repo 层会把非法值归一为 1.0，这里显式报错防止静默修正）
+    if let Some(m) = input.price_multiplier {
+        if m <= 0.0 {
+            return Err(AppError::Invalid("价格倍率必须大于 0".into()));
+        }
     }
     // 全局模型必须存在（前端先建或从下拉选择，传的是全局模型 ID）
     if repo::find_global_model_by_id(conn, &input.model_id)?.is_none() {
@@ -381,6 +390,9 @@ mod tests {
             price_input_per_1m: None,
             price_output_per_1m: None,
             price_currency: None,
+            price_multiplier: None,
+            price_tiers: None,
+            price_off_peak: None,
         };
         upsert_channel_model(&conn, &edit).unwrap();
 

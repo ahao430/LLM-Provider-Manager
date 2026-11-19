@@ -26,17 +26,20 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { openExternal } from "@/lib/external";
-import { useUiStore, type MarketCurrency } from "@/stores/ui";
 import {
   fetchMarketPrices,
   getMarketFx,
+  listChannelPriceAnnotations,
   listMarketPrices,
   MODEL_TYPE_LABELS,
+  type ChannelPriceAnnotation,
   type MarketModel,
   type MarketProvider,
   type ModelType,
 } from "@/lib/tauri";
+import { annotationEffective, annotationTooltip, toCnyForSort } from "@/lib/annotationPrice";
+import { openExternal } from "@/lib/external";
+import { useUiStore, type MarketCurrency } from "@/stores/ui";
 
 const TYPE_VARIANT: Record<ModelType, "default" | "secondary" | "outline" | "destructive"> = {
   multimodal: "default",
@@ -74,6 +77,24 @@ export function MarketPage() {
 
   const [providerId, setProviderId] = useState("all");
   const [search, setSearch] = useState("");
+  // 比价排序：模型名 / 市场输入价 / 市场输出价（键 = max(单一, 低谷) 的市场价，折算后比较）
+  const [priceSort, setPriceSort] = useState<"name" | "input" | "output">("name");
+  // 渠道标注（比价列）：actualModelId（小写）→ 标注行
+  const annotationsQuery = useQuery({
+    queryKey: ["channel-price-annotations"],
+    queryFn: listChannelPriceAnnotations,
+    staleTime: 60_000,
+  });
+  const annotationMap = useMemo(() => {
+    const map = new Map<string, ChannelPriceAnnotation[]>();
+    for (const a of annotationsQuery.data ?? []) {
+      const key = a.actualModelId.trim().toLowerCase();
+      const list = map.get(key);
+      if (list) list.push(a);
+      else map.set(key, [a]);
+    }
+    return map;
+  }, [annotationsQuery.data]);
   // 分页（按模型行）：筛选变化回第一页；总数 ≤ 10 时 Pagination 自身不渲染
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -111,14 +132,35 @@ export function MarketPage() {
       .filter((entry) => entry.models.length > 0);
   }, [providers, providerId, search]);
 
-  // 摊平成模型行（分页按模型计数，不按厂商）
+  // 摊平成模型行（分页按模型计数，不按厂商）；价格排序按 max(单一, 低谷) 市场价折算 CNY
   const flatRows = useMemo(() => {
     const rows: { provider: MarketProvider; model: MarketModel }[] = [];
     for (const { provider, models } of filtered) {
       for (const model of models) rows.push({ provider, model });
     }
-    return rows;
-  }, [filtered]);
+    if (priceSort === "name") return rows;
+    const fxForSort = fx?.rate ?? null;
+    const keyOf = (m: MarketModel): number | null => {
+      const vals =
+        priceSort === "input"
+          ? [m.inputPer1m, m.offPeak?.inputPer1m ?? null]
+          : [m.outputPer1m, m.offPeak?.outputPer1m ?? null];
+      let best: number | null = null;
+      for (const v of vals) {
+        const cny = toCnyForSort(v, m.currency, fxForSort);
+        if (cny !== null && (best === null || cny > best)) best = cny;
+      }
+      return best;
+    };
+    return [...rows].sort((a, b) => {
+      const av = keyOf(a.model);
+      const bv = keyOf(b.model);
+      if (av === null && bv === null) return a.model.model.localeCompare(b.model.model);
+      if (av === null) return 1;
+      if (bv === null) return -1;
+      return av - bv; // 升序 = 从低到高（无价垫底）
+    });
+  }, [filtered, priceSort, fx]);
   const pageCount = Math.max(Math.ceil(flatRows.length / pageSize), 1);
   const safePage = Math.min(page, pageCount);
   const pageRows = flatRows.slice((safePage - 1) * pageSize, safePage * pageSize);
@@ -184,6 +226,22 @@ export function MarketPage() {
             className="h-8 w-56 pl-8 text-sm"
           />
         </div>
+        <Select
+          value={priceSort}
+          onValueChange={(v) => {
+            setPriceSort(v as "name" | "input" | "output");
+            setPage(1);
+          }}
+        >
+          <SelectTrigger className="h-8 w-44 text-sm" title="排序键 = max(单一价, 低谷价) 折算 CNY（升序 = 从低到高，无价垫底）">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="name">按模型名</SelectItem>
+            <SelectItem value="input">输入价从低到高</SelectItem>
+            <SelectItem value="output">输出价从低到高</SelectItem>
+          </SelectContent>
+        </Select>
         {/* 币种切换：默认=各厂商原生币种；USD/CNY=按汇率折算（≈ 标注） */}
         <div className="bg-muted inline-flex rounded-lg p-0.5">
           {CURRENCY_MODES.map((m) => (
@@ -216,12 +274,18 @@ export function MarketPage() {
                 <TableHead className="text-right">输入 / 百万</TableHead>
                 <TableHead className="text-right">缓存 / 百万</TableHead>
                 <TableHead className="text-right">输出 / 百万</TableHead>
+                <TableHead
+                  className="w-44"
+                  title="渠道标注实际价（原价 × 倍率，含阶梯 / 低谷最高档）；悬浮看明细"
+                >
+                  渠道标注（实际价）
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {flatRows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-muted-foreground py-8 text-center text-sm">
+                  <TableCell colSpan={7} className="text-muted-foreground py-8 text-center text-sm">
                     没有匹配的模型
                   </TableCell>
                 </TableRow>
@@ -233,6 +297,9 @@ export function MarketPage() {
                     model={model}
                     displayCurrency={currencyMode}
                     fxRate={rate}
+                    annotations={
+                      annotationMap.get(model.model.trim().toLowerCase()) ?? []
+                    }
                   />
                 ))
               )}
@@ -273,11 +340,13 @@ function MarketModelRow({
   model,
   displayCurrency,
   fxRate,
+  annotations,
 }: {
   provider: MarketProvider;
   model: MarketModel;
   displayCurrency: MarketCurrency;
   fxRate: number;
+  annotations: ChannelPriceAnnotation[];
 }) {
   // native = 各厂商原生币种；否则折算到目标币种（≈ 标注，脚注说明汇率）
   const conv = (value: number | null): { text: string; approx: boolean } => {
@@ -333,7 +402,48 @@ function MarketModelRow({
         <PriceCell approx={output.approx} text={output.text} />
         {off ? <PriceSubLine label="低谷" value={conv(off.outputPer1m).text} window={off.window} /> : null}
       </TableCell>
+      <TableCell className="align-top">
+        <AnnotationCompareCell annotations={annotations} />
+      </TableCell>
     </TableRow>
+  );
+}
+
+/** 渠道标注比价格：各渠道的实际价（原价 × 倍率，最高档口径），悬浮显示明细。 */
+function AnnotationCompareCell({ annotations }: { annotations: ChannelPriceAnnotation[] }) {
+  if (annotations.length === 0) {
+    return <span className="text-muted-foreground text-xs">—</span>;
+  }
+  return (
+    <div className="space-y-1">
+      {annotations.map((a) => {
+        const eff = annotationEffective(a);
+        const sym = CURRENCY_SYMBOL[a.priceCurrency] ?? "";
+        const fmt = (v: number | null) => (v === null ? "—" : `${sym}${Number(v.toFixed(4))}`);
+        const marks =
+          a.priceMultiplier !== 1 || eff.hasTiers || eff.hasOffPeak
+            ? `（${[
+                a.priceMultiplier !== 1 ? `×${a.priceMultiplier}` : null,
+                eff.hasTiers ? "阶梯" : null,
+                eff.hasOffPeak ? "分时段" : null,
+              ]
+                .filter(Boolean)
+                .join(" ")}）`
+            : "";
+        return (
+          <p
+            key={a.channelModelId}
+            className="text-xs tabular-nums"
+            title={`${a.channelName} · 标注明细：\n${annotationTooltip(a)}`}
+          >
+            <span className="font-medium">{a.channelName}</span>{" "}
+            <span className="text-muted-foreground">
+              {fmt(eff.input)} / {fmt(eff.output)} {marks}
+            </span>
+          </p>
+        );
+      })}
+    </div>
   );
 }
 

@@ -222,6 +222,29 @@ pub struct ChannelInput {
     pub group_id: Option<String>,
 }
 
+/// 阶梯价一档（与市场价统一格式；存储为 channel_models.price_tiers_json）。
+/// upTo = 累计输入 token 上限（单位：百万），None = 无上限（最后一档）。
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PriceTier {
+    pub up_to: Option<f64>,
+    pub input: Option<f64>,
+    pub output: Option<f64>,
+}
+
+/// 分时段（低谷）价：window 描述时段，价格与主价同币种
+/// （对齐市场 offPeak 结构，去掉标注维度没有的缓存价）。
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PriceOffPeak {
+    pub window: String,
+    pub input: Option<f64>,
+    pub output: Option<f64>,
+}
+
+// 注意：比价 / 排序口径（max(单一, 阶梯最高档, 低谷) × 倍率）的实现在前端
+// `src/lib/annotationPrice.ts`（展示与排序的消费方都在前端），后端只负责存储。
+
 /// 渠道模型类型输入。
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -244,6 +267,15 @@ pub struct ChannelModelInput {
     /// 空字符串 = 未标注币种
     #[serde(default)]
     pub price_currency: Option<String>,
+    /// 倍率：实际价 = 原价 × 倍率（1.0 = 原价；0.8 = 八折）。None 归一为 1.0
+    #[serde(default)]
+    pub price_multiplier: Option<f64>,
+    /// 阶梯价（每百万 token；upTo = 累计输入 token 上限，单位百万，None = 无上限最后一档）
+    #[serde(default)]
+    pub price_tiers: Option<Vec<PriceTier>>,
+    /// 分时段（低谷）价
+    #[serde(default)]
+    pub price_off_peak: Option<PriceOffPeak>,
 }
 
 /// 渠道模型（某渠道实际提供的模型）。
@@ -262,9 +294,13 @@ pub struct ChannelModelRow {
     pub created_at: String,
     pub updated_at: String,
     /// 标注价格（每百万 token；None = 未标注）。仅展示比较，与费用估算无关。
+    /// 倍率与阶梯 / 低谷为标注格式的一部分；展示层计算「实际价 = 原价 × 倍率」。
     pub price_input_per_1m: Option<f64>,
     pub price_output_per_1m: Option<f64>,
     pub price_currency: String,
+    pub price_multiplier: f64,
+    pub price_tiers: Option<Vec<PriceTier>>,
+    pub price_off_peak: Option<PriceOffPeak>,
 }
 
 /// 全渠道模型视图行（模型列表页：跨渠道以模型维度聚合用）。
@@ -285,4 +321,38 @@ pub struct AllChannelModelRow {
     pub price_input_per_1m: Option<f64>,
     pub price_output_per_1m: Option<f64>,
     pub price_currency: String,
+    pub price_multiplier: f64,
+    pub price_tiers: Option<Vec<PriceTier>>,
+    pub price_off_peak: Option<PriceOffPeak>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn price_tier_serde_camelcase_roundtrip() {
+        // JSON 列存储格式：camelCase（与前端 PriceTier / PriceOffPeak 对齐）
+        let json =
+            r#"[{"upTo":0.128,"input":4.0,"output":16.0},{"upTo":null,"input":2.0,"output":8.0}]"#;
+        let tiers: Vec<PriceTier> = serde_json::from_str(json).unwrap();
+        assert_eq!(tiers.len(), 2);
+        assert_eq!(tiers[0].up_to, Some(0.128));
+        assert!(tiers[1].up_to.is_none());
+        let out = serde_json::to_string(&tiers).unwrap();
+        assert!(out.contains("\"upTo\""));
+        assert!(!out.contains("\"up_to\""));
+    }
+
+    #[test]
+    fn price_off_peak_serde_roundtrip() {
+        let json = r#"{"window":"00:30–08:30 UTC+8","input":1.0,"output":4.0}"#;
+        let op: PriceOffPeak = serde_json::from_str(json).unwrap();
+        assert_eq!(op.window, "00:30–08:30 UTC+8");
+        assert_eq!(op.input, Some(1.0));
+        // 旧快照 / 手工配置缺字段容忍为 None
+        let partial: PriceOffPeak = serde_json::from_str(r#"{"window":"2点～8点"}"#).unwrap();
+        assert_eq!(partial.input, None);
+        assert_eq!(partial.output, None);
+    }
 }

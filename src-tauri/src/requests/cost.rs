@@ -114,6 +114,9 @@ mod tests {
                 price_input_per_1m: None,
                 price_output_per_1m: None,
                 price_currency: None,
+                price_multiplier: None,
+                price_tiers: None,
+                price_off_peak: None,
             },
         )
         .unwrap();

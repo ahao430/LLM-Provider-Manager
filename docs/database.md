@@ -43,7 +43,7 @@ app-data/
 | `providers` | 服务商（百炼 / NewAPI / 火山方舟 / 硅基流动 / 自定义） | `code` 唯一 |
 | `channels` | 渠道实例（同服务商可多个） | `config_json` 存连接配置，**不含明文凭证** |
 | `models` | 全局模型（统一身份） | |
-| `channel_models` | 渠道模型 | `UNIQUE(channel_id, actual_model_id)`；`capabilities_json` 的值只能是 `supported / unsupported / unknown` |
+| `channel_models` | 渠道模型 | `UNIQUE(channel_id, actual_model_id)`；`capabilities_json` 的值只能是 `supported / unsupported / unknown`；标注价格列（0007 单一价 + 0015 倍率 / 阶梯 `price_tiers_json` / 低谷 `price_off_peak_json`）仅展示比较，不参与费用估算 |
 | `model_prices` | 价格（以 ChannelModel 为维度） | **历史追加式**，按 `effective_date` 排序，不覆盖 |
 | `channel_recharges` | 充值记录 | 每笔单独保存 |
 | `channel_bills` | 供应商账单 | `UNIQUE(channel_id, billing_period, source)`；`source`：manual / csv_import / excel_import |

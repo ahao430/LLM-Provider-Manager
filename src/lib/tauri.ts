@@ -422,6 +422,26 @@ export interface ChannelModelRow {
   priceOutputPer1m: number | null;
   /** 空字符串 = 未标注 */
   priceCurrency: string;
+  /** 倍率：实际价 = 原价 × 倍率（1.0 = 原价） */
+  priceMultiplier: number;
+  /** 阶梯价（upTo = 累计输入 token 上限，单位百万；null = 无上限最后一档） */
+  priceTiers: PriceTier[] | null;
+  /** 分时段（低谷）价 */
+  priceOffPeak: PriceOffPeak | null;
+}
+
+/** 阶梯价一档（与市场价统一格式）。 */
+export interface PriceTier {
+  upTo: number | null;
+  input: number | null;
+  output: number | null;
+}
+
+/** 分时段（低谷）价。 */
+export interface PriceOffPeak {
+  window: string;
+  input: number | null;
+  output: number | null;
 }
 
 export interface ChannelModelInput {
@@ -437,6 +457,10 @@ export interface ChannelModelInput {
   priceInputPer1m: number | null;
   priceOutputPer1m: number | null;
   priceCurrency: string | null;
+  /** 倍率（null/缺省 = 按 1.0 处理） */
+  priceMultiplier?: number | null;
+  priceTiers?: PriceTier[] | null;
+  priceOffPeak?: PriceOffPeak | null;
 }
 
 export interface RemoteModel {
@@ -458,6 +482,9 @@ export interface AllChannelModelRow {
   priceInputPer1m: number | null;
   priceOutputPer1m: number | null;
   priceCurrency: string;
+  priceMultiplier: number;
+  priceTiers: PriceTier[] | null;
+  priceOffPeak: PriceOffPeak | null;
 }
 
 export interface RemoteModelList {
@@ -1377,6 +1404,9 @@ export interface ChannelPriceAnnotation {
   priceInputPer1m: number | null;
   priceOutputPer1m: number | null;
   priceCurrency: string;
+  priceMultiplier: number;
+  priceTiers: PriceTier[] | null;
+  priceOffPeak: PriceOffPeak | null;
 }
 
 export function listChannelPriceAnnotations(): Promise<ChannelPriceAnnotation[]> {

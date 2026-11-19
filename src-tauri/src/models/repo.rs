@@ -1,8 +1,11 @@
 //! 模型与价格 SQL 读写。
 
 use rusqlite::{params, Connection, OptionalExtension};
+use serde::{de::DeserializeOwned, Serialize};
 
-use crate::channels::domain::{AllChannelModelRow, ChannelModelInput, ChannelModelRow, ModelType};
+use crate::channels::domain::{
+    AllChannelModelRow, ChannelModelInput, ChannelModelRow, ModelType, PriceOffPeak,
+};
 use crate::error::{AppError, AppResult};
 use crate::util::now_rfc3339;
 
@@ -135,7 +138,18 @@ pub fn delete_global_model(conn: &Connection, id: &str) -> AppResult<()> {
 const CM_COLUMNS: &str =
     "cm.id, cm.channel_id, cm.model_id, m.name, cm.actual_model_id, cm.protocol, \
      cm.model_type, cm.enabled, cm.notes, cm.created_at, cm.updated_at, \
-     cm.price_input_per_1m, cm.price_output_per_1m, cm.price_currency";
+     cm.price_input_per_1m, cm.price_output_per_1m, cm.price_currency, \
+     cm.price_multiplier, cm.price_tiers_json, cm.price_off_peak_json";
+
+/// JSON 列写入（序列化失败视为未配置，不阻断保存）。
+fn json_to_string<T: Serialize>(v: &Option<T>) -> Option<String> {
+    v.as_ref().and_then(|t| serde_json::to_string(t).ok())
+}
+
+/// JSON 列读取（损坏或旧格式数据容忍为 None，不毁行）。
+fn json_from_string<T: DeserializeOwned>(raw: Option<String>) -> Option<T> {
+    raw.and_then(|s| serde_json::from_str(&s).ok())
+}
 
 fn channel_model_from(row: &rusqlite::Row) -> rusqlite::Result<ChannelModelRow> {
     // model_type 存储为 JSON 字符串（如 "text"）
@@ -162,15 +176,28 @@ fn channel_model_from(row: &rusqlite::Row) -> rusqlite::Result<ChannelModelRow> 
         notes: row.get(8)?,
         created_at: row.get(9)?,
         updated_at: row.get(10)?,
-        // 标注价格：仅展示比较用
+        // 标注价格：仅展示比较用（倍率默认 1.0；阶梯 / 低谷为 JSON 列，损坏容忍为 None）
         price_input_per_1m: row.get(11)?,
         price_output_per_1m: row.get(12)?,
         price_currency: row.get(13)?,
+        price_multiplier: row.get::<_, Option<f64>>(14)?.unwrap_or(1.0),
+        price_tiers: json_from_string(row.get(15)?),
+        price_off_peak: json_from_string::<PriceOffPeak>(row.get(16)?),
     })
 }
 
-/// 标注价格三字段写入值（None 价格 + 空币种 = 未标注）。
-fn price_values(input: &ChannelModelInput) -> (Option<f64>, Option<f64>, String) {
+/// 标注价格六字段写入值（空币种 = 清除全部标注：价格 / 倍率 / 阶梯 / 低谷）。
+#[allow(clippy::type_complexity)]
+fn price_values(
+    input: &ChannelModelInput,
+) -> (
+    Option<f64>,
+    Option<f64>,
+    String,
+    f64,
+    Option<String>,
+    Option<String>,
+) {
     let currency = input
         .price_currency
         .as_deref()
@@ -178,14 +205,22 @@ fn price_values(input: &ChannelModelInput) -> (Option<f64>, Option<f64>, String)
         .filter(|s| !s.is_empty())
         .unwrap_or("")
         .to_uppercase();
-    // 币种为空时价格一并忽略，避免出现“有价无币种”
+    // 币种为空时全部标注一并忽略，避免出现“有价无币种”
     if currency.is_empty() {
-        (None, None, String::new())
+        (None, None, String::new(), 1.0, None, None)
     } else {
+        // 倍率缺省 1.0；非法（≤0）按 1.0 处理不放大，service 层会另行校验报错
+        let multiplier = match input.price_multiplier {
+            Some(m) if m > 0.0 => m,
+            _ => 1.0,
+        };
         (
             input.price_input_per_1m,
             input.price_output_per_1m,
             currency,
+            multiplier,
+            json_to_string(&input.price_tiers),
+            json_to_string(&input.price_off_peak),
         )
     }
 }
@@ -217,7 +252,7 @@ pub fn list_all_channel_models(conn: &Connection) -> AppResult<Vec<AllChannelMod
     let mut stmt = conn.prepare(
         "SELECT cm.id, cm.channel_id, c.name, c.enabled, cm.model_id, cm.actual_model_id, \
          cm.protocol, cm.model_type, cm.enabled, cm.price_input_per_1m, cm.price_output_per_1m, \
-         cm.price_currency \
+         cm.price_currency, cm.price_multiplier, cm.price_tiers_json, cm.price_off_peak_json \
          FROM channel_models cm JOIN channels c ON c.id = cm.channel_id \
          ORDER BY cm.actual_model_id, c.name",
     )?;
@@ -247,6 +282,9 @@ pub fn list_all_channel_models(conn: &Connection) -> AppResult<Vec<AllChannelMod
                 price_input_per_1m: row.get(9)?,
                 price_output_per_1m: row.get(10)?,
                 price_currency: row.get(11)?,
+                price_multiplier: row.get::<_, Option<f64>>(12)?.unwrap_or(1.0),
+                price_tiers: json_from_string(row.get(13)?),
+                price_off_peak: json_from_string(row.get(14)?),
             })
         })?
         .filter_map(|r| r.ok())
@@ -275,12 +313,14 @@ pub fn insert_channel_model(conn: &Connection, input: &ChannelModelInput) -> App
         .id
         .clone()
         .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
-    let (price_in, price_out, currency) = price_values(input);
+    let (price_in, price_out, currency, multiplier, tiers_json, off_peak_json) =
+        price_values(input);
     conn.execute(
         "INSERT INTO channel_models (id, channel_id, model_id, actual_model_id, protocol, \
          model_type, enabled, notes, created_at, updated_at, \
-         price_input_per_1m, price_output_per_1m, price_currency) \
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?9, ?10, ?11, ?12)",
+         price_input_per_1m, price_output_per_1m, price_currency, \
+         price_multiplier, price_tiers_json, price_off_peak_json) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
         params![
             id,
             input.channel_id,
@@ -297,7 +337,10 @@ pub fn insert_channel_model(conn: &Connection, input: &ChannelModelInput) -> App
             now_rfc3339(),
             price_in,
             price_out,
-            currency
+            currency,
+            multiplier,
+            tiers_json,
+            off_peak_json
         ],
     )?;
     Ok(id)
@@ -309,11 +352,13 @@ pub fn update_channel_model(conn: &Connection, input: &ChannelModelInput) -> App
         .id
         .as_deref()
         .ok_or_else(|| AppError::Invalid("缺少渠道模型 ID".into()))?;
-    let (price_in, price_out, currency) = price_values(input);
+    let (price_in, price_out, currency, multiplier, tiers_json, off_peak_json) =
+        price_values(input);
     conn.execute(
         "UPDATE channel_models SET model_id = ?2, actual_model_id = ?3, protocol = ?4, \
          model_type = ?5, enabled = ?6, notes = ?7, price_input_per_1m = ?8, \
-         price_output_per_1m = ?9, price_currency = ?10, updated_at = ?11 WHERE id = ?1",
+         price_output_per_1m = ?9, price_currency = ?10, price_multiplier = ?11, \
+         price_tiers_json = ?12, price_off_peak_json = ?13, updated_at = ?14 WHERE id = ?1",
         params![
             id,
             input.model_id,
@@ -329,6 +374,9 @@ pub fn update_channel_model(conn: &Connection, input: &ChannelModelInput) -> App
             price_in,
             price_out,
             currency,
+            multiplier,
+            tiers_json,
+            off_peak_json,
             now_rfc3339()
         ],
     )?;
@@ -492,6 +540,9 @@ mod tests {
             price_input_per_1m: None,
             price_output_per_1m: None,
             price_currency: None,
+            price_multiplier: None,
+            price_tiers: None,
+            price_off_peak: None,
         }
     }
 

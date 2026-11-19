@@ -6,14 +6,20 @@ import {
   ChevronDown,
   ChevronRight,
   CircleDollarSign,
+  Clock,
   CloudDownload,
+  Layers,
   Plus,
   Rocket,
+  Search,
   Trash2,
+  X,
 } from "lucide-react";
 
 import { ModelTestButton } from "@/features/models/ModelTestButton";
 import { LatestTestResult, useLatestModelTestMap } from "@/features/models/LatestTestResult";
+import { MarketPriceRefDialog } from "@/features/channels/MarketPriceRefDialog";
+import { annotationEffective, annotationTooltip, type PriceOffPeak, type PriceTier } from "@/lib/annotationPrice";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -135,6 +141,9 @@ function ChannelModelsList({ channelId }: { channelId: string }) {
         priceInputPer1m: row.priceInputPer1m,
         priceOutputPer1m: row.priceOutputPer1m,
         priceCurrency: row.priceCurrency || null,
+        priceMultiplier: row.priceMultiplier,
+        priceTiers: row.priceTiers,
+        priceOffPeak: row.priceOffPeak,
       });
       toast.success(`${row.actualModelId} 类型已标记为「${TYPE_LABEL[modelType]}」`);
     } catch (error) {
@@ -156,6 +165,9 @@ function ChannelModelsList({ channelId }: { channelId: string }) {
         priceInputPer1m: row.priceInputPer1m,
         priceOutputPer1m: row.priceOutputPer1m,
         priceCurrency: row.priceCurrency || null,
+        priceMultiplier: row.priceMultiplier,
+        priceTiers: row.priceTiers,
+        priceOffPeak: row.priceOffPeak,
       });
       toast.success(
         `${row.actualModelId} 接口类型已改为「${PROTOCOL_LABELS[protocol]}」，测试将按此调用`
@@ -179,6 +191,9 @@ function ChannelModelsList({ channelId }: { channelId: string }) {
         priceInputPer1m: row.priceInputPer1m,
         priceOutputPer1m: row.priceOutputPer1m,
         priceCurrency: row.priceCurrency || null,
+        priceMultiplier: row.priceMultiplier,
+        priceTiers: row.priceTiers,
+        priceOffPeak: row.priceOffPeak,
       });
     } catch (error) {
       toast.error(`更新失败：${error}`);
@@ -232,13 +247,12 @@ function ChannelModelsList({ channelId }: { channelId: string }) {
                   {!m.enabled ? <Badge variant="secondary">已禁用</Badge> : null}
                 </div>
                 <div className="text-muted-foreground flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs">
-                  <span className="truncate">
+                  <span
+                    className="truncate"
+                    title={m.priceCurrency ? annotationTooltip(m) || undefined : undefined}
+                  >
                     {m.modelName ?? "未绑定全局模型"} · {PROTOCOL_LABELS[m.protocol] ?? m.protocol}
-                    {m.priceCurrency ? (
-                      <span className="text-foreground/80">
-                        {" "}· 标注 {m.priceCurrency} {fmtAnnotation(m.priceInputPer1m)} / {fmtAnnotation(m.priceOutputPer1m)} 每百万
-                      </span>
-                    ) : null}
+                    {m.priceCurrency ? <AnnotatedPriceSpan row={m} /> : null}
                   </span>
                   <LatestTestResult
                     latest={latestMap.get(`${channelId}|${m.actualModelId.trim().toLowerCase()}`)}
@@ -312,9 +326,43 @@ function fmtAnnotation(v: number | null): string {
   return v === null ? "—" : String(Number(v.toFixed(4)));
 }
 
+/** 行内标注价（实际价 = 原价 × 倍率）；阶梯 / 低谷 / 倍率≠1 时附标记，明细见悬浮。 */
+function AnnotatedPriceSpan({ row }: { row: ChannelModelRow }) {
+  const eff = annotationEffective(row);
+  const marks: string[] = [];
+  if (row.priceMultiplier !== 1) marks.push(`×${row.priceMultiplier}`);
+  if (eff.hasTiers) marks.push("阶梯");
+  if (eff.hasOffPeak) marks.push("分时段");
+  return (
+    <span className="text-foreground/80">
+      {" "}· 标注 {row.priceCurrency} {fmtAnnotation(eff.input)} / {fmtAnnotation(eff.output)} 每百万
+      {marks.length > 0 ? (
+        <Badge variant="secondary" className="ml-1 px-1 py-0 text-[9px]">
+          {marks.join(" · ")}
+        </Badge>
+      ) : null}
+    </span>
+  );
+}
+
 // ------------------------------------------------------------------
-// 标注价格弹窗：输入 / 输出每百万价 + 币种（仅展示比较，不参与费用估算）
+// 标注价格弹窗：与市场价统一格式（单一 / 阶梯 / 分时段）+ 倍率 + 市场价参考
+// 仅展示比较，不参与费用估算
 // ------------------------------------------------------------------
+
+/** 阶梯编辑行（字符串便于输入框受控编辑）。 */
+interface TierRow {
+  upTo: string;
+  input: string;
+  output: string;
+}
+
+/** 低谷编辑行。 */
+interface OffPeakRow {
+  window: string;
+  input: string;
+  output: string;
+}
 
 function PriceAnnotationDialog({
   channelId,
@@ -329,28 +377,83 @@ function PriceAnnotationDialog({
   const [input, setInput] = useState(row.priceInputPer1m === null ? "" : String(row.priceInputPer1m));
   const [output, setOutput] = useState(row.priceOutputPer1m === null ? "" : String(row.priceOutputPer1m));
   const [currency, setCurrency] = useState(row.priceCurrency || "");
+  const [multiplier, setMultiplier] = useState(
+    row.priceMultiplier === 1 ? "" : String(row.priceMultiplier)
+  );
+  const [tiers, setTiers] = useState<TierRow[]>(
+    (row.priceTiers ?? []).map((t) => ({
+      upTo: t.upTo === null ? "" : String(t.upTo),
+      input: t.input === null ? "" : String(t.input),
+      output: t.output === null ? "" : String(t.output),
+    }))
+  );
+  const [offPeak, setOffPeak] = useState<OffPeakRow | null>(
+    row.priceOffPeak
+      ? {
+          window: row.priceOffPeak.window,
+          input: row.priceOffPeak.input === null ? "" : String(row.priceOffPeak.input),
+          output: row.priceOffPeak.output === null ? "" : String(row.priceOffPeak.output),
+        }
+      : null
+  );
+  const [refOpen, setRefOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
+  function parseNum(v: string): number | null | "invalid" {
+    const t = v.trim();
+    if (!t) return null;
+    const n = Number(t);
+    return Number.isFinite(n) && n >= 0 ? n : "invalid";
+  }
+
   async function save() {
-    // 币种为空 = 清除标注；有币种时价格可留空（仅标一端）
+    // 币种为空 = 清除全部标注（价格 / 倍率 / 阶梯 / 低谷）；有币种时各项可留空（仅标一端）
     let priceIn: number | null = null;
     let priceOut: number | null = null;
+    let mult: number | null = null;
+    let tierList: PriceTier[] | null = null;
+    let op: PriceOffPeak | null = null;
     if (currency) {
-      if (input.trim()) {
-        const v = Number(input);
-        if (!Number.isFinite(v) || v < 0) {
-          toast.error("输入价须为非负数字");
-          return;
-        }
-        priceIn = v;
+      const inV = parseNum(input);
+      if (inV === "invalid") return toast.error("输入原价须为非负数字");
+      const outV = parseNum(output);
+      if (outV === "invalid") return toast.error("输出原价须为非负数字");
+      priceIn = inV;
+      priceOut = outV;
+
+      if (multiplier.trim()) {
+        const m = Number(multiplier);
+        if (!Number.isFinite(m) || m <= 0) return toast.error("倍率须为正数（0.8 = 八折）");
+        mult = m;
       }
-      if (output.trim()) {
-        const v = Number(output);
-        if (!Number.isFinite(v) || v < 0) {
-          toast.error("输出价须为非负数字");
-          return;
+
+      if (tiers.length > 0) {
+        tierList = [];
+        for (const [i, t] of tiers.entries()) {
+          const upTo = parseNum(t.upTo);
+          if (upTo === "invalid") return toast.error(`阶梯 ${i + 1} 上限须为非负数字（百万 token）`);
+          const ti = parseNum(t.input);
+          if (ti === "invalid") return toast.error(`阶梯 ${i + 1} 输入价须为非负数字`);
+          const to = parseNum(t.output);
+          if (to === "invalid") return toast.error(`阶梯 ${i + 1} 输出价须为非负数字`);
+          if (upTo === null && ti === null && to === null) {
+            return toast.error(`阶梯 ${i + 1} 至少填一项（上限 / 输入 / 输出）`);
+          }
+          tierList.push({ upTo, input: ti, output: to });
         }
-        priceOut = v;
+      }
+
+      if (offPeak) {
+        const wi = parseNum(offPeak.input);
+        if (wi === "invalid") return toast.error("低谷输入价须为非负数字");
+        const wo = parseNum(offPeak.output);
+        if (wo === "invalid") return toast.error("低谷输出价须为非负数字");
+        if (!offPeak.window.trim()) return toast.error("请填写低谷时段描述（如 00:30–08:30 UTC+8）");
+        op = { window: offPeak.window.trim(), input: wi, output: wo };
+      }
+
+      if (priceIn === null && priceOut === null && !tierList && !op) {
+        return toast.error("至少填写一项价格（原价 / 阶梯 / 低谷）");
       }
     }
     setBusy(true);
@@ -367,6 +470,9 @@ function PriceAnnotationDialog({
         priceInputPer1m: priceIn,
         priceOutputPer1m: priceOut,
         priceCurrency: currency || null,
+        priceMultiplier: mult,
+        priceTiers: tierList,
+        priceOffPeak: op,
       });
       toast.success(currency ? `已标注「${row.actualModelId}」价格` : `已清除「${row.actualModelId}」标注`);
       onClose();
@@ -377,52 +483,225 @@ function PriceAnnotationDialog({
     }
   }
 
+  /** 市场价回填：原价与币种直接填入，倍率保持用户当前值。 */
+  function handleMarketPick(pick: { input: number | null; output: number | null; currency: string }) {
+    setCurrency(pick.currency);
+    setInput(pick.input === null ? "" : String(pick.input));
+    setOutput(pick.output === null ? "" : String(pick.output));
+    setRefOpen(false);
+    toast.success("已回填市场原价与币种（倍率请按渠道折扣自行配置）");
+  }
+
+  const enabled = Boolean(currency);
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>标注价格 — {row.actualModelId}</DialogTitle>
           <DialogDescription>
-            仅供标注与市场信息页比较查看，不参与本地测试费用计算。
+            与市场价统一格式：单一 / 阶梯 / 分时段；实际价 = 原价 × 倍率（比价与排序按最高实际价）。
+            仅供标注与市场比较，不参与本地测试费用计算。
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-3">
-          <div className="space-y-1.5">
-            <Label>币种</Label>
-            <Select
-              value={currency || "none"}
-              onValueChange={(v) => setCurrency(v === "none" ? "" : v)}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">未标注（清除）</SelectItem>
-                <SelectItem value="CNY">CNY（人民币）</SelectItem>
-                <SelectItem value="USD">USD（美元）</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-4">
+          <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1.5">
-              <Label>输入价 / 百万 token</Label>
+              <Label>币种</Label>
+              <Select
+                value={currency || "none"}
+                onValueChange={(v) => setCurrency(v === "none" ? "" : v)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">未标注（清除）</SelectItem>
+                  <SelectItem value="CNY">CNY（人民币）</SelectItem>
+                  <SelectItem value="USD">USD（美元）</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>输入原价 / 百万</Label>
               <Input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="如 2"
-                disabled={!currency || currency === "none"}
+                disabled={!enabled}
               />
             </div>
             <div className="space-y-1.5">
-              <Label>输出价 / 百万 token</Label>
+              <Label>输出原价 / 百万</Label>
               <Input
                 value={output}
                 onChange={(e) => setOutput(e.target.value)}
                 placeholder="如 8"
-                disabled={!currency || currency === "none"}
+                disabled={!enabled}
               />
             </div>
           </div>
+
+          <div className="grid grid-cols-3 items-end gap-3">
+            <div className="space-y-1.5">
+              <Label title="实际价 = 原价 × 倍率；1 = 原价，0.8 = 八折">倍率</Label>
+              <Input
+                value={multiplier}
+                onChange={(e) => setMultiplier(e.target.value)}
+                placeholder="1 = 原价；0.8 = 八折"
+                disabled={!enabled}
+              />
+            </div>
+            <Button variant="outline" disabled={!enabled} onClick={() => setRefOpen(true)}>
+              <Search className="size-4" />
+              查市场价
+            </Button>
+            <p className="text-muted-foreground col-span-1 text-[10px] leading-tight">
+              实际价 = 原价 × 倍率；展示与比价均为实际价，悬浮明细见标注标记。
+            </p>
+          </div>
+
+          {/* 阶梯价（可折叠，与市场「每百万 token」口径一致） */}
+          {enabled && tiers.length > 0 ? (
+            <div className="space-y-2 rounded-lg border p-3">
+              <div className="flex items-center justify-between">
+                <p className="inline-flex items-center gap-1 text-xs font-medium">
+                  <Layers className="size-3.5" />
+                  阶梯价（按累计输入 token 上限，单位：百万）
+                </p>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  title="移除全部阶梯"
+                  onClick={() => setTiers([])}
+                >
+                  <X className="size-4" />
+                </Button>
+              </div>
+              {tiers.map((t, i) => (
+                <div key={i} className="grid grid-cols-[1fr_1fr_1fr_auto] items-end gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-muted-foreground">
+                      {i + 1}｜≤ 上限（空 = 无上限）
+                    </Label>
+                    <Input
+                      value={t.upTo}
+                      onChange={(e) =>
+                        setTiers(tiers.map((x, j) => (j === i ? { ...x, upTo: e.target.value } : x)))
+                      }
+                      placeholder="如 0.128"
+                      className="h-8 text-xs"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-muted-foreground">输入价</Label>
+                    <Input
+                      value={t.input}
+                      onChange={(e) =>
+                        setTiers(tiers.map((x, j) => (j === i ? { ...x, input: e.target.value } : x)))
+                      }
+                      className="h-8 text-xs"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-muted-foreground">输出价</Label>
+                    <Input
+                      value={t.output}
+                      onChange={(e) =>
+                        setTiers(tiers.map((x, j) => (j === i ? { ...x, output: e.target.value } : x)))
+                      }
+                      className="h-8 text-xs"
+                    />
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    title="删除该档"
+                    onClick={() => setTiers(tiers.filter((_, j) => j !== i))}
+                  >
+                    <Trash2 className="size-3.5" />
+                  </Button>
+                </div>
+              ))}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setTiers([...tiers, { upTo: "", input: "", output: "" }])}
+              >
+                <Plus className="size-3.5" />
+                加一档
+              </Button>
+            </div>
+          ) : null}
+
+          {/* 分时段（低谷）价 */}
+          {enabled && offPeak ? (
+            <div className="space-y-2 rounded-lg border p-3">
+              <div className="flex items-center justify-between">
+                <p className="inline-flex items-center gap-1 text-xs font-medium">
+                  <Clock className="size-3.5" />
+                  分时段（低谷）价
+                </p>
+                <Button variant="ghost" size="icon" title="移除低谷价" onClick={() => setOffPeak(null)}>
+                  <X className="size-4" />
+                </Button>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] text-muted-foreground">时段描述</Label>
+                <Input
+                  value={offPeak.window}
+                  onChange={(e) => setOffPeak({ ...offPeak, window: e.target.value })}
+                  placeholder="如 00:30–08:30 UTC+8"
+                  className="h-8 text-xs"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground">低谷输入价</Label>
+                  <Input
+                    value={offPeak.input}
+                    onChange={(e) => setOffPeak({ ...offPeak, input: e.target.value })}
+                    className="h-8 text-xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground">低谷输出价</Label>
+                  <Input
+                    value={offPeak.output}
+                    onChange={(e) => setOffPeak({ ...offPeak, output: e.target.value })}
+                    className="h-8 text-xs"
+                  />
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {enabled && (tiers.length === 0 || !offPeak) ? (
+            <div className="flex gap-2">
+              {tiers.length === 0 ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!enabled}
+                  onClick={() => setTiers([{ upTo: "", input: "", output: "" }])}
+                >
+                  <Layers className="size-3.5" />
+                  添加阶梯价
+                </Button>
+              ) : null}
+              {!offPeak ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!enabled}
+                  onClick={() => setOffPeak({ window: "", input: "", output: "" })}
+                >
+                  <Clock className="size-3.5" />
+                  添加分时段价
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
@@ -433,6 +712,14 @@ function PriceAnnotationDialog({
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      {refOpen ? (
+        <MarketPriceRefDialog
+          modelId={row.actualModelId}
+          onPick={handleMarketPick}
+          onClose={() => setRefOpen(false)}
+        />
+      ) : null}
     </Dialog>
   );
 }

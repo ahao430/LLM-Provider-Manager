@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/table";
 import {
   listAllChannelModels,
+  getMarketFx,
   PROTOCOL_LABELS,
   MODEL_TYPE_LABELS,
   type AllChannelModelRow,
@@ -42,6 +43,7 @@ import {
 } from "@/lib/tauri";
 import { ModelTestButton } from "@/features/models/ModelTestButton";
 import { LatestTestResult, useLatestModelTestMap } from "@/features/models/LatestTestResult";
+import { annotationEffective, annotationTooltip, toCnyForSort } from "@/lib/annotationPrice";
 
 const TYPE_VARIANT: Record<ModelType, "default" | "secondary" | "outline" | "destructive"> = {
   multimodal: "default",
@@ -58,6 +60,34 @@ interface ModelGroup {
   channels: AllChannelModelRow[];
 }
 
+type PriceSort = "name" | "asc" | "desc";
+
+/** 组内全部渠道的最高实际价（比价键折算 CNY 后取 max；无标注 = null，排序垫底）。 */
+function groupCompareMax(group: ModelGroup, fxRate: number | null | undefined): number | null {
+  let best: number | null = null;
+  for (const c of group.channels) {
+    const eff = annotationEffective(c);
+    for (const v of [eff.compareInput, eff.compareOutput]) {
+      const cny = toCnyForSort(v, c.priceCurrency, fxRate);
+      if (cny !== null && (best === null || cny > best)) best = cny;
+    }
+  }
+  return best;
+}
+
+/** 价格排序（实际价口径，跨币种折算；默认按模型名）。 */
+function sortedGroups(groups: ModelGroup[], sort: PriceSort, fxRate: number | null | undefined): ModelGroup[] {
+  if (sort === "name") return groups;
+  return [...groups].sort((a, b) => {
+    const av = groupCompareMax(a, fxRate);
+    const bv = groupCompareMax(b, fxRate);
+    if (av === null && bv === null) return a.actualModelId.localeCompare(b.actualModelId);
+    if (av === null) return 1;
+    if (bv === null) return -1;
+    return sort === "asc" ? av - bv : bv - av;
+  });
+}
+
 /** 模型列表：跨渠道以模型维度聚合（渠道合并展示、价格范围、最近测试、分渠道测试）。 */
 export function ModelsPage() {
   const navigate = useNavigate();
@@ -72,19 +102,28 @@ export function ModelsPage() {
   const savedUi = loadSessionState("lcm-ui-models", {
     search: "",
     typeFilter: "all" as "all" | ModelType,
+    priceSort: "name" as PriceSort,
     page: 1,
     pageSize: 20,
   });
   const [search, setSearch] = useState(savedUi.search);
   const [typeFilter, setTypeFilter] = useState<"all" | ModelType>(savedUi.typeFilter);
+  const [priceSort, setPriceSort] = useState<PriceSort>(savedUi.priceSort);
   const [detail, setDetail] = useState<ModelGroup | null>(null);
   // 分页：筛选变化重置回第一页；总数 ≤ 10 时 Pagination 自身不渲染
   const [page, setPage] = useState(savedUi.page);
   const [pageSize, setPageSize] = useState(savedUi.pageSize);
 
   useEffect(() => {
-    saveSessionState("lcm-ui-models", { search, typeFilter, page, pageSize });
-  }, [search, typeFilter, page, pageSize]);
+    saveSessionState("lcm-ui-models", { search, typeFilter, priceSort, page, pageSize });
+  }, [search, typeFilter, priceSort, page, pageSize]);
+
+  // 汇率（跨币种排序折算 USD→CNY 用；缺失兜底 7.2）
+  const fxQuery = useQuery({
+    queryKey: ["market-fx"],
+    queryFn: getMarketFx,
+    staleTime: 10 * 60_000,
+  });
 
   // 按 actualModelId（大小写不敏感）聚合
   const groups = useMemo(() => {
@@ -120,7 +159,14 @@ export function ModelsPage() {
 
   const pageCount = Math.max(Math.ceil(filtered.length / pageSize), 1);
   const safePage = Math.min(page, pageCount);
-  const pageGroups = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
+  const pageGroups = useMemo(
+    () =>
+      sortedGroups(filtered, priceSort, fxQuery.data?.rate ?? null).slice(
+        (safePage - 1) * pageSize,
+        safePage * pageSize
+      ),
+    [filtered, priceSort, fxQuery.data, safePage, pageSize]
+  );
 
   return (
     <>
@@ -161,6 +207,22 @@ export function ModelsPage() {
             ))}
           </SelectContent>
         </Select>
+        <Select
+          value={priceSort}
+          onValueChange={(v) => {
+            setPriceSort(v as PriceSort);
+            setPage(1);
+          }}
+        >
+          <SelectTrigger className="h-8 w-40 text-sm" title="按最高实际价（原价 × 倍率，含阶梯 / 低谷）排序；跨币种按汇率折算">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="name">按模型名</SelectItem>
+            <SelectItem value="desc">实际价从高到低</SelectItem>
+            <SelectItem value="asc">实际价从低到高</SelectItem>
+          </SelectContent>
+        </Select>
         <span className="text-muted-foreground text-xs">
           {filtered.length} 个模型 · 来自 {rows.length} 条渠道模型
         </span>
@@ -176,7 +238,12 @@ export function ModelsPage() {
                 <TableHead>模型</TableHead>
                 <TableHead className="w-20">类型</TableHead>
                 <TableHead>渠道</TableHead>
-                <TableHead className="w-52">标注价 / 百万（范围）</TableHead>
+                <TableHead
+                  className="w-56"
+                  title="实际价范围 = 原价 × 倍率（含阶梯最高档 / 低谷）；比价与排序按最高实际价"
+                >
+                  标注实际价 / 百万（范围）
+                </TableHead>
                 <TableHead className="w-36">最近测试</TableHead>
                 <TableHead className="w-28">测试</TableHead>
               </TableRow>
@@ -294,15 +361,16 @@ function ChannelBadges({ channels }: { channels: AllChannelModelRow[] }) {
   );
 }
 
-/** 标注价范围：按币种分组，输入 / 输出各自取 min~max（仅展示比较，与费用估算无关）。 */
+/** 标注实际价范围（原价 × 倍率，取最高档）：按币种分组，输入 / 输出各自取 min~max（仅展示比较，与费用估算无关）。 */
 function priceRangeLabel(channels: AllChannelModelRow[]): string {
   const annotated = channels.filter((c) => c.priceCurrency);
   if (annotated.length === 0) return "—";
   const byCurrency = new Map<string, { ins: number[]; outs: number[] }>();
   for (const c of annotated) {
+    const eff = annotationEffective(c);
     const entry = byCurrency.get(c.priceCurrency) ?? { ins: [], outs: [] };
-    if (c.priceInputPer1m !== null) entry.ins.push(c.priceInputPer1m);
-    if (c.priceOutputPer1m !== null) entry.outs.push(c.priceOutputPer1m);
+    if (eff.compareInput !== null) entry.ins.push(eff.compareInput);
+    if (eff.compareOutput !== null) entry.outs.push(eff.compareOutput);
     byCurrency.set(c.priceCurrency, entry);
   }
   const fmt = (arr: number[]): string => {
@@ -383,10 +451,13 @@ function ModelDetailDialog({
                       </Badge>
                     ) : null}
                   </div>
-                  <div className="text-muted-foreground text-xs">
+                  <div
+                    className="text-muted-foreground text-xs"
+                    title={c.priceCurrency ? annotationTooltip(c) || undefined : undefined}
+                  >
                     {PROTOCOL_LABELS[c.protocol] ?? c.protocol}
                     {c.priceCurrency
-                      ? ` · 标注 ${c.priceCurrency} ${fmtNum(c.priceInputPer1m)} / ${fmtNum(c.priceOutputPer1m)} 每百万`
+                      ? ` · 标注 ${c.priceCurrency} ${fmtNum(annotationEffective(c).input)} / ${fmtNum(annotationEffective(c).output)} 每百万实际价`
                       : " · 未标注价格"}
                   </div>
                   <div className="text-xs">

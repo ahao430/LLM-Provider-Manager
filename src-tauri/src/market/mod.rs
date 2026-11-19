@@ -183,20 +183,28 @@ pub struct ChannelPriceAnnotation {
     pub price_input_per_1m: Option<f64>,
     pub price_output_per_1m: Option<f64>,
     pub price_currency: String,
+    /// 实际价 = 原价 × 倍率
+    pub price_multiplier: f64,
+    pub price_tiers: Option<Vec<crate::channels::domain::PriceTier>>,
+    pub price_off_peak: Option<crate::channels::domain::PriceOffPeak>,
 }
 
 pub fn list_channel_price_annotations(conn: &Connection) -> AppResult<Vec<ChannelPriceAnnotation>> {
     let mut stmt = conn.prepare(
         "SELECT cm.channel_id, c.name, cm.id, cm.actual_model_id, m.name, \
-         cm.price_input_per_1m, cm.price_output_per_1m, cm.price_currency \
+         cm.price_input_per_1m, cm.price_output_per_1m, cm.price_currency, \
+         cm.price_multiplier, cm.price_tiers_json, cm.price_off_peak_json \
          FROM channel_models cm \
          JOIN channels c ON c.id = cm.channel_id \
          LEFT JOIN models m ON m.id = cm.model_id \
          WHERE cm.price_input_per_1m IS NOT NULL OR cm.price_output_per_1m IS NOT NULL \
+            OR cm.price_tiers_json IS NOT NULL OR cm.price_off_peak_json IS NOT NULL \
          ORDER BY c.name, cm.actual_model_id",
     )?;
     let rows = stmt
         .query_map([], |row| {
+            let tiers_json: Option<String> = row.get(9)?;
+            let off_peak_json: Option<String> = row.get(10)?;
             Ok(ChannelPriceAnnotation {
                 channel_id: row.get(0)?,
                 channel_name: row.get(1)?,
@@ -206,6 +214,9 @@ pub fn list_channel_price_annotations(conn: &Connection) -> AppResult<Vec<Channe
                 price_input_per_1m: row.get(5)?,
                 price_output_per_1m: row.get(6)?,
                 price_currency: row.get(7)?,
+                price_multiplier: row.get::<_, Option<f64>>(8)?.unwrap_or(1.0),
+                price_tiers: tiers_json.and_then(|s| serde_json::from_str(&s).ok()),
+                price_off_peak: off_peak_json.and_then(|s| serde_json::from_str(&s).ok()),
             })
         })?
         .filter_map(|r| r.ok())
