@@ -21,6 +21,7 @@ export const navItems: NavItem[] = [
   { path: "/market", key: "market", label: "市场信息" },
   { path: "/testing", key: "testing", label: "测试中心" },
   { path: "/requests", key: "requests", label: "测试记录" },
+  { path: "/ops", key: "ops", label: "运维记录" },
   { path: "/settings", key: "settings", label: "设置" },
 ];
 

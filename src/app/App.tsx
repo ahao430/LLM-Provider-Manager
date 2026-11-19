@@ -12,6 +12,7 @@ import { ModelsPage } from "@/features/models/ModelsPage";
 import { TestingPage } from "@/features/testing/TestingPage";
 import { RequestsPage } from "@/features/requests/RequestsPage";
 import { RequestDetailPage } from "@/features/requests/RequestDetailPage";
+import { OpsJournalPage } from "@/features/ops-journal/OpsJournalPage";
 import { SettingsPage } from "@/features/settings/SettingsPage";
 
 const queryClient = new QueryClient({
@@ -57,6 +58,7 @@ export function App() {
               <Route path="/testing/:tab" element={<TestingPage />} />
               <Route path="/requests" element={<RequestsPage />} />
               <Route path="/requests/:traceId" element={<RequestDetailPage />} />
+              <Route path="/ops" element={<OpsJournalPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Route>
