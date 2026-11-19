@@ -116,9 +116,15 @@ pub fn set_balance_query(
                 .map(str::trim)
                 .unwrap_or_default()
                 .to_string(),
-            // new_api 额度按 $1 = 500,000 quota 折算，固定 USD
+            // new_api 额度按 $1 = 500,000 quota 折算，默认 USD；
+            // 部分站点（如设置了 1 ¥ = $1 显示口径）实际以人民币结算，可切 CNY 展示
             currency: if mode == "new_api" {
-                "USD".to_string()
+                currency
+                    .as_deref()
+                    .map(str::trim)
+                    .filter(|s| !s.is_empty())
+                    .unwrap_or("USD")
+                    .to_uppercase()
             } else {
                 currency
                     .as_deref()
@@ -297,7 +303,7 @@ async fn query_balance(state: &AppState, channel_id: &str) -> AppResult<BalanceR
             .pointer("/data/quota")
             .and_then(Value::as_i64)
             .unwrap_or(0);
-        // $1 = 500,000 quota（new-api QuotaPerUnit）
+        // $1 = 500,000 quota（new-api QuotaPerUnit）；币种按配置展示（默认 USD，可切 CNY）
         let amount = (quota.max(0) as f64) / 500_000.0;
         return Ok(BalanceResult {
             url,
@@ -306,7 +312,7 @@ async fn query_balance(state: &AppState, channel_id: &str) -> AppResult<BalanceR
             value: Some(serde_json::json!(amount)),
             raw_snippet: None,
             saved_snapshot: false,
-            currency: Some("USD".into()),
+            currency: Some(bq.currency),
         });
     }
 

@@ -493,12 +493,12 @@ function BalanceQueryDialog({
 
   const [path, setPath] = useState(initialQuery?.path ?? "");
   const [jsonPath, setJsonPath] = useState(initialQuery?.jsonPath ?? "");
-  const [currency, setCurrency] = useState(initialQuery?.currency || "CNY");
+  // new_api 额度按 $1 = 500,000 quota 折算默认 USD；其余默认 CNY（均可切换）
+  const [currency, setCurrency] = useState(initialQuery?.currency || (mode === "new_api" ? "USD" : "CNY"));
   const [userId, setUserId] = useState(initialQuery?.userId ?? "");
   const [systemToken, setSystemToken] = useState("");
   const [akId, setAkId] = useState("");
   const [akSecret, setAkSecret] = useState("");
-  const [result, setResult] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function save() {
@@ -522,19 +522,21 @@ function BalanceQueryDialog({
 
   async function query() {
     setBusy(true);
-    setResult(null);
     try {
       const { queryChannelBalance } = await import("@/lib/tauri");
       const res = await queryChannelBalance(channelId);
       if (res.value != null) {
-        setResult(
-          `余额：${res.currency ? `${res.currency} ` : ""}${JSON.stringify(res.value)}（HTTP ${res.httpStatus}）`
+        toast.success(
+          `余额 ${res.currency ?? ""} ${JSON.stringify(res.value)}（HTTP ${res.httpStatus}）`
         );
       } else {
-        setResult(`未提取到余额（HTTP ${res.httpStatus}）\n原始片段：${res.rawSnippet ?? ""}`);
+        toast.warning(
+          `未提取到余额（HTTP ${res.httpStatus}）${res.rawSnippet ? `：${res.rawSnippet.slice(0, 120)}` : ""}`,
+          { duration: 8000 }
+        );
       }
     } catch (error) {
-      setResult(`查询失败：${error}`);
+      toast.error(`查询失败：${error}`, { duration: 8000 });
     } finally {
       setBusy(false);
     }
@@ -582,8 +584,9 @@ function BalanceQueryDialog({
               </div>
               <p className="text-muted-foreground text-xs">
                 走 {`{Base URL}`}/api/user/self 查询该用户剩余额度（Authorization =
-                系统访问令牌，New-Api-User = 用户 ID），按 $1 = 500,000 quota 折算为
-                USD。令牌存本地凭证文件，不明文展示；模型调用的渠道密钥不受影响。
+                系统访问令牌，New-Api-User = 用户 ID），按 $1 = 500,000 quota
+                折算。站点若以人民币结算（如设置了 1 ¥ = $1），币种选 CNY
+                展示人民币。令牌存本地凭证文件，不明文展示；模型调用的渠道密钥不受影响。
               </p>
             </>
           ) : mode === "aliyun_bss" ? (
@@ -630,20 +633,18 @@ function BalanceQueryDialog({
             </>
           )}
 
-          {mode !== "new_api" ? (
-            <div className="space-y-1.5">
-              <Label>币种（写余额快照用）</Label>
-              <Select value={currency} onValueChange={setCurrency}>
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="CNY">CNY（人民币）</SelectItem>
-                  <SelectItem value="USD">USD（美元）</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          ) : null}
+          <div className="space-y-1.5">
+            <Label>币种（展示与写余额快照用）</Label>
+            <Select value={currency} onValueChange={setCurrency}>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="CNY">CNY（人民币）</SelectItem>
+                <SelectItem value="USD">USD（美元）</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={save}>
               保存配置
@@ -657,11 +658,6 @@ function BalanceQueryDialog({
               {busy ? "查询中…" : "立即查询"}
             </Button>
           </div>
-          {result ? (
-            <pre className="max-h-32 overflow-auto rounded-md border p-3 text-xs whitespace-pre-wrap">
-              {result}
-            </pre>
-          ) : null}
         </div>
       </DialogContent>
     </Dialog>

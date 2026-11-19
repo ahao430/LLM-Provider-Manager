@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Pencil, Pin, PinOff, RefreshCw } from "lucide-react";
 
@@ -78,6 +79,7 @@ function ChannelCard({
   balance: LatestBalanceRow | undefined;
 }) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const setEnabled = useSetChannelEnabled();
   const setPinned = useSetChannelPinned();
   const [balanceBusy, setBalanceBusy] = useState(false);
@@ -87,6 +89,7 @@ function ChannelCard({
     try {
       const res = await refreshChannelBalance(channel.id);
       if (res.savedSnapshot) {
+        void queryClient.invalidateQueries({ queryKey: ["latest-balances"] });
         toast.success(`余额 ${res.currency ?? ""} ${String(res.value ?? "")} 已记录`);
       } else {
         toast.warning(`未取到余额${res.rawSnippet ? `：${res.rawSnippet.slice(0, 120)}` : ""}`);
@@ -170,24 +173,19 @@ function ChannelCard({
           {channel.chatBaseUrl}
         </p>
         <div className="flex items-center gap-2 text-xs">
-          {balance ? (
-            <>
-              <span className="tabular-nums">
-                余额 {balance.currency} {balance.balance}
-              </span>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="size-6"
-                disabled={balanceBusy}
-                onClick={handleRefreshBalance}
-              >
-                <RefreshCw className="size-3" />
-              </Button>
-            </>
-          ) : (
-            <span className="text-muted-foreground">无余额记录</span>
-          )}
+          <span className={balance ? "tabular-nums" : "text-muted-foreground"} title={balance ? `快照时间 ${balance.capturedAt}` : undefined}>
+            {balance ? `余额 ${balance.currency} ${balance.balance}` : "无余额记录"}
+          </span>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="size-6"
+            title="查询余额（写快照）"
+            disabled={balanceBusy}
+            onClick={handleRefreshBalance}
+          >
+            <RefreshCw className={`size-3 ${balanceBusy ? "animate-spin" : ""}`} />
+          </Button>
           {channel.hasPrimaryCredential ? (
             <button
               type="button"
