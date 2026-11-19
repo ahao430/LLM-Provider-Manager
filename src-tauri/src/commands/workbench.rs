@@ -4,7 +4,7 @@ use rusqlite::Connection;
 use serde::Serialize;
 use tauri::{ipc::Channel, State};
 
-use crate::error::AppResult;
+use crate::error::{AppError, AppResult};
 use crate::requests::repo as records;
 use crate::workbenches::api_testing::{
     builder::ApiTestRequest,
@@ -409,4 +409,30 @@ pub async fn quick_test_channel(
         http_status: result.http_status,
         usage: result.preview.usage,
     })
+}
+
+/// 把若干条测试记录关联为同一会话（A/B 对比的两腿等）。
+/// 只做 session_id 回填（与 agent_probe 完成时回填同一模式），不改其余字段。
+#[tauri::command]
+pub fn set_records_session(
+    state: State<'_, AppState>,
+    trace_ids: Vec<String>,
+    session_id: String,
+) -> AppResult<()> {
+    if trace_ids.is_empty() || session_id.trim().is_empty() {
+        return Err(AppError::Invalid("trace_ids 与 session_id 不能为空".into()));
+    }
+    let conn = db(&state)?;
+    let placeholders = trace_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+    let sql =
+        format!("UPDATE request_records SET session_id = ?1 WHERE trace_id IN ({placeholders})");
+    let mut params: Vec<Box<dyn rusqlite::ToSql>> = vec![Box::new(session_id)];
+    for id in &trace_ids {
+        params.push(Box::new(id.clone()));
+    }
+    conn.execute(
+        &sql,
+        rusqlite::params_from_iter(params.iter().map(|p| p.as_ref())),
+    )?;
+    Ok(())
 }

@@ -785,6 +785,11 @@ export function sendTestRequest(req: ApiTestRequestPayload): Promise<TestRunResu
   return invoke<TestRunResult>("send_test_request", { req });
 }
 
+/** 把若干条测试记录关联为同一会话（A/B 对比两腿等）。 */
+export function setRecordsSession(traceIds: string[], sessionId: string): Promise<void> {
+  return invoke<void>("set_records_session", { traceIds, sessionId });
+}
+
 export async function sendTestStream(
   req: ApiTestRequestPayload,
   onEvent?: (event: ApiTestStreamEvent) => void

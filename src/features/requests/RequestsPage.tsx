@@ -96,7 +96,7 @@ export function RequestsPage() {
   const displayRows = useMemo<DisplayRow[]>(() => {
     const sessionMap = new Map<string, RequestRecordRow[]>();
     for (const r of filteredRecords) {
-      if (r.requestType === "agent_probe" && r.sessionId) {
+      if (r.sessionId) {
         const list = sessionMap.get(r.sessionId) ?? [];
         list.push(r);
         sessionMap.set(r.sessionId, list);
@@ -105,7 +105,7 @@ export function RequestsPage() {
     const rows: DisplayRow[] = [];
     const emitted = new Set<string>();
     for (const r of filteredRecords) {
-      if (r.requestType === "agent_probe" && r.sessionId && sessionMap.has(r.sessionId)) {
+      if (r.sessionId && sessionMap.has(r.sessionId)) {
         if (!emitted.has(r.sessionId)) {
           emitted.add(r.sessionId);
           rows.push({ key: `session:${r.sessionId}`, sessionId: r.sessionId, records: sessionMap.get(r.sessionId)! });
@@ -214,7 +214,9 @@ export function RequestsPage() {
                             <TableCell>
                               <Badge variant="secondary" className="inline-flex items-center gap-1">
                                 {expanded ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}
-                                会话 · {row.records.length} 轮
+                                {latest.requestType === "agent_probe"
+                                  ? `会话 · ${row.records.length} 轮`
+                                  : `对比 · ${row.records.length} 腿`}
                               </Badge>
                             </TableCell>
                             <TableCell>

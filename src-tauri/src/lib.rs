@@ -78,6 +78,7 @@ use crate::commands::workbench::replay_test_request;
 use crate::commands::workbench::{
     copy_test_curl, get_test_raw, get_test_record, list_latest_model_tests, list_test_records,
     quick_test_channel, reparse_test_response, send_test_request, send_test_stream,
+    set_records_session,
 };
 
 /// 全局应用状态（Tauri managed state）。
@@ -152,6 +153,7 @@ pub fn run() {
             delete_model_price,
             send_test_request,
             send_test_stream,
+            set_records_session,
             generate_image,
             send_vision_request,
             read_archived_image,

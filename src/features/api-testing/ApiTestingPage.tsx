@@ -23,11 +23,22 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import {
   PROTOCOL_LABELS,
+  sendTestRequest,
+  sendTestStream,
+  setRecordsSession,
   type ApiTestStreamEvent,
+  type ApiTestRequestPayload,
   type Protocol,
   type TestRunResult,
 } from "@/lib/tauri";
 import { useChannelsForTest, useModelsForTest, useSendTest } from "@/features/api-testing/api";
+import {
+  AbLegPicker,
+  AbResultCompare,
+  EMPTY_LEG,
+  type AbLeg,
+  type AbLegOutcome,
+} from "@/features/api-testing/AbCompare";
 
 /** API 测试工作台：单轮请求（下拉选模型自动填 ID），Raw / 流式 / 时间线全记录。 */
 export function ApiTestingPage() {
@@ -49,6 +60,9 @@ export function ApiTestingPage() {
     stop: "",
     rawJsonMode: false,
     rawJson: "",
+    abMode: false,
+    legA: null,
+    legB: null,
   });
 
   const [channelId, setChannelId] = useState(savedUi.channelId);
@@ -86,13 +100,22 @@ export function ApiTestingPage() {
   const [result, setResult] = useState<TestRunResult | null>(null);
   const resultRef = useRef<TestRunResult | null>(null);
 
+  // A/B 对比模式：双腿独立渠道/模型/协议，其余请求参数共享
+  const [abMode, setAbMode] = useState(savedUi.abMode);
+  const [legA, setLegA] = useState<AbLeg>(savedUi.legA ?? EMPTY_LEG);
+  const [legB, setLegB] = useState<AbLeg>(savedUi.legB ?? EMPTY_LEG);
+  const [abA, setAbA] = useState<AbLegOutcome>({ leg: legA, channelName: null, busy: false, result: null, error: null, liveDelta: "" });
+  const [abB, setAbB] = useState<AbLegOutcome>({ leg: legB, channelName: null, busy: false, result: null, error: null, liveDelta: "" });
+  const [abBusy, setAbBusy] = useState(false);
+
   // 表单快照写入（结果与流式增量不持久化）
   useEffect(() => {
     saveSessionState("lcm-ui-api-test", {
       channelId, modelId, model, protocol, message, system, stream,
       temperature, topP, maxTokens, stop, rawJsonMode, rawJson,
+      abMode, legA, legB,
     });
-  }, [channelId, modelId, model, protocol, message, system, stream, temperature, topP, maxTokens, stop, rawJsonMode, rawJson]);
+  }, [channelId, modelId, model, protocol, message, system, stream, temperature, topP, maxTokens, stop, rawJsonMode, rawJson, abMode, legA, legB]);
 
   const sendMutation = useSendTest(channelId, (event: ApiTestStreamEvent) => {
     if (event.type === "delta") {
@@ -150,16 +173,127 @@ export function ApiTestingPage() {
     }
   }
 
+  // A/B 共享参数 → 各腿 payload（model/protocol/channelId 各腿独立；raw 模式不适用于 A/B）
+  function abPayload(leg: AbLeg, shared: {
+    stream: boolean; system: string; message: string;
+    temperature: string; topP: string; maxTokens: string; stop: string;
+  }): Omit<ApiTestRequestPayload, "channelId"> {
+    return {
+      channelModelId: leg.modelId || null,
+      model: leg.model.trim() || "",
+      protocol: leg.protocol,
+      stream: shared.stream,
+      system: shared.system.trim() || null,
+      messages: [{ role: "user", content: shared.message.trim() }],
+      params: {
+        temperature: shared.temperature.trim() ? Number(shared.temperature) : null,
+        topP: shared.topP.trim() ? Number(shared.topP) : null,
+        maxTokens: shared.maxTokens.trim() ? Number(shared.maxTokens) : null,
+        stop: shared.stop.trim()
+          ? shared.stop.split(",").map((x) => x.trim()).filter(Boolean)
+          : [],
+      },
+      extraBody: null,
+      customHeaders: [],
+      customQuery: [],
+      rawJson: null,
+    };
+  }
+
+  async function handleSendAb() {
+    const shared = { stream, system, message, temperature, topP, maxTokens, stop };
+    for (const [tag, leg] of [["A", legA], ["B", legB]] as const) {
+      if (!leg.channelId) {
+        toast.error(`腿 ${tag}：请先选择渠道`);
+        return;
+      }
+      if (!message.trim()) {
+        toast.error("请输入消息内容（A/B 两腿共享）");
+        return;
+      }
+      if (!leg.model.trim()) {
+        toast.error(`腿 ${tag}：请选择或填写模型`);
+        return;
+      }
+    }
+    const uuid = crypto.randomUUID();
+    const nameOf = (id: string) => enabledChannels.find((c) => c.id === id)?.name ?? null;
+    setAbBusy(true);
+    setAbA({ leg: legA, channelName: nameOf(legA.channelId), busy: true, result: null, error: null, liveDelta: "" });
+    setAbB({ leg: legB, channelName: nameOf(legB.channelId), busy: true, result: null, error: null, liveDelta: "" });
+
+    const runLeg = async (
+      leg: AbLeg,
+      onDelta: (d: string) => void,
+    ): Promise<TestRunResult> => {
+      const payload: ApiTestRequestPayload = { ...abPayload(leg, shared), channelId: leg.channelId };
+      if (shared.stream) {
+        return sendTestStream(payload, (event: ApiTestStreamEvent) => {
+          if (event.type === "delta") onDelta(event.delta);
+        });
+      }
+      return sendTestRequest(payload);
+    };
+
+    const [ra, rb] = await Promise.allSettled([
+      runLeg(legA, (d) => setAbA((p) => ({ ...p, liveDelta: p.liveDelta + d }))),
+      runLeg(legB, (d) => setAbB((p) => ({ ...p, liveDelta: p.liveDelta + d }))),
+    ]);
+
+    const toOutcome = (
+      r: PromiseSettledResult<TestRunResult>,
+      prev: AbLegOutcome,
+    ): AbLegOutcome => ({
+      ...prev,
+      busy: false,
+      result: r.status === "fulfilled" ? r.value : prev.result,
+      error: r.status === "rejected" ? String(r.reason) : null,
+    });
+    setAbA((p) => toOutcome(ra, p));
+    setAbB((p) => toOutcome(rb, p));
+    setAbBusy(false);
+
+    const ok = [ra, rb].filter((r) => r.status === "fulfilled");
+    const ids = ok.map((r) => (r as PromiseFulfilledResult<TestRunResult>).value.traceId);
+    if (ids.length >= 2) {
+      try {
+        await setRecordsSession(ids, uuid);
+      } catch {
+        toast.info("对比记录已生成，但会话关联失败（可在记录详情手动查看）");
+      }
+    }
+    if (ok.length === 2) {
+      toast.success("A/B 两腿均已完成");
+    } else if (ok.length === 1) {
+      toast.warning("A/B 一腿完成，另一腿失败（详见对比卡片）");
+    } else {
+      toast.error("A/B 两腿均失败");
+    }
+  }
+
   return (
     <>
       <PageHeader
         title="API 测试工作台"
         description="单轮请求：下拉选模型，ID 自动填入。请求体、响应、处理过程完整记录。"
         actions={
-          <Button onClick={handleSend} disabled={sendMutation.isPending || !channelId}>
-            <Send className="size-4" />
-            {sendMutation.isPending ? "发送中…" : stream ? "发送（流式）" : "发送"}
-          </Button>
+          <>
+            <label className="mr-2 flex items-center gap-2 text-sm">
+              <Switch checked={abMode} onCheckedChange={setAbMode} />
+              A/B 对比
+            </label>
+            {abMode ? (
+              <Button onClick={handleSendAb} disabled={abBusy}>
+                <Send className="size-4" />
+                {abBusy ? "A/B 发送中…" : stream ? "同时发送（流式）" : "同时发送 A/B"}
+              </Button>
+            ) : (
+              <Button onClick={handleSend} disabled={sendMutation.isPending || !channelId}>
+                <Send className="size-4" />
+                {sendMutation.isPending ? "发送中…" : stream ? "发送（流式）" : "发送"}
+              </Button>
+            )}
+          </>
         }
       />
 
@@ -170,6 +304,13 @@ export function ApiTestingPage() {
             <CardDescription>认证与地址按协议自动处理（渠道三协议 URL）。</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {abMode ? (
+              <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                <AbLegPicker tag="A" leg={legA} onChange={setLegA} enabledChannels={enabledChannels} />
+                <AbLegPicker tag="B" leg={legB} onChange={setLegB} enabledChannels={enabledChannels} />
+              </div>
+            ) : (
+              <>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label>渠道 *</Label>
@@ -231,6 +372,8 @@ export function ApiTestingPage() {
                 </Select>
               </div>
             </div>
+              </>
+            )}
 
             {!rawJsonMode ? (
               <>
@@ -271,8 +414,11 @@ export function ApiTestingPage() {
                 <Switch checked={stream} onCheckedChange={setStream} />
                 流式（SSE）
               </label>
-              <label className="flex items-center gap-2 text-sm">
-                <Switch checked={rawJsonMode} onCheckedChange={setRawJsonMode} />
+              <label
+                className="flex items-center gap-2 text-sm"
+                title={abMode ? "A/B 对比模式使用共享消息内容，不适用 Raw JSON" : undefined}
+              >
+                <Switch checked={rawJsonMode} onCheckedChange={setRawJsonMode} disabled={abMode} />
                 Raw JSON 模式
               </label>
               <button
@@ -316,7 +462,9 @@ export function ApiTestingPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {sendMutation.isPending && stream ? (
+            {abMode ? (
+              <AbResultCompare a={abA} b={abB} stream={stream} />
+            ) : sendMutation.isPending && stream ? (
               <div className="min-h-48 whitespace-pre-wrap rounded-lg border p-3 text-sm">
                 {liveDelta || <span className="text-muted-foreground">等待首 Token…</span>}
               </div>
