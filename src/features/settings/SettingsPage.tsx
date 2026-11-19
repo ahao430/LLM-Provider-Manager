@@ -215,7 +215,7 @@ function UpdateCard() {
             检测更新
           </CardTitle>
           <CardDescription>
-            查询 GitHub 最新已发布 Release（需联网）。一键更新：下载验签后自动重启生效；
+            走应用更新清单（latest.json）检查最新版本（需联网）。一键更新：下载验签后自动重启生效；
             Linux deb / rpm 安装请走包管理器或下载页。
           </CardDescription>
         </div>
@@ -233,71 +233,67 @@ function UpdateCard() {
         </p>
 
         {result ? (
-          result.latestVersion === null ? (
-            <p className="text-muted-foreground text-sm">
-              尚无已发布版本（Release 构建并发布后可检测到）。
-            </p>
-          ) : result.hasUpdate ? (
-            <div className="space-y-2 rounded-lg border p-3">
-              <div className="flex flex-wrap items-center gap-2 text-sm">
-                <Badge>发现新版本</Badge>
-                <span className="font-medium tabular-nums">
-                  v{result.latestVersion}
-                  {result.publishedAt ? (
-                    <span className="text-muted-foreground ml-2 text-xs">
-                      （{result.publishedAt.slice(0, 10)} 发布）
-                    </span>
-                  ) : null}
-                </span>
-              </div>
-              {result.notes ? (
-                <pre className="text-muted-foreground max-h-40 overflow-auto rounded-md border p-2 text-xs whitespace-pre-wrap">
-                  {result.notes.slice(0, 600)}
-                  {result.notes.length > 600 ? "\n…" : ""}
-                </pre>
-              ) : null}
-              {downloading && progress ? (
-                <div className="space-y-1">
-                  <Progress
-                    value={
-                      progress.total
-                        ? Math.min(100, (progress.downloaded / progress.total) * 100)
-                        : undefined
-                    }
-                  />
-                  <p className="text-muted-foreground text-xs tabular-nums">
-                    {progress.total
-                      ? `下载中 ${mb(progress.downloaded)} / ${mb(progress.total)}`
-                      : `下载中 ${mb(progress.downloaded)}`}
-                  </p>
-                </div>
-              ) : null}
-              <div className="flex flex-wrap gap-2">
-                <Button size="sm" onClick={upgrade} disabled={downloading}>
-                  {downloading ? (
-                    <>
-                      <Loader2 className="size-3.5 animate-spin" />
-                      下载中…
-                    </>
-                  ) : (
-                    "一键更新（自动重启）"
-                  )}
-                </Button>
-                {result.releaseUrl ? (
-                  <Button size="sm" variant="outline" onClick={() => void openExternal(result.releaseUrl!)}>
-                    打开下载页
-                  </Button>
+          <div className="space-y-2 rounded-lg border p-3">
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <Badge>发现新版本</Badge>
+              <span className="font-medium tabular-nums">
+                v{result.latestVersion}
+                {result.publishedAt ? (
+                  <span className="text-muted-foreground ml-2 text-xs">
+                    （{result.publishedAt.slice(0, 10)} 发布）
+                  </span>
                 ) : null}
-              </div>
+              </span>
             </div>
-          ) : (
-            <p className="flex items-center gap-2 text-sm">
-              <CheckCircle2 className="size-4 text-green-600" />
-              已是最新版本（v{result.latestVersion}）
-            </p>
-          )
+            {result.notes ? (
+              <pre className="text-muted-foreground max-h-40 overflow-auto rounded-md border p-2 text-xs whitespace-pre-wrap">
+                {result.notes.slice(0, 600)}
+                {result.notes.length > 600 ? "\n…" : ""}
+              </pre>
+            ) : null}
+            {downloading && progress ? (
+              <div className="space-y-1">
+                <Progress
+                  value={
+                    progress.total
+                      ? Math.min(100, (progress.downloaded / progress.total) * 100)
+                      : undefined
+                  }
+                />
+                <p className="text-muted-foreground text-xs tabular-nums">
+                  {progress.total
+                    ? `下载中 ${mb(progress.downloaded)} / ${mb(progress.total)}`
+                    : `下载中 ${mb(progress.downloaded)}`}
+                </p>
+              </div>
+            ) : null}
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" onClick={upgrade} disabled={downloading}>
+                {downloading ? (
+                  <>
+                    <Loader2 className="size-3.5 animate-spin" />
+                    下载中…
+                  </>
+                ) : (
+                  "一键更新（自动重启）"
+                )}
+              </Button>
+              {result.releaseUrl ? (
+                <Button size="sm" variant="outline" onClick={() => void openExternal(result.releaseUrl)}>
+                  打开下载页
+                </Button>
+              ) : null}
+            </div>
+          </div>
+        ) : result === null ? (
+          <p className="flex items-center gap-2 text-sm">
+            <CheckCircle2 className="size-4 text-green-600" />
+            已是最新版本（v{appInfo?.version ?? "?"}）
+          </p>
         ) : (
-          <p className="text-muted-foreground text-sm">点击「检测更新」检查 GitHub 上的最新发布。</p>
+          <p className="text-muted-foreground text-sm">
+            {isFetching ? "检测中…" : "点击「检测更新」检查最新发布（自动更新清单）。"}
+          </p>
         )}
       </CardContent>
     </Card>

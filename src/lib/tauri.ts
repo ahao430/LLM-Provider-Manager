@@ -1336,23 +1336,8 @@ export function queryChannelBalance(channelId: string): Promise<BalanceResult> {
 }
 
 // ------------------------------------------------------------------
-// 更新检测（GitHub Releases；一键更新走 lib/updater.ts 的 updater 插件）
+// 更新（检测与一键安装均走 updater 插件，见 lib/updater.ts）
 // ------------------------------------------------------------------
-
-export interface UpdateCheck {
-  current: string;
-  /** null = 尚无已发布 Release */
-  latestVersion: string | null;
-  latestTag: string | null;
-  releaseUrl: string | null;
-  publishedAt: string | null;
-  notes: string | null;
-  hasUpdate: boolean;
-}
-
-export function checkForUpdates(): Promise<UpdateCheck> {
-  return invoke<UpdateCheck>("check_for_updates");
-}
 
 // ------------------------------------------------------------------
 // 市场信息（内置价格快照 + 渠道标注价对比）

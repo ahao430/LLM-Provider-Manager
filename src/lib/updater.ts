@@ -7,6 +7,33 @@
 import { check } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
 
+/** Release 页（「打开下载页」入口；不依赖 GitHub API，无匿名限额问题）。 */
+const RELEASE_PAGE = "https://github.com/ahao430/LLM-Provider-Manager/releases/latest";
+
+/**
+ * 更新检测（走 updater 清单 latest.json —— release 资产下载，不占 api.github.com
+ * 匿名限额；清单由 Release workflow 随版本自动上传）。null = 已是最新。
+ */
+export interface AppUpdateInfo {
+  currentVersion: string;
+  latestVersion: string;
+  publishedAt: string | null;
+  notes: string | null;
+  releaseUrl: string;
+}
+
+export async function checkAppUpdate(): Promise<AppUpdateInfo | null> {
+  const update = await check();
+  if (!update) return null;
+  return {
+    currentVersion: update.currentVersion,
+    latestVersion: update.version,
+    publishedAt: update.date ?? null,
+    notes: update.body ?? null,
+    releaseUrl: RELEASE_PAGE,
+  };
+}
+
 /** 下载进度（字节；total 为 null 时服务器未返回 Content-Length）。 */
 export interface UpdaterProgress {
   downloaded: number;

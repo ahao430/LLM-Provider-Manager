@@ -1,6 +1,12 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { checkForUpdates, getAppInfo, getDatabaseStats } from "@/lib/tauri";
-import { installAppUpdate, relaunchApp, type UpdaterProgress } from "@/lib/updater";
+import { getAppInfo, getDatabaseStats } from "@/lib/tauri";
+import {
+  checkAppUpdate,
+  installAppUpdate,
+  relaunchApp,
+  type AppUpdateInfo,
+  type UpdaterProgress,
+} from "@/lib/updater";
 
 /** 应用信息（版本、数据目录）。基本不变，长缓存。 */
 export function useAppInfo() {
@@ -22,17 +28,19 @@ export function useDatabaseStats() {
 }
 
 /**
- * 更新检测：应用启动时挂载即查询 GitHub 最新 Release（staleTime 30 分钟，
- * 侧边栏与设置「关于」共享同一缓存）。
+ * 更新检测：走 updater 清单 latest.json（挂载即查，30 分钟缓存，侧边栏与设置「关于」共享）。
+ * null = 已是最新；undefined = 尚未加载。
  */
 export function useUpdateCheck() {
   return useQuery({
     queryKey: ["update-check"],
-    queryFn: checkForUpdates,
+    queryFn: checkAppUpdate,
     staleTime: 30 * 60 * 1000,
     retry: false,
   });
 }
+
+export type { AppUpdateInfo };
 
 /**
  * 一键更新（tauri-plugin-updater）：下载 → minisign 验签 → 替换 → 自动重启。

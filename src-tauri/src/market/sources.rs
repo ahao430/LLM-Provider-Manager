@@ -468,7 +468,7 @@ pub fn map_newapi_provider(
     if models.is_empty() {
         return Err(AppError::Invalid("模型广场为空（data 数组无条目）".into()));
     }
-    models.sort_by(|a, b| a.model.to_lowercase().cmp(&b.model.to_lowercase()));
+    models.sort_by_key(|m| m.model.to_lowercase());
     Ok(MarketProvider {
         id: source_id.to_string(),
         name: source_name.to_string(),

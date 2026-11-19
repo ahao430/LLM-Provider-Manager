@@ -4,6 +4,13 @@
 
 遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 格式，版本策略见 [AGENTS.md](./AGENTS.md)：每次改动第三位 +1（patch），较大改动第二位 +1（minor），第一位仅在维护者要求时升级。
 
+## [0.30.2] - 2026-11-19
+
+### 修复
+
+- **检测更新 403（GitHub API 匿名限额）**：版本检测此前走 `api.github.com`（匿名 60 次/小时，共享出口网络下极易触顶，报 HTTP 403）。现检测与一键更新统一走 updater 清单 `latest.json`（release 资产下载，无 API 限额），Rust 侧 GitHub API 检测命令移除；「打开下载页」固定指向 releases/latest 页面。
+- **CI clippy 失败**：`sort_by` 改 `sort_by_key`（CI 工具链升级后新增 lint；本地 Rust 已同步升级至 1.100.0 与 CI 对齐，消除「本地全绿、CI 红」的版本漂移）。
+
 ## [0.30.1] - 2026-11-19
 
 ### 说明

@@ -30,13 +30,10 @@ export function UpdateBadge({ collapsed }: { collapsed: boolean }) {
     await queryClient.invalidateQueries({ queryKey: ["update-check"] });
     try {
       const res = await refetch();
-      const latest = res.data?.latestVersion;
-      if (res.data?.hasUpdate && latest) {
-        toast.info(`发现新版本 v${latest}，点旁边「升级」按钮一键更新（自动重启）`);
-      } else if (latest) {
-        toast.success(`已是最新版本（v${latest}）`);
+      if (res.data) {
+        toast.info(`发现新版本 v${res.data.latestVersion}，点旁边「升级」按钮一键更新（自动重启）`);
       } else {
-        toast.info("尚无已发布版本");
+        toast.success(`已是最新版本（v${appInfo?.version ?? "?"}）`);
       }
     } catch (e) {
       toast.error(`检查更新失败（需联网）：${e}`);
@@ -44,7 +41,7 @@ export function UpdateBadge({ collapsed }: { collapsed: boolean }) {
   }
 
   async function handleUpgrade() {
-    if (!update?.latestVersion) return;
+    if (!update) return;
     try {
       await autoUpdate.mutateAsync((progress) => {
         toast.loading(progressText(progress), { id: PROGRESS_TOAST_ID });
@@ -60,7 +57,7 @@ export function UpdateBadge({ collapsed }: { collapsed: boolean }) {
     }
   }
 
-  const hasUpdate = Boolean(update?.hasUpdate && update.latestVersion);
+  const hasUpdate = Boolean(update);
   return (
     <div
       className={cn(

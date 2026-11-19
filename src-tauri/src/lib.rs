@@ -74,7 +74,6 @@ use crate::commands::models::{
     list_all_channel_models, list_channel_models, list_global_models, list_model_prices,
     rename_global_model, upsert_channel_model,
 };
-use crate::commands::update::check_for_updates;
 use crate::commands::workbench::replay_test_request;
 use crate::commands::workbench::{
     copy_test_curl, get_test_raw, get_test_record, list_latest_model_tests, list_test_records,
@@ -200,7 +199,6 @@ pub fn run() {
             delete_market_source,
             toggle_market_source,
             fetch_market_source,
-            check_for_updates,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
