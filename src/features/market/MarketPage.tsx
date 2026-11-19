@@ -309,13 +309,24 @@ export function MarketPage() {
             </Button>
           ))}
         </div>
-        {/* 比价模式：搜索特定模型时把模型列表的渠道标注行插进来并排比价 */}
-        {search.trim() !== "" ? (
-          <label className="text-muted-foreground inline-flex cursor-pointer items-center gap-1.5 text-xs">
-            <Switch checked={compareMode} onCheckedChange={setCompareMode} />
-            比价（加入模型列表渠道标注）
-          </label>
-        ) : null}
+        {/* 比价模式（常驻入口）：搜索模型后开启，把模型列表的渠道标注行插入表格并排比价 */}
+        <label
+          className={`inline-flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs ${
+            compareMode ? "bg-primary/5 border-primary/40" : ""
+          } ${search.trim() !== "" ? "cursor-pointer" : "cursor-not-allowed opacity-60"}`}
+          title={
+            search.trim() !== ""
+              ? "开启后，已标注价格的渠道（来自模型列表）以独立行插入同名市场行下方，并排比价"
+              : "先在搜索框输入模型关键字（如 deepseek）再开启"
+          }
+        >
+          <Switch
+            checked={compareMode}
+            disabled={search.trim() === ""}
+            onCheckedChange={setCompareMode}
+          />
+          <span className={compareMode ? "text-foreground font-medium" : ""}>比价</span>
+        </label>
         <span className="text-muted-foreground text-xs">
           {providers.length} 家厂商 · {modelCount} 个模型
         </span>
