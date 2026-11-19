@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/ahao430/LLM-Provider-Manager/actions/workflows/ci.yml/badge.svg)](https://github.com/ahao430/LLM-Provider-Manager/actions/workflows/ci.yml)
 [![Release](https://github.com/ahao430/LLM-Provider-Manager/actions/workflows/release.yml/badge.svg)](https://github.com/ahao430/LLM-Provider-Manager/actions/workflows/release.yml)
-![Version](https://img.shields.io/badge/version-0.18.0-blue)
+![Version](https://img.shields.io/badge/version-0.30.0-blue)
 
 LCM 用于统一管理不同 AI 服务商、API 渠道、模型、价格、充值记录和账单，并提供 API 测试、真实 Agent 调用（Claude Code / Codex CLI）、图片生成与理解、测试记录与响应分析能力。
 
@@ -53,7 +53,7 @@ LCM 不是 AI Gateway、API Proxy、模型路由器或协议转换服务，而�
 | 资金与账单 | 充值 / 供应商账单 / 余额快照；余额查询方式按服务商自动派生（NewAPI 用户额度、阿里云百炼费用中心，支持账单按月净额导入） | Phase 6 ✅ |
 | 测试中心 | API 测试 / Agent 测试 / 画图（生成 + 编辑）/ 图像理解，一个菜单收敛 | v0.10.0 ✅ |
 | 测试记录 | Trace ID、Raw、Preview、TTFB/TTFT/TPS、Token、历史重新解析、重放、复制 curl | Phase 3 ✅ |
-| 设置 | 常规（应用 / 外观主题 / MCP 接入）/ 数据（加密备份·一致性·清理）/ 更新（GitHub Release 检测） | Phase 0（已上线） |
+| 设置 | 常规（应用 / 外观主题 / MCP 接入 / 市场数据源）/ 数据（加密备份·一致性·清理）/ 应用内一键更新（minisign 验签 + 自动重启，v0.30.0） | Phase 0（已上线） |
 | MCP | `lcm-mcp` 只读 MCP 服务器（stdio）：渠道、模型与标注价、测试记录、错误诊断（知识库）、余额、账单、市场行情；凭证零输出 | v0.15.0 ✅ |
 
 ## 技术栈
@@ -98,7 +98,28 @@ xattr -cr /Applications/LCM.app
 
 > 也可以在「系统设置 → 隐私与安全性」里点击「仍要打开」放行；若仍不行再用上面的命令。
 
-应用内也支持更新：启动自动检测新版本，侧边栏版本号旁出现「升级」按钮，一键下载安装包并引导覆盖安装（应用未公证时 macOS 同样可能需要重跑一次上面的命令）。
+应用内一键更新（v0.30.0 起）：启动自动检测新版本，侧边栏版本号旁出现「升级」按钮（或设置 → 关于），点击后应用内下载（带进度条）→ 签名验证 → 自动替换 → **自动重启生效**，无需手动覆盖安装。
+
+> 注意：
+> - 从 v0.29.x 及更早版本升级到 v0.30.0 仍需手动覆盖安装一次（旧版本内没有更新插件，这是最后一次手动安装），此后版本均可应用内一键更新。
+> - Linux 以 `.deb` / `.rpm` 安装的用户不适用应用内更新（由包管理器负责），界面会引导走下载页。
+
+### 更新签名（维护者）
+
+应用内更新走 [tauri-plugin-updater](https://v2.tauri.app/plugin/updater/)，更新包用 **minisign 签名**，应用内置公钥校验，防止更新通道被篡改。配置一次后无需再管：
+
+```bash
+# 1. 生成本机签名密钥对（私钥不进仓库，记牢密码）
+pnpm tauri signer generate -w ~/.tauri/lcm-updater.key
+
+# 2. GitHub 仓库 → Settings → Secrets and variables → Actions → Secrets → Repository secrets，添加两条：
+#    TAURI_SIGNING_PRIVATE_KEY          = ~/.tauri/lcm-updater.key 文件的完整内容（含注释行）
+#    TAURI_SIGNING_PRIVATE_KEY_PASSWORD = 生成密钥时设置的密码
+
+# 3. 公钥（~/.tauri/lcm-updater.key.pub 的内容）填入 src-tauri/tauri.conf.json 的 plugins.updater.pubkey
+```
+
+工作方式：推送 `v*` tag 后，Release workflow 的 tauri-action 注入私钥自动对更新产物（macOS `.app.tar.gz` / Windows `setup.exe` / Linux `AppImage`）生成 `.sig`，并把各平台签名聚合上传为 Release 的 `latest.json` 清单；应用从 `https://github.com/<owner>/<repo>/releases/latest/download/latest.json` 检查更新（正式发布后可见，与「草稿 → 全平台成功自动发布」流程兼容）。
 
 ### 前置要求
 
