@@ -1,7 +1,14 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "主窗口最小权限：核心默认能力 + 目录选择对话框（Agent 启动器选择工作目录）+ 系统浏览器打开外链（市场信息价格页）+ 写剪贴板（复制渠道凭证）。",
+  "description": "主窗口最小权限：核心默认能力 + 目录选择对话框（Agent 启动器选择工作目录）+ 系统浏览器打开外链（市场信息价格页）+ 写剪贴板（复制渠道凭证）+ 应用内更新（检查 / 下载 / 安装，minisign 验签）+ 更新完成后重启进程。",
   "windows": ["main"],
-  "permissions": ["core:default", "dialog:default", "opener:default", "clipboard-manager:allow-write-text"]
+  "permissions": [
+    "core:default",
+    "dialog:default",
+    "opener:default",
+    "clipboard-manager:allow-write-text",
+    "updater:default",
+    "process:allow-restart"
+  ]
 }

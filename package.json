@@ -1,7 +1,7 @@
 {
   "name": "lcm",
   "private": true,
-  "version": "0.29.1",
+  "version": "0.30.0",
   "type": "module",
   "description": "LCM — Local Channel Manager，本地优先的大模型渠道管理与 API 测试工具",
   "packageManager": "pnpm@10.9.0",
@@ -30,6 +30,8 @@
     "@tauri-apps/plugin-clipboard-manager": "^2.5.0",
     "@tauri-apps/plugin-dialog": "^2.8.4",
     "@tauri-apps/plugin-opener": "^2.7.3",
+    "@tauri-apps/plugin-process": "^2.4.0",
+    "@tauri-apps/plugin-updater": "^2.14.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cn": "^0.5.2",

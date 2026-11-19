@@ -1336,7 +1336,7 @@ export function queryChannelBalance(channelId: string): Promise<BalanceResult> {
 }
 
 // ------------------------------------------------------------------
-// 更新检查（GitHub Releases，只检查 + 跳转下载页）
+// 更新检测（GitHub Releases；一键更新走 lib/updater.ts 的 updater 插件）
 // ------------------------------------------------------------------
 
 export interface UpdateCheck {
@@ -1352,20 +1352,6 @@ export interface UpdateCheck {
 
 export function checkForUpdates(): Promise<UpdateCheck> {
   return invoke<UpdateCheck>("check_for_updates");
-}
-
-/** 应用内下载的安装包（data_dir/updates 下）。 */
-export interface DownloadedUpdate {
-  filePath: string;
-  fileName: string;
-}
-
-export function downloadUpdate(): Promise<DownloadedUpdate> {
-  return invoke<DownloadedUpdate>("download_update");
-}
-
-export function installUpdate(filePath: string): Promise<void> {
-  return invoke<void>("install_update", { filePath });
 }
 
 // ------------------------------------------------------------------

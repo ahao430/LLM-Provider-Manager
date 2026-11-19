@@ -30,20 +30,23 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { openExternal } from "@/lib/external";
-import { useAppInfo, useDatabaseStats } from "@/hooks/use-app-info";
+import {
+  useAppInfo,
+  useAutoUpdate,
+  useDatabaseStats,
+  useUpdateCheck,
+} from "@/hooks/use-app-info";
 import { MarketSourcesCard } from "@/features/settings/MarketSourcesCard";
 import { THEME_LABELS, useUiStore, type Theme } from "@/stores/ui";
+import type { UpdaterProgress } from "@/lib/updater";
 import {
   checkArchiveConsistency,
-  checkForUpdates,
   cleanupOldData,
   createBackup,
-  downloadUpdate,
-  installUpdate,
   restoreBackup,
   type ConsistencyReport,
-  type UpdateCheck,
 } from "@/lib/tauri";
+import { Progress } from "@/components/ui/progress";
 
 /** 设置：常规（外观）/ 数据库 / MCP 接入 / 数据（备份·一致性·清理）/ 关于（应用信息 + 更新）。 */
 export function SettingsPage() {
@@ -173,42 +176,35 @@ export function SettingsPage() {
 
 function UpdateCard() {
   const { data: appInfo } = useAppInfo();
-  const [busy, setBusy] = useState(false);
-  const [downloading, setDownloading] = useState(false);
-  const [result, setResult] = useState<UpdateCheck | null>(null);
+  const { data: result, isFetching, refetch } = useUpdateCheck();
+  const autoUpdate = useAutoUpdate();
+  const [progress, setProgress] = useState<UpdaterProgress | null>(null);
 
   async function check() {
-    setBusy(true);
     try {
-      setResult(await checkForUpdates());
+      await refetch();
     } catch (error) {
       toast.error(`检测失败：${error}`);
-    } finally {
-      setBusy(false);
     }
   }
 
-  /** 应用内下载安装包 → 确认后运行安装器（覆盖安装），与侧边栏升级按钮同一流程。 */
-  async function downloadAndInstall() {
-    setDownloading(true);
+  /** 一键更新：下载（minisign 验签）→ 替换 → 自动重启，无需手动覆盖安装。 */
+  async function upgrade() {
+    setProgress({ downloaded: 0, total: null });
     try {
-      toast.info("开始下载安装包…（保存到数据目录 updates/）");
-      const res = await downloadUpdate();
-      const ok = window.confirm(
-        `安装包 ${res.fileName} 已下载完成。\n立即运行安装器覆盖安装？（应用将退出，安装后重新打开）`
-      );
-      if (!ok) {
-        toast.info(`已保存到 ${res.filePath}，可稍后手动运行安装`);
-        return;
-      }
-      await installUpdate(res.filePath);
-      toast.success("安装器已启动，按引导完成覆盖安装即可");
+      await autoUpdate.mutateAsync((p) => setProgress(p));
+      toast.success("更新完成，正在重启…");
     } catch (error) {
-      toast.error(`更新失败：${error}`);
-    } finally {
-      setDownloading(false);
+      toast.error(
+        `一键更新失败：${error}。可「打开下载页」手动下载（Linux deb/rpm 安装请用包管理器升级）`,
+        { duration: 10000 }
+      );
+      setProgress(null);
     }
   }
+
+  const mb = (n: number) => `${(n / 1048576).toFixed(1)} MB`;
+  const downloading = autoUpdate.isPending;
 
   return (
     <Card>
@@ -219,12 +215,13 @@ function UpdateCard() {
             检测更新
           </CardTitle>
           <CardDescription>
-            查询 GitHub 最新已发布 Release（需联网）。只检查并跳转下载页，不自动更新。
+            查询 GitHub 最新已发布 Release（需联网）。一键更新：下载验签后自动重启生效；
+            Linux deb / rpm 安装请走包管理器或下载页。
           </CardDescription>
         </div>
-        <Button size="sm" variant="outline" onClick={check} disabled={busy}>
-          <RefreshCw className={`size-4 ${busy ? "animate-spin" : ""}`} />
-          {busy ? "检测中…" : "检测更新"}
+        <Button size="sm" variant="outline" onClick={check} disabled={isFetching}>
+          <RefreshCw className={`size-4 ${isFetching ? "animate-spin" : ""}`} />
+          {isFetching ? "检测中…" : "检测更新"}
         </Button>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -259,15 +256,31 @@ function UpdateCard() {
                   {result.notes.length > 600 ? "\n…" : ""}
                 </pre>
               ) : null}
+              {downloading && progress ? (
+                <div className="space-y-1">
+                  <Progress
+                    value={
+                      progress.total
+                        ? Math.min(100, (progress.downloaded / progress.total) * 100)
+                        : undefined
+                    }
+                  />
+                  <p className="text-muted-foreground text-xs tabular-nums">
+                    {progress.total
+                      ? `下载中 ${mb(progress.downloaded)} / ${mb(progress.total)}`
+                      : `下载中 ${mb(progress.downloaded)}`}
+                  </p>
+                </div>
+              ) : null}
               <div className="flex flex-wrap gap-2">
-                <Button size="sm" onClick={downloadAndInstall} disabled={downloading}>
+                <Button size="sm" onClick={upgrade} disabled={downloading}>
                   {downloading ? (
                     <>
                       <Loader2 className="size-3.5 animate-spin" />
                       下载中…
                     </>
                   ) : (
-                    "下载并安装"
+                    "一键更新（自动重启）"
                   )}
                 </Button>
                 {result.releaseUrl ? (

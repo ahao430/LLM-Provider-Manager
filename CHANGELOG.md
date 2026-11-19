@@ -4,6 +4,18 @@
 
 遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 格式，版本策略见 [AGENTS.md](./AGENTS.md)：每次改动第三位 +1（patch），较大改动第二位 +1（minor），第一位仅在维护者要求时升级。
 
+## [0.30.0] - 2026-11-19
+
+### 新增（较大改动，第二位 +1）
+
+- **应用内一键更新**（tauri-plugin-updater + tauri-plugin-process）：检测到新版本后点「一键更新」——应用内下载（带进度条）→ minisign 验签 → 自动替换 → 自动重启生效，不再需要「下载完整包 → 手动退出 → 覆盖安装」。Windows 走 NSIS 静默安装；macOS 替换 .app；Linux AppImage 自替换（deb / rpm 安装不支持应用内更新，界面引导走下载页 / 包管理器）。侧边栏升级按钮与设置 → 关于同一流程。
+- **更新通道签名验证**：Release workflow 注入 minisign 私钥（GitHub Actions Repository Secrets），tauri-action 自动对更新产物（.app.tar.gz / setup.exe / AppImage）生成 `.sig` 并聚合各平台签名上传 `latest.json` 清单；应用内置公钥校验，更新包被篡改无法通过验签。原「下载安装包到数据目录 + 手动运行安装器」流程移除；GitHub API 版本检测保留（版本号 / 发布说明 / 打开下载页，兼作清单异常时的降级路径）。
+
+### 注意
+
+- 本次 v0.29.x → v0.30.0 仍需手动覆盖安装一次（旧版本内没有更新插件，这是最后一次手动安装），此后发布的新版本均可应用内一键更新。
+- Linux 以 deb / rpm 安装的用户不适用应用内更新，请继续用包管理器或下载页。
+
 ## [0.29.1] - 2026-11-19
 
 ### 新增

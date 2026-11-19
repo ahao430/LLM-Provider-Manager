@@ -79,12 +79,18 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # 应用内更新签名（minisign）：注入私钥后 tauri-action 自动生成 .sig 与 latest.json
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: v__VERSION__
           releaseName: "LCM v__VERSION__"
           releaseBody: "见 Assets 下载对应平台的安装包。变更说明请查看 CHANGELOG.md。"
           releaseDraft: true
           prerelease: false
+          # 各平台矩阵 job 把签名信息合并进 release 的 latest.json（updater 清单）
+          includeUpdaterJson: true
+          updaterJsonPreferTrueUrl: true
           args: ${{ matrix.args }}
 
       # 附赠只读 MCP 服务器二进制（设置页「MCP」卡片指引注册）

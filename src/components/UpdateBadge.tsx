@@ -1,23 +1,30 @@
-import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ArrowUpCircle, Loader2, RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { useAppInfo, useDownloadUpdate, useInstallUpdate, useUpdateCheck } from "@/hooks/use-app-info";
+import { useAppInfo, useAutoUpdate, useUpdateCheck } from "@/hooks/use-app-info";
 import { cn } from "@/lib/utils";
+import type { UpdaterProgress } from "@/lib/updater";
+
+const PROGRESS_TOAST_ID = "updater-progress";
+
+function progressText(p: UpdaterProgress): string {
+  const mb = (n: number) => (n / 1048576).toFixed(1);
+  return p.total
+    ? `下载更新中 ${mb(p.downloaded)} / ${mb(p.total)} MB`
+    : `下载更新中 ${mb(p.downloaded)} MB`;
+}
 
 /**
  * 侧边栏版本行：启动即检测更新（useUpdateCheck）；点击版本号可手动重新检查。
- * 有新版本时一键下载安装包并引导覆盖安装。
+ * 有新版本时一键更新（下载验签 → 自动重启生效，无需手动覆盖安装）。
  */
 export function UpdateBadge({ collapsed }: { collapsed: boolean }) {
   const queryClient = useQueryClient();
   const { data: appInfo } = useAppInfo();
   const { data: update, isFetching, refetch } = useUpdateCheck();
-  const download = useDownloadUpdate();
-  const install = useInstallUpdate();
-  const [installing, setInstalling] = useState(false);
+  const autoUpdate = useAutoUpdate();
 
   async function handleCheck() {
     await queryClient.invalidateQueries({ queryKey: ["update-check"] });
@@ -25,7 +32,7 @@ export function UpdateBadge({ collapsed }: { collapsed: boolean }) {
       const res = await refetch();
       const latest = res.data?.latestVersion;
       if (res.data?.hasUpdate && latest) {
-        toast.info(`发现新版本 v${latest}，点旁边「升级」按钮下载安装`);
+        toast.info(`发现新版本 v${latest}，点旁边「升级」按钮一键更新（自动重启）`);
       } else if (latest) {
         toast.success(`已是最新版本（v${latest}）`);
       } else {
@@ -39,22 +46,17 @@ export function UpdateBadge({ collapsed }: { collapsed: boolean }) {
   async function handleUpgrade() {
     if (!update?.latestVersion) return;
     try {
-      toast.info(`开始下载 v${update.latestVersion} 安装包…（已存到数据目录 updates/）`);
-      const res = await download.mutateAsync();
-      const ok = window.confirm(
-        `安装包 ${res.fileName} 已下载完成。\n立即运行安装器覆盖安装？（应用将退出，安装后重新打开）`
-      );
-      if (!ok) {
-        toast.info(`已保存到 ${res.filePath}，可稍后手动运行安装`);
-        return;
-      }
-      setInstalling(true);
-      await install.mutateAsync(res.filePath);
-      toast.success("安装器已启动，按引导完成覆盖安装即可");
+      await autoUpdate.mutateAsync((progress) => {
+        toast.loading(progressText(progress), { id: PROGRESS_TOAST_ID });
+      });
+      toast.success(`v${update.latestVersion} 更新完成，正在重启…`, {
+        id: PROGRESS_TOAST_ID,
+      });
     } catch (e) {
-      toast.error(`更新失败：${e}`);
-    } finally {
-      setInstalling(false);
+      toast.error(
+        `一键更新失败：${e}。可到设置 → 关于「打开下载页」手动下载（Linux deb/rpm 安装请用包管理器升级）`,
+        { id: PROGRESS_TOAST_ID, duration: 10000 }
+      );
     }
   }
 
@@ -89,15 +91,16 @@ export function UpdateBadge({ collapsed }: { collapsed: boolean }) {
         <Button
           size="sm"
           className="h-6 gap-1 px-2 text-xs"
+          title="下载更新并自动重启（无需手动覆盖安装）"
           onClick={handleUpgrade}
-          disabled={download.isPending || installing}
+          disabled={autoUpdate.isPending}
         >
-          {download.isPending || installing ? (
+          {autoUpdate.isPending ? (
             <Loader2 className="size-3 animate-spin" />
           ) : (
             <ArrowUpCircle className="size-3" />
           )}
-          {!collapsed && (download.isPending ? "下载中…" : `升级 v${update!.latestVersion}`)}
+          {!collapsed && (autoUpdate.isPending ? "更新中…" : `升级 v${update!.latestVersion}`)}
         </Button>
       ) : null}
     </div>

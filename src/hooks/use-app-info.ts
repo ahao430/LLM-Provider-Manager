@@ -1,5 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { checkForUpdates, downloadUpdate, getAppInfo, getDatabaseStats, installUpdate, type DownloadedUpdate } from "@/lib/tauri";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { checkForUpdates, getAppInfo, getDatabaseStats } from "@/lib/tauri";
+import { installAppUpdate, relaunchApp, type UpdaterProgress } from "@/lib/updater";
 
 /** 应用信息（版本、数据目录）。基本不变，长缓存。 */
 export function useAppInfo() {
@@ -33,19 +34,13 @@ export function useUpdateCheck() {
   });
 }
 
-/** 下载更新安装包到数据目录 updates/。 */
-export function useDownloadUpdate() {
-  return useMutation({ mutationFn: () => downloadUpdate() });
-}
-
-/** 运行已下载的安装包（覆盖安装）。 */
-export function useInstallUpdate() {
-  const queryClient = useQueryClient();
+/**
+ * 一键更新（tauri-plugin-updater）：下载 → minisign 验签 → 替换 → 自动重启。
+ * onProgress 由调用方传入驱动进度展示；失败（含 Linux deb/rpm 不支持）抛错给调用方提示。
+ */
+export function useAutoUpdate() {
   return useMutation({
-    mutationFn: (filePath: string) => installUpdate(filePath),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["update-check"] }),
+    mutationFn: (onProgress?: (progress: UpdaterProgress) => void) =>
+      installAppUpdate(onProgress).then(() => relaunchApp()),
   });
 }
-
-export type { DownloadedUpdate };
-

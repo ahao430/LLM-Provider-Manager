@@ -74,7 +74,7 @@ use crate::commands::models::{
     list_all_channel_models, list_channel_models, list_global_models, list_model_prices,
     rename_global_model, upsert_channel_model,
 };
-use crate::commands::update::{check_for_updates, download_update, install_update};
+use crate::commands::update::check_for_updates;
 use crate::commands::workbench::replay_test_request;
 use crate::commands::workbench::{
     copy_test_curl, get_test_raw, get_test_record, list_latest_model_tests, list_test_records,
@@ -95,6 +95,9 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_clipboard_manager::init())
+        // 应用内更新：下载 → minisign 验签 → 替换 → 重启（对话框由前端自绘，进度条走事件回调）
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .setup(|app| {
             let data_dir = storage::paths::resolve_data_dir(app.handle())?;
             let conn = storage::database::init(&data_dir)?;
@@ -198,8 +201,6 @@ pub fn run() {
             toggle_market_source,
             fetch_market_source,
             check_for_updates,
-            download_update,
-            install_update,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

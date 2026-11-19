@@ -1562,8 +1562,11 @@ Raw 请求可能包含认证 Header，因此界面展示和导出时需要执行
 ### 检测与安装
 
 - 启动即查询 GitHub 最新已发布 Release（30 分钟缓存，侧边栏与设置「关于」共享）；有新版本时侧边栏版本旁出现「升级 vX.Y.Z」按钮。
-- **应用内下载 + 引导覆盖安装**：按平台挑选资产（macOS dmg by arch / Windows NSIS setup.exe / Linux AppImage），下载到 `<数据目录>/updates/`，确认后运行安装器（macOS 挂载 dmg / Windows 运行 setup / Linux xdg-open）。不做静默自动更新（无更新签名基础设施；草稿 Release 由维护者确认发布）。
-- 设置页 Tab：常规（外观）/ 数据库 / MCP 接入 / 数据 / 关于（应用信息 + 更新，最后一个）。
+- **应用内一键更新（v0.30.0 起，tauri-plugin-updater）**：检测到新版本后点「一键更新」→ 应用内下载（带进度条）→ minisign 验签（Release workflow 用私钥签名更新产物并上传 `latest.json` 清单，应用内置公钥校验）→ 自动替换 → 自动重启生效。Windows 走 NSIS 静默安装；macOS 替换 .app；Linux AppImage 自替换（deb / rpm 安装不支持，界面引导走下载页 / 包管理器）。
+- **降级路径**：GitHub API 版本检测保留（版本号 / 发布说明 / 打开下载页）；latest.json 异常或 deb / rpm 用户走手动下载覆盖安装。
+- 更新签名私钥仅存 GitHub Actions Repository Secrets 与维护者本机（~/.tauri/），不进仓库 / 日志；泄露时重新生成密钥对并更换 Secrets 与应用内置公钥。见 docs/security.md「应用内更新」。
+- v0.29.x 及更早升级到 v0.30.0 仍需手动覆盖安装一次（旧版本内无更新插件），此后版本均可应用内一键更新。
+- 设置页 Tab：常规（外观）/ 数据库 / MCP 接入 / 市场数据源 / 数据 / 关于（应用信息 + 更新，最后一个）。
 
 ---
 
