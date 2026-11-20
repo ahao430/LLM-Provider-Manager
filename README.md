@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/ahao430/LLM-Provider-Manager/actions/workflows/ci.yml/badge.svg)](https://github.com/ahao430/LLM-Provider-Manager/actions/workflows/ci.yml)
 [![Release](https://github.com/ahao430/LLM-Provider-Manager/actions/workflows/release.yml/badge.svg)](https://github.com/ahao430/LLM-Provider-Manager/actions/workflows/release.yml)
-![Version](https://img.shields.io/badge/version-0.30.0-blue)
+[![Version](https://img.shields.io/github/v/release/ahao430/LLM-Provider-Manager)](https://github.com/ahao430/LLM-Provider-Manager/releases/latest)
 
 LCM 用于统一管理不同 AI 服务商、API 渠道、模型、价格、充值记录和账单，并提供 API 测试、真实 Agent 调用（Claude Code / Codex CLI）、图片生成与理解、测试记录与响应分析能力。
 

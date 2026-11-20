@@ -132,10 +132,15 @@ export function OpsCalendarCard() {
                 }
               >
                 <span className="leading-none">{Number(date.slice(8, 10))}</span>
-                <span className="flex gap-0.5">
-                  {d && d.logCount > 0 ? <span className="size-1.5 rounded-full bg-sky-500" /> : null}
+                {/* inline-block + shrink-0：size-* 不改 display，裸 span 尺寸会坍缩/被拉伸 */}
+                <span className="flex h-1.5 items-center gap-0.5">
+                  {d && d.logCount > 0 ? (
+                    <span className="inline-block size-1.5 shrink-0 rounded-full bg-sky-500" />
+                  ) : null}
                   {d && d.todoOpen > 0 ? (
-                    <span className={`size-1.5 rounded-full ${isOverdue ? "bg-red-500" : "bg-amber-500"}`} />
+                    <span
+                      className={`inline-block size-1.5 shrink-0 rounded-full ${isOverdue ? "bg-red-500" : "bg-amber-500"}`}
+                    />
                   ) : null}
                 </span>
               </button>
@@ -144,15 +149,15 @@ export function OpsCalendarCard() {
         </div>
         <p className="text-muted-foreground flex flex-wrap items-center gap-3 text-xs">
           <span className="flex items-center gap-1">
-            <span className="size-1.5 rounded-full bg-sky-500" />
+            <span className="inline-block size-1.5 shrink-0 rounded-full bg-sky-500" />
             日志
           </span>
           <span className="flex items-center gap-1">
-            <span className="size-1.5 rounded-full bg-amber-500" />
+            <span className="inline-block size-1.5 shrink-0 rounded-full bg-amber-500" />
             待办到期
           </span>
           <span className="flex items-center gap-1">
-            <span className="size-1.5 rounded-full bg-red-500" />
+            <span className="inline-block size-1.5 shrink-0 rounded-full bg-red-500" />
             逾期未完
           </span>
         </p>
